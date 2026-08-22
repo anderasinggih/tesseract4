@@ -214,6 +214,15 @@ func (h *WarRoomHub) GetSnapshot(selfID string) WarRoomState {
 		agentsList = append(agentsList, *a)
 	}
 
+	// Deterministic stable sorting by Score DESC, then ID ASC (Prevents UI glitching on identical scores)
+	for i := 0; i < len(agentsList)-1; i++ {
+		for j := i + 1; j < len(agentsList); j++ {
+			if agentsList[j].Score > agentsList[i].Score || (agentsList[j].Score == agentsList[i].Score && agentsList[j].ID < agentsList[i].ID) {
+				agentsList[i], agentsList[j] = agentsList[j], agentsList[i]
+			}
+		}
+	}
+
 	arcsList := make([]AttackArc, 0, len(h.activeArcs))
 	var totalEntropy float64
 	for _, arc := range h.activeArcs {
