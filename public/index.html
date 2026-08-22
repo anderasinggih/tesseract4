@@ -2313,56 +2313,79 @@
           }
         }
 
-        // 4. Draw Aircraft Icons & Mode S Transponders
-        if (currentPayload.aircraft) {
+        // 4. Draw Aircraft Icons & Mode S Transponders (2-Pass Deterministic Z-Index)
+        if (currentPayload.aircraft && !mapCockpitPOVEnabled) {
+          // Sort or partition: Pass 1 = Normal background aircraft, Pass 2 = Active Selected / Emergency / Conflict aircraft on TOP
+          const backgroundPlanes = [];
+          const foregroundPlanes = [];
+
           currentPayload.aircraft.forEach(ac => {
+            const isSelected = ac.callsign === selectedCallsign;
+            const isEmergency = ac.emergencyState;
+            const isConflict = ac.conflictAlert;
+
+            if (isSelected || isEmergency || isConflict) {
+              foregroundPlanes.push(ac);
+            } else {
+              backgroundPlanes.push(ac);
+            }
+          });
+
+          // PASS 1: Render All Background Aircraft Icons & Minimal Labels (Underneath)
+          backgroundPlanes.forEach(ac => {
+            const pt = map.project([ac.coord.lng, ac.coord.lat]);
+            if (pt.x < -50 || pt.x > canvas.width + 50 || pt.y < -50 || pt.y > canvas.height + 50) return;
+
+            const isHandoff = ac.handoffState === 'PENDING';
+            const acColor = isHandoff ? 'var(--accent-amber)' : '#cccccc';
+
+            drawAirplaneIcon(pt.x, pt.y, ac.heading, acColor, 7.5, false, false);
+
+            // Minimal Callsign underneath
+            ctx.shadowBlur = 0;
+            ctx.fillStyle = '#888888';
+            ctx.font = '600 8px "JetBrains Mono", monospace';
+            ctx.fillText(ac.callsign, Math.round(pt.x - 14), Math.round(pt.y + 14));
+          });
+
+          // PASS 2: Render Active / Selected / Emergency Aircraft on TOP Layer (Zero clipping)
+          foregroundPlanes.forEach(ac => {
             const pt = map.project([ac.coord.lng, ac.coord.lat]);
             if (pt.x < -50 || pt.x > canvas.width + 50 || pt.y < -50 || pt.y > canvas.height + 50) return;
 
             const isSelected = ac.callsign === selectedCallsign;
-            const isConflict = ac.conflictAlert;
             const isEmergency = ac.emergencyState;
-            const isHandoff = ac.handoffState === 'PENDING';
+            const isConflict = ac.conflictAlert;
 
-            // Clean Black & White with Important Highlights
             let acColor = '#ffffff';
-            if (isEmergency) acColor = 'var(--accent-red)';
-            else if (isConflict) acColor = 'var(--accent-red)';
-            else if (isHandoff) acColor = 'var(--accent-amber)';
+            if (isEmergency || isConflict) acColor = 'var(--accent-red)';
             else if (isSelected) acColor = '#ffffff';
-            else acColor = '#cccccc';
 
-            // In 3D Cockpit POV Mode: All aircraft in visual range are rendered as genuine 3D models in Three.js
-            if (mapCockpitPOVEnabled) {
-              return; // Clean cinematic 3D world without 2D icon overlays
-            }
-
-            let planeSize = isSelected ? 10 : 7.5;
-            // Draw Clean Airplane Silhouette Icon
+            const planeSize = isSelected ? 10.5 : 8.5;
             drawAirplaneIcon(pt.x, pt.y, ac.heading, acColor, planeSize, isSelected, false);
 
-            // Detailed Box Tag shows when Selected or MAYDAY Emergency
+            // Detailed Box Tag (Highest Z-Index)
             if (isSelected || isEmergency) {
-              const tagX = Math.round(pt.x + 12);
-              const tagY = Math.round(pt.y - 12);
+              const tagX = Math.round(pt.x + 14);
+              const tagY = Math.round(pt.y - 14);
 
-              ctx.shadowBlur = 0; // Prevent blur bleeding
+              ctx.shadowBlur = 0;
               ctx.fillStyle = isEmergency ? '#e60026' : '#111111';
-              ctx.fillRect(tagX - 2, tagY - 9, 88, 28);
-              ctx.strokeStyle = isEmergency ? '#ffffff' : '#555555';
-              ctx.lineWidth = 1;
-              ctx.strokeRect(tagX - 2, tagY - 9, 88, 28);
+              ctx.fillRect(tagX - 2, tagY - 9, 90, 28);
+              ctx.strokeStyle = isEmergency ? '#ffffff' : '#00ddff';
+              ctx.lineWidth = isSelected ? 1.5 : 1;
+              ctx.strokeRect(tagX - 2, tagY - 9, 90, 28);
 
               ctx.fillStyle = '#ffffff';
               ctx.font = '700 9px "JetBrains Mono", monospace';
               ctx.fillText(isEmergency ? `! ${ac.callsign} [7700]` : ac.callsign, tagX + 2, tagY + 1);
 
-              ctx.fillStyle = isEmergency ? '#ffffff' : '#dddddd';
+              ctx.fillStyle = isEmergency ? '#ffffff' : '#00e5ff';
               ctx.font = '600 7.5px "JetBrains Mono", monospace';
               ctx.fillText(`FL${Math.round(ac.altitude / 100)} ${Math.round(ac.speed)}KT`, tagX + 2, tagY + 9);
+              ctx.fillStyle = '#dddddd';
               ctx.fillText(isEmergency ? `${ac.emergencyType}` : `${ac.origin} > ${ac.destination}`, tagX + 2, tagY + 16);
             } else if (isConflict) {
-              // Subtle Conflict indicator
               const confX = Math.round(pt.x + 10);
               const confY = Math.round(pt.y - 8);
               ctx.shadowBlur = 0;
@@ -2371,12 +2394,6 @@
               ctx.fillStyle = '#ffffff';
               ctx.font = '700 8px "JetBrains Mono", monospace';
               ctx.fillText(ac.callsign, confX + 3, confY + 10);
-            } else {
-              // Minimal Callsign underneath
-              ctx.shadowBlur = 0;
-              ctx.fillStyle = '#999999';
-              ctx.font = '600 8px "JetBrains Mono", monospace';
-              ctx.fillText(ac.callsign, Math.round(pt.x - 14), Math.round(pt.y + 14));
             }
           });
         }
