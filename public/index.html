@@ -850,8 +850,8 @@
             const scaleFactor = 9.0 / (maxDim || 1.0);
             loadedModel.scale.set(scaleFactor, scaleFactor, scaleFactor);
 
-            // Rotate orientation: 11803_Airplane model raw orientation fix -> Point nose straight forward away from camera
-            loadedModel.rotation.set(-Math.PI / 2, 0, 0); // Yaw 0 so nose points straight ahead to the horizon
+            // Rotate orientation: 11803_Airplane model raw orientation fix -> Exactly 90 deg yaw rotation so nose points straight forward into the horizon
+            loadedModel.rotation.set(-Math.PI / 2, 0, Math.PI / 2);
 
             // Ensure materials are visible and double-sided with realistic metalness
             loadedModel.traverse((child) => {
