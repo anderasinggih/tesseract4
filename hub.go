@@ -306,8 +306,9 @@ func (h *ATCHub) updateKinematics(dt float64) {
 			}
 		}
 
-		// Heading turn rate (approx 3 deg/sec standard rate 1 turn)
-		turnRate := 3.0 * dt
+		// Adaptive turn rate: 3 deg/sec base (standard rate 1), banking up to
+		// 12 deg/sec when a large heading change is commanded — keeps AI traffic
+		// realistic while making direct WASD piloting responsive.
 		diffHeading := ac.TargetHeading - ac.Heading
 		for diffHeading > 180 {
 			diffHeading -= 360
@@ -315,6 +316,8 @@ func (h *ATCHub) updateKinematics(dt float64) {
 		for diffHeading < -180 {
 			diffHeading += 360
 		}
+
+		turnRate := (3.0 + math.Min(math.Abs(diffHeading)*0.4, 9.0)) * dt
 
 		if math.Abs(diffHeading) <= turnRate {
 			ac.Heading = ac.TargetHeading
@@ -523,6 +526,26 @@ func (h *ATCHub) ExecuteATCCommand(cmd ClientATCCommand, operatorID string) {
 			if ac, ok := h.aircraft[cmd.Callsign]; ok {
 				ac.TargetHeading = cmd.Heading
 				h.addLog("RADIO", ac.Callsign, fmt.Sprintf("%s, fly heading %03.0f", ac.Callsign, cmd.Heading))
+			}
+
+		case "adjust_heading":
+			// Pilot-stick relative nudge: delta applied on top of current target,
+			// so rapid inputs chain smoothly and release leaves zero stale lag.
+			if ac, ok := h.aircraft[cmd.Callsign]; ok {
+				nh := math.Mod(ac.TargetHeading+cmd.Heading+360.0, 360.0)
+				ac.TargetHeading = nh
+			}
+
+		case "adjust_altitude":
+			if ac, ok := h.aircraft[cmd.Callsign]; ok {
+				na := ac.TargetAltitude + cmd.Altitude
+				if na < 1000 {
+					na = 1000
+				}
+				if na > 45000 {
+					na = 45000
+				}
+				ac.TargetAltitude = na
 			}
 
 		case "set_altitude":
