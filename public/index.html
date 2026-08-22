@@ -1639,7 +1639,7 @@
       const fullOverlayContainer = document.getElementById('threejs-overlay');
       if (fullOverlayContainer) {
         fullThreeScene = new THREE.Scene();
-        fullThreeCamera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 5000);
+        fullThreeCamera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 8000);
         // MapLibre pitch is 85° (5° down from horizontal horizon).
         // Optical sync: Three.js camera placed behind fuselage looking forward at origin
         fullThreeCamera.position.set(0, 1.22, 13.95);
@@ -2000,8 +2000,11 @@
                     let relAngleDeg = (trueBearing - (currentCamHeading || 0) + 360) % 360;
                     const relAngleRad = relAngleDeg * (Math.PI / 180.0);
 
-                    // Physical 3D distance in screen coordinates (forward along camera is -Z, right is +X)
-                    const sceneDist = distNM * 2.5 * currentActualScale;
+                    // Physical 3D distance in scene space.
+                    // 1 NM = 20 scene units → gives correct perspective scale:
+                    // - 5 NM → 100 units from camera → traffic appears small but visible
+                    // - 20 NM → 400 units → tiny realistic speck
+                    const sceneDist = distNM * 20;
                     const relX = Math.sin(relAngleRad) * sceneDist;
                     const relZ = -Math.cos(relAngleRad) * sceneDist;
 
@@ -2013,9 +2016,9 @@
                     const cameraPitchRad = Math.atan2(CAM_Y, CAM_Z); // ~0.0873 rad ≈ 5°
                     const pitchCompY = -relZ * Math.tan(cameraPitchRad);
 
-                    // Authentic 3D flight altitude delta (1000 ft = 1.8 units) so altitude difference is immediately visible
+                    // Altitude delta: 1000 ft = 4.0 scene units (proportional to 20-unit/NM scale)
                     const altDeltaFt = (otherAc.altitude - ac.altitude);
-                    const altY = (altDeltaFt / 1000.0) * 1.8 * currentActualScale;
+                    const altY = (altDeltaFt / 1000.0) * 4.0;
 
                     // Final Y = pitch lift (perspective horizon) + altitude offset
                     const relY = pitchCompY + altY;
