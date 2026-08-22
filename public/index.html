@@ -1224,10 +1224,10 @@
         // Render Fullscreen 3D Overlay on Map when 3D Cockpit POV is ON
         if (mapCockpitPOVEnabled && fullThreeRenderer && fullThreeScene && fullThreeCamera) {
           if (fullPlaneGroup) {
-            // Nose-up level cruise attitude (≈7° up) to counteract map perspective dive illusion
+            // Stable level cruise attitude
             fullPlaneGroup.rotation.x = +0.55;
-            // Subtle aerodynamic bank roll
-            fullPlaneGroup.rotation.z = Math.sin(Date.now() * 0.0018) * 0.03;
+            // Extremely light, subtle natural atmospheric drift
+            fullPlaneGroup.rotation.z = Math.sin(Date.now() * 0.001) * 0.012;
           }
 
           // Dynamic Day/Night Lighting Adaptation based on Selected Aircraft Longitude
@@ -1776,23 +1776,9 @@
             else if (isSelected) acColor = '#ffffff';
             else acColor = '#cccccc';
 
-            // In 3D Cockpit POV Mode, the authentic 3D GLTF airliner mesh is rendered directly by Three.js
+            // In 3D Cockpit POV Mode: Hide floating 2D box tag for a clean cinematic view
             if (mapCockpitPOVEnabled && isSelected) {
-              // Only draw minimal telemetry HUD tag, real 3D GLTF airplane is rendered in full 3D overlay
-              const tagX = canvas.width / 2 + 60;
-              const tagY = canvas.height * 0.65 - 40;
-              ctx.fillStyle = 'rgba(10, 10, 10, 0.85)';
-              ctx.fillRect(tagX - 2, tagY - 9, 84, 28);
-              ctx.strokeStyle = '#ffffff';
-              ctx.strokeRect(tagX - 2, tagY - 9, 84, 28);
-              ctx.fillStyle = '#ffffff';
-              ctx.font = '700 9px JetBrains Mono';
-              ctx.fillText(ac.callsign, tagX, tagY);
-              ctx.fillStyle = '#cccccc';
-              ctx.font = '8px JetBrains Mono';
-              ctx.fillText(`FL${Math.round(ac.altitude / 100)} ${Math.round(ac.speed)}K`, tagX, tagY + 9);
-              ctx.fillText(`${ac.origin}▶${ac.destination}`, tagX, tagY + 17);
-              return;
+              return; // Clean cinematic view without floating HUD box obstruction
             }
 
             let planeSize = isSelected ? 10 : 7.5;
@@ -1829,15 +1815,15 @@
 
       // Ultra-Smooth 60 FPS Camera Follow in POV Mode
       if (mapCockpitPOVEnabled && targetCamLng !== null && currentCamLng !== null) {
-        // High-precision smooth damping (smooth interpolation without sudden snap)
-        const lerpRate = 0.15;
+        // High-precision smooth damping for cinematic trailing glide
+        const lerpRate = 0.09;
         currentCamLng += (targetCamLng - currentCamLng) * lerpRate;
         currentCamLat += (targetCamLat - currentCamLat) * lerpRate;
 
         // Smooth shortest-path compass heading interpolation
         let diffHdg = (targetCamHeading - currentCamHeading + 180) % 360 - 180;
         if (diffHdg < -180) diffHdg += 360;
-        currentCamHeading += diffHdg * 0.15;
+        currentCamHeading += diffHdg * 0.09;
 
         // Direct low-level transform (bypasses heavy map transition pipeline for zero jitter)
         map.setCenter([currentCamLng, currentCamLat]);
