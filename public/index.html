@@ -638,36 +638,6 @@
       document.getElementById('hdg-display').innerText = `${String(Math.round(ac.targetHeading)).padStart(3, '0')}°`;
     }
 
-    // 5. Radar Canvas Drawing Loop (Sectors, Aircraft Mode S Tags, Runways)
-    function drawRadarScope() {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-      if (currentPayload) {
-        // Draw Sector Boundary Polygons
-        if (currentPayload.sectors) {
-          currentPayload.sectors.forEach(sec => {
-            if (!sec.bounds || sec.bounds.length === 0) return;
-            ctx.beginPath();
-            sec.bounds.forEach((pt, idx) => {
-              const p = map.project([pt.lng, pt.lat]);
-              if (idx === 0) ctx.moveTo(p.x, p.y);
-              else ctx.lineTo(p.x, p.y);
-            });
-            ctx.closePath();
-            ctx.strokeStyle = sec.color + '44';
-            ctx.lineWidth = sec.id === currentPayload.sectorId ? 2 : 1;
-            ctx.setLineDash([4, 4]);
-            ctx.stroke();
-            ctx.setLineDash([]);
-
-            // Sector Label
-            const centerPt = map.project([sec.center.lng, sec.center.lat]);
-            ctx.fillStyle = sec.color + '66';
-            ctx.font = '11px JetBrains Mono';
-            ctx.fillText(sec.icao, centerPt.x - 20, centerPt.y);
-          });
-        }
-
     // Function to draw an airplane icon rotated by heading
     function drawAirplaneIcon(x, y, headingDeg, color, size, isSelected) {
       ctx.save();
@@ -680,24 +650,18 @@
 
       // Draw Jet Silhouette
       ctx.beginPath();
-      // Nose
       ctx.moveTo(0, -size);
-      // Right fuselage
       ctx.lineTo(size * 0.25, -size * 0.3);
-      // Right wing
       ctx.lineTo(size * 1.1, size * 0.2);
       ctx.lineTo(size * 1.1, size * 0.4);
       ctx.lineTo(size * 0.25, size * 0.3);
-      // Right tail
       ctx.lineTo(size * 0.2, size * 0.85);
       ctx.lineTo(size * 0.55, size * 1.05);
       ctx.lineTo(size * 0.55, size * 1.2);
       ctx.lineTo(0, size * 0.95);
-      // Left tail
       ctx.lineTo(-size * 0.55, size * 1.2);
       ctx.lineTo(-size * 0.55, size * 1.05);
       ctx.lineTo(-size * 0.2, size * 0.85);
-      // Left wing
       ctx.lineTo(-size * 0.25, size * 0.3);
       ctx.lineTo(-size * 1.1, size * 0.4);
       ctx.lineTo(-size * 1.1, size * 0.2);
@@ -768,7 +732,6 @@
         // 3. Draw Aircraft Routes (Connecting Origin, Plane, Destination)
         if (currentPayload.aircraft) {
           currentPayload.aircraft.forEach(ac => {
-            const origApt = currentPayload.airports ? currentPayload.airports.find(a => a.icao === ac.origin) : null;
             const destApt = currentPayload.airports ? currentPayload.airports.find(a => a.icao === ac.destination) : null;
             const acPt = map.project([ac.coord.lng, ac.coord.lat]);
 
