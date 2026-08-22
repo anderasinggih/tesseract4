@@ -2132,25 +2132,21 @@
       }));
     }
 
-    function acceptInboundHandoff() {
-      if (!ws || ws.readyState !== WebSocket.OPEN || !activeInboundHandoff) return;
-      const targetCallsign = activeInboundHandoff.callsign;
+    function acceptSpecificHandoff(callsign) {
+      if (!ws || ws.readyState !== WebSocket.OPEN || !callsign) return;
       playHandoffSuccessSound(); // Play joyful mission success fanfare!
       ws.send(JSON.stringify({
         type: 'handoff_accept',
-        callsign: targetCallsign
+        callsign: callsign
       }));
 
-      showTacticalToast(`HANDOFF ACCEPTED: Radar contact ${targetCallsign}! Squawk IDENT.`, 'HANDOFF');
+      showTacticalToast(`HANDOFF ACCEPTED: Radar contact ${callsign}! Squawk IDENT.`, 'HANDOFF');
 
-      // Auto-select the accepted flight if no flight is selected
+      // Auto-select the accepted flight
       if (currentPayload && currentPayload.aircraft) {
-        const handedAc = currentPayload.aircraft.find(a => a.callsign === targetCallsign);
+        const handedAc = currentPayload.aircraft.find(a => a.callsign === callsign);
         if (handedAc) selectAircraft(handedAc);
       }
-
-      document.getElementById('handoff-banner').style.display = 'none';
-      activeInboundHandoff = null;
     }
 
     // 4. Stable Deterministic Sector Roster Rendering
@@ -2210,17 +2206,34 @@
         }
       }
 
-      // Inbound Handoff Alert Banner & Task Audio Notification
+      // Inbound Handoff Alert Banner & Task Audio Notification (Queue-based Multi-Request Support)
+      const handoffContainer = document.getElementById('handoff-banner');
       if (payload.handoffs && payload.handoffs.length > 0) {
-        if (!activeInboundHandoff || activeInboundHandoff.callsign !== payload.handoffs[0].callsign) {
-          playTaskPing(); // Play clean sonar mission ping
+        // Trigger ping only when a new unique flight is added to handoffs
+        const currentKeys = payload.handoffs.map(h => h.callsign).join(',');
+        if (window.lastHandoffKeys !== currentKeys) {
+          playTaskPing();
+          window.lastHandoffKeys = currentKeys;
         }
-        activeInboundHandoff = payload.handoffs[0];
-        document.getElementById('handoff-msg').innerText = `${activeInboundHandoff.callsign} requesting entry from ${activeInboundHandoff.fromSector}`;
-        document.getElementById('handoff-banner').style.display = 'block';
+
+        handoffContainer.innerHTML = `
+          <div style="font-weight: 700; color: var(--accent-amber); font-size: 10px; margin-bottom: 4px;">
+            INBOUND HANDOFF REQUESTS (${payload.handoffs.length})
+          </div>
+          ${payload.handoffs.map(h => `
+            <div style="background: #111111; border: 1px solid #333333; padding: 6px 8px; border-radius: 4px; margin-bottom: 5px; display: flex; justify-content: space-between; align-items: center;">
+              <div>
+                <div style="font-weight: 800; font-size: 10px; color: #ffffff;">${h.callsign}</div>
+                <div style="font-size: 7.5px; color: #888888;">From: ${h.fromSector}</div>
+              </div>
+              <button class="btn-action btn-green" style="padding: 4px 8px; font-size: 8px; font-weight: 700;" onclick="acceptSpecificHandoff('${h.callsign}')">ACCEPT IDENT</button>
+            </div>
+          `).join('')}
+        `;
+        handoffContainer.style.display = 'block';
       } else {
-        document.getElementById('handoff-banner').style.display = 'none';
-        activeInboundHandoff = null;
+        handoffContainer.style.display = 'none';
+        window.lastHandoffKeys = '';
       }
 
       // Update Selected Aircraft Strip, Flightradar24 Detailed HUD & 3D Camera Telemetry
