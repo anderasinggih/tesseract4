@@ -42,7 +42,7 @@ func (p *Player) WritePump() {
 	}
 }
 
-// ReadPump listens for true FPS WASD movements and Mouse Look
+// ReadPump listens for Minecraft/FPS standard WASD movements and Mouse Look
 func (p *Player) ReadPump(c *websocket.Conn) {
 	for {
 		var cmd InputCommand
@@ -57,14 +57,13 @@ func (p *Player) ReadPump(c *websocket.Conn) {
 		p.Mutex.Lock()
 		switch cmd.Type {
 		case "look":
-			// FPS Natural Look (Standard FPS / PUBG):
-			// Geser mouse/swipe ke kanan -> Kamera menoleh ke kanan
-			// Geser mouse/swipe ke atas -> Kamera mendongak ke atas
+			// FPS Natural Mouse Look (Standard Minecraft / FPS):
+			// Gerak mouse ke kanan -> Kamera menoleh ke kanan (+Yaw)
+			// Gerak mouse ke atas -> Kamera mendongak ke atas (+Pitch)
 			sensitivity := 0.003
-			p.Yaw -= cmd.DX * sensitivity
+			p.Yaw += cmd.DX * sensitivity
 			p.Pitch += cmd.DY * sensitivity
 
-			// Clamp pitch sudut pandang atas/bawah
 			if p.Pitch > 1.45 {
 				p.Pitch = 1.45
 			} else if p.Pitch < -1.45 {
@@ -72,19 +71,19 @@ func (p *Player) ReadPump(c *websocket.Conn) {
 			}
 
 		case "move":
-			speed := 0.08
+			speed := 0.12
 			if cmd.Delta != 0 {
 				speed = cmd.Delta
 			}
 
-			// Vektor Arah Hadap FPS berdasarkan sudut Yaw kamera
-			// Forward Vector (Arah Maju): (sin(yaw), 0, cos(yaw))
-			// Right Vector (Arah Strafe Kanan): (cos(yaw), 0, -sin(yaw))
+			// Standar Minecraft / FPS Movement Vector:
+			// Arah Pandangan Depan (Forward): sin(Yaw) ke X, cos(Yaw) ke Z
+			// Arah Kanan (Right Strafe): cos(Yaw) ke X, -sin(Yaw) ke Z
 			sinY := math.Sin(p.Yaw)
 			cosY := math.Cos(p.Yaw)
 
 			switch strings.ToLower(cmd.Key) {
-			// W: MAJU KE DEPAN (Lurus ke arah pandangan kamera)
+			// W: MAJU KE DEPAN (Lurus ke arah hadap kursor)
 			case "w":
 				p.Position.X += speed * sinY
 				p.Position.Z += speed * cosY
@@ -104,11 +103,11 @@ func (p *Player) ReadPump(c *websocket.Conn) {
 				p.Position.X += speed * cosY
 				p.Position.Z -= speed * sinY
 
-			// SPACE / PANAH ATAS: NAIK (Sumbu Y)
+			// SPACE / PANAH ATAS: NAIK KE ATAS (Sumbu Y)
 			case "arrowup", " ":
 				p.Position.Y += speed
 
-			// C / PANAH BAWAH: TURUN (Sumbu Y)
+			// C / PANAH BAWAH: TURUN KE BAWAH (Sumbu Y)
 			case "arrowdown", "c":
 				p.Position.Y -= speed
 
@@ -153,7 +152,7 @@ func (p *Player) PhysicsLoop(ctx context.Context) {
 			timeMultiplier := CalculateTimeMultiplier(currentPos.W)
 			effectiveTickMs := float64(BaseTick) / timeMultiplier
 
-			// 2. Generate 2D projected lines with true FPS view matrix
+			// 2. Generate 2D projected lines with true Minecraft-style FPS view matrix
 			lines := GenerateProjectedLines(currentPos, yaw, pitch, hyperRot)
 
 			// 3. Construct payload
