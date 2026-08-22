@@ -729,31 +729,32 @@
           });
         }
 
-        // 3. Draw Aircraft Routes (Connecting Origin, Plane, Destination)
-        if (currentPayload.aircraft) {
-          currentPayload.aircraft.forEach(ac => {
-            const destApt = currentPayload.airports ? currentPayload.airports.find(a => a.icao === ac.destination) : null;
-            const acPt = map.project([ac.coord.lng, ac.coord.lat]);
+        // 3. Draw Aircraft Route ONLY if Selected
+        if (currentPayload.aircraft && selectedCallsign) {
+          const selectedAc = currentPayload.aircraft.find(a => a.callsign === selectedCallsign);
+          if (selectedAc && currentPayload.airports) {
+            const destApt = currentPayload.airports.find(a => a.icao === selectedAc.destination);
+            const acPt = map.project([selectedAc.coord.lng, selectedAc.coord.lat]);
 
             if (destApt) {
               const destPt = map.project([destApt.coord.lng, destApt.coord.lat]);
               ctx.beginPath();
               ctx.moveTo(acPt.x, acPt.y);
               ctx.lineTo(destPt.x, destPt.y);
-              ctx.strokeStyle = ac.callsign === selectedCallsign ? 'rgba(255, 183, 3, 0.4)' : 'rgba(0, 230, 118, 0.12)';
-              ctx.lineWidth = ac.callsign === selectedCallsign ? 1.5 : 1;
+              ctx.strokeStyle = '#ffb703';
+              ctx.lineWidth = 1.5;
               ctx.setLineDash([4, 4]);
               ctx.stroke();
               ctx.setLineDash([]);
             }
-          });
+          }
         }
 
-        // 4. Draw Aircraft Icons, Transponders & Radar Vector Heading Lines
+        // 4. Draw Aircraft Icons & Transponders (Clean Default View)
         if (currentPayload.aircraft) {
           currentPayload.aircraft.forEach(ac => {
             const pt = map.project([ac.coord.lng, ac.coord.lat]);
-            if (pt.x < -100 || pt.x > canvas.width + 100 || pt.y < -100 || pt.y > canvas.height + 100) return;
+            if (pt.x < -50 || pt.x > canvas.width + 50 || pt.y < -50 || pt.y > canvas.height + 50) return;
 
             const isSelected = ac.callsign === selectedCallsign;
             const isConflict = ac.conflictAlert;
@@ -763,52 +764,34 @@
             if (isConflict) acColor = '#ff2a5f';
             if (ac.handoffState === 'PENDING') acColor = '#ffb703';
 
-            // Radar breadcrumb history trail
-            if (ac.trail && ac.trail.length > 0) {
-              ctx.beginPath();
-              ac.trail.forEach((t, i) => {
-                const tp = map.project([t.lng, t.lat]);
-                if (i === 0) ctx.moveTo(tp.x, tp.y);
-                else ctx.lineTo(tp.x, tp.y);
-              });
-              ctx.strokeStyle = acColor + '33';
-              ctx.lineWidth = 1;
-              ctx.stroke();
+            // Draw Real Airplane Silhouette Icon (Clean, no attached leader line)
+            drawAirplaneIcon(pt.x, pt.y, ac.heading, acColor, isSelected ? 10 : 7.5, isSelected);
+
+            // Default Minimal Label: Only Callsign underneath (Clean View)
+            // Detailed Box Tag ONLY shows when Selected OR when Conflict Alert
+            if (isSelected || isConflict) {
+              const tagX = pt.x + 14;
+              const tagY = pt.y - 14;
+
+              ctx.fillStyle = isConflict ? 'rgba(255, 42, 95, 0.92)' : 'rgba(10, 15, 23, 0.94)';
+              ctx.fillRect(tagX - 2, tagY - 9, 84, 28);
+              ctx.strokeStyle = isConflict ? '#fff' : (isSelected ? '#ffb703' : acColor);
+              ctx.strokeRect(tagX - 2, tagY - 9, 84, 28);
+
+              ctx.fillStyle = '#ffffff';
+              ctx.font = '700 9px JetBrains Mono';
+              ctx.fillText(ac.callsign, tagX, tagY);
+
+              ctx.fillStyle = '#cbd5e1';
+              ctx.font = '8px JetBrains Mono';
+              ctx.fillText(`FL${Math.round(ac.altitude/100)} ${Math.round(ac.speed)}K`, tagX, tagY + 9);
+              ctx.fillText(`${ac.origin}▶${ac.destination}`, tagX, tagY + 17);
+            } else {
+              // Minimal Callout text underneath aircraft
+              ctx.fillStyle = acColor;
+              ctx.font = '500 8px JetBrains Mono';
+              ctx.fillText(ac.callsign, pt.x - 14, pt.y + 16);
             }
-
-            // Heading Vector Line (Predictive vector)
-            const rad = (ac.heading - 90) * Math.PI / 180.0;
-            const lineLen = Math.max(24, ac.speed * 0.08);
-            const vecX = pt.x + Math.cos(rad) * lineLen;
-            const vecY = pt.y + Math.sin(rad) * lineLen;
-
-            ctx.beginPath();
-            ctx.moveTo(pt.x, pt.y);
-            ctx.lineTo(vecX, vecY);
-            ctx.strokeStyle = acColor;
-            ctx.lineWidth = 1.2;
-            ctx.stroke();
-
-            // Draw Real Airplane Silhouette Icon
-            drawAirplaneIcon(pt.x, pt.y, ac.heading, acColor, isSelected ? 9 : 7, isSelected);
-
-            // Mode S Data Tag Block
-            const tagX = pt.x + 14;
-            const tagY = pt.y - 14;
-
-            ctx.fillStyle = isConflict ? 'rgba(255, 42, 95, 0.9)' : 'rgba(7, 10, 14, 0.88)';
-            ctx.fillRect(tagX - 2, tagY - 9, 82, 28);
-            ctx.strokeStyle = acColor;
-            ctx.strokeRect(tagX - 2, tagY - 9, 82, 28);
-
-            ctx.fillStyle = '#ffffff';
-            ctx.font = '700 9px JetBrains Mono';
-            ctx.fillText(ac.callsign, tagX, tagY);
-
-            ctx.fillStyle = '#cbd5e1';
-            ctx.font = '8px JetBrains Mono';
-            ctx.fillText(`FL${Math.round(ac.altitude/100)} ${Math.round(ac.speed)}K`, tagX, tagY + 9);
-            ctx.fillText(`${ac.origin}▶${ac.destination}`, tagX, tagY + 17);
           });
         }
       }
