@@ -5,7 +5,7 @@ import (
 )
 
 const (
-	DistanceD = 2.0 // Projection distance factor
+	DistanceD = 2.5 // Projection distance factor
 )
 
 // Base unit hypercube vertices (16 vertices for a 4D tesseract centered at origin)
@@ -49,7 +49,7 @@ var TesseractEdges = [32][2]int{
 	{4, 12}, {5, 13}, {6, 14}, {7, 15},
 }
 
-// RotateXZ applies standard Camera Yaw (Kiri/Kanan)
+// RotateXZ applies standard Camera Yaw
 func RotateXZ(v Vector4, yaw float64) Vector4 {
 	cosT := math.Cos(yaw)
 	sinT := math.Sin(yaw)
@@ -61,7 +61,7 @@ func RotateXZ(v Vector4, yaw float64) Vector4 {
 	}
 }
 
-// RotateYZ applies standard Camera Pitch (Atas/Bawah)
+// RotateYZ applies standard Camera Pitch
 func RotateYZ(v Vector4, pitch float64) Vector4 {
 	cosT := math.Cos(pitch)
 	sinT := math.Sin(pitch)
@@ -85,8 +85,7 @@ func RotateXW(v Vector4, theta float64) Vector4 {
 	}
 }
 
-// Project4Dto2D projects relative 4D camera coordinate to 2D screen
-// World Point -> Camera Space (Offset Pos) -> Camera Rotation -> Perspective Projection
+// Project4Dto2D projects world coordinate to camera screen
 func Project4Dto2D(v Vector4, d float64) (float64, float64, bool) {
 	denomW := d - v.W
 	if math.Abs(denomW) < 0.0001 {
@@ -101,14 +100,10 @@ func Project4Dto2D(v Vector4, d float64) (float64, float64, bool) {
 	y3d := v.Y / denomW
 	z3d := v.Z / denomW
 
-	// Standard perspective division with camera forward distance
+	// Near clipping plane
 	denomZ := d + z3d
-	if math.Abs(denomZ) < 0.0001 {
-		if denomZ < 0 {
-			denomZ = -0.0001
-		} else {
-			denomZ = 0.0001
-		}
+	if denomZ <= 0.1 {
+		return 0, 0, false // Behind camera
 	}
 
 	x2d := x3d / denomZ
@@ -117,40 +112,107 @@ func Project4Dto2D(v Vector4, d float64) (float64, float64, bool) {
 	return x2d, y2d, true
 }
 
-// GenerateProjectedLines transforms vertices relative to player (FPS Camera View Matrix)
-func GenerateProjectedLines(pos Vector4, yaw, pitch, hyperRot float64) []Line2D {
-	var projectedPoints [16][2]float64
-
-	for i, v := range BaseTesseractVertices {
-		// 1. 4D Hyper-dimension rotation on base shape
-		r4d := RotateXW(v, hyperRot)
-
-		// 2. Translate world relative to camera position (Camera Eye: pos)
-		rel := Vector4{
-			X: r4d.X - pos.X,
-			Y: r4d.Y - pos.Y,
-			Z: r4d.Z - pos.Z,
-			W: r4d.W - pos.W,
-		}
-
-		// 3. View Matrix: Camera Rotation (Yaw & Pitch)
-		rYaw := RotateXZ(rel, -yaw)
-		rPitch := RotateYZ(rYaw, -pitch)
-
-		// 4. Projection to 2D Screen
-		x2d, y2d, _ := Project4Dto2D(rPitch, DistanceD)
-		projectedPoints[i] = [2]float64{x2d, y2d}
+// TransformWorldPoint applies camera view matrix (Position + Yaw + Pitch)
+func TransformWorldPoint(worldPt, cameraPos Vector4, yaw, pitch float64) (float64, float64, bool) {
+	rel := Vector4{
+		X: worldPt.X - cameraPos.X,
+		Y: worldPt.Y - cameraPos.Y,
+		Z: worldPt.Z - cameraPos.Z,
+		W: worldPt.W - cameraPos.W,
 	}
 
-	lines := make([]Line2D, len(TesseractEdges))
-	for i, edge := range TesseractEdges {
-		p1 := projectedPoints[edge[0]]
-		p2 := projectedPoints[edge[1]]
-		lines[i] = Line2D{
-			X1: p1[0],
-			Y1: p1[1],
-			X2: p2[0],
-			Y2: p2[1],
+	rYaw := RotateXZ(rel, -yaw)
+	rPitch := RotateYZ(rYaw, -pitch)
+	return Project4Dto2D(rPitch, DistanceD)
+}
+
+// GenerateProjectedLines builds the 4D Tesseract and 3D Cyber-Grid Environment
+func GenerateProjectedLines(pos Vector4, yaw, pitch, hyperRot float64) []Line2D {
+	lines := make([]Line2D, 0, 128)
+
+	// ==========================================
+	// 1. ENVIRONMENT: CYBER-GRID FLOOR (Lantai Kotak-Kotak 3D)
+	// ==========================================
+	floorY := -2.0 // Ketinggian lantai di bawah pemain
+	gridSize := 16.0
+	gridStep := 2.0
+
+	// Garis grid horizontal (Sumbu X)
+	for z := -gridSize; z <= gridSize; z += gridStep {
+		p1x, p1y, ok1 := TransformWorldPoint(Vector4{X: -gridSize, Y: floorY, Z: z, W: 0}, pos, yaw, pitch)
+		p2x, p2y, ok2 := TransformWorldPoint(Vector4{X: gridSize, Y: floorY, Z: z, W: 0}, pos, yaw, pitch)
+		if ok1 && ok2 {
+			color := "#003322"
+			if z == 0 {
+				color = "#00FF88" // Garis tengah X
+			}
+			lines = append(lines, Line2D{X1: p1x, Y1: p1y, X2: p2x, Y2: p2y, Color: color})
+		}
+	}
+
+	// Garis grid vertikal (Sumbu Z)
+	for x := -gridSize; x <= gridSize; x += gridStep {
+		p1x, p1y, ok1 := TransformWorldPoint(Vector4{X: x, Y: floorY, Z: -gridSize, W: 0}, pos, yaw, pitch)
+		p2x, p2y, ok2 := TransformWorldPoint(Vector4{X: x, Y: floorY, Z: gridSize, W: 0}, pos, yaw, pitch)
+		if ok1 && ok2 {
+			color := "#003322"
+			if x == 0 {
+				color = "#0088FF" // Garis tengah Z
+			}
+			lines = append(lines, Line2D{X1: p1x, Y1: p1y, X2: p2x, Y2: p2y, Color: color})
+		}
+	}
+
+	// ==========================================
+	// 2. ENVIRONMENT: 4 CORNER PILLARS (Pilar Penanda Ruang)
+	// ==========================================
+	corners := [][2]float64{
+		{-8, -8}, {8, -8}, {-8, 8}, {8, 8},
+	}
+	for _, c := range corners {
+		p1x, p1y, ok1 := TransformWorldPoint(Vector4{X: c[0], Y: floorY, Z: c[1], W: 0}, pos, yaw, pitch)
+		p2x, p2y, ok2 := TransformWorldPoint(Vector4{X: c[0], Y: floorY + 6.0, Z: c[1], W: 0}, pos, yaw, pitch)
+		if ok1 && ok2 {
+			lines = append(lines, Line2D{X1: p1x, Y1: p1y, X2: p2x, Y2: p2y, Color: "#FF0055"})
+		}
+	}
+
+	// ==========================================
+	// 3. CORE OBJECT: 4D TESSERACT HYPERCUBE
+	// ==========================================
+	var tesseractPts [16][2]float64
+	var tesseractVisible [16]bool
+
+	// Posisi tesseract melayang di dunia (Z = 5.0 di depan spawn)
+	tesseractCenter := Vector4{X: 0, Y: 0, Z: 6.0, W: 0}
+
+	for i, v := range BaseTesseractVertices {
+		// 4D Rotation pada objek hiperkubus
+		r4d := RotateXW(v, hyperRot)
+
+		worldVertex := Vector4{
+			X: r4d.X*1.2 + tesseractCenter.X,
+			Y: r4d.Y*1.2 + tesseractCenter.Y,
+			Z: r4d.Z*1.2 + tesseractCenter.Z,
+			W: r4d.W*1.2 + tesseractCenter.W,
+		}
+
+		px, py, ok := TransformWorldPoint(worldVertex, pos, yaw, pitch)
+		tesseractPts[i] = [2]float64{px, py}
+		tesseractVisible[i] = ok
+	}
+
+	for _, edge := range TesseractEdges {
+		if tesseractVisible[edge[0]] && tesseractVisible[edge[1]] {
+			p1 := tesseractPts[edge[0]]
+			p2 := tesseractPts[edge[1]]
+			lines = append(lines, Line2D{
+				X1:    p1[0],
+				Y1:    p1[1],
+				X2:    p2[0],
+				Y2:    p2[1],
+				Color: "#00FF00", // Neon Green Hypercube
+			})
 		}
 	}
 

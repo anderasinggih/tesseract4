@@ -19,12 +19,13 @@ type Vector4 struct {
 	W float64 `json:"w"`
 }
 
-// Line2D represents a projected 2D line segment to be drawn on the client canvas
+// Line2D represents a projected 2D line segment with color styling
 type Line2D struct {
-	X1 float64 `json:"x1"`
-	Y1 float64 `json:"y1"`
-	X2 float64 `json:"x2"`
-	Y2 float64 `json:"y2"`
+	X1    float64 `json:"x1"`
+	Y1    float64 `json:"y1"`
+	X2    float64 `json:"x2"`
+	Y2    float64 `json:"y2"`
+	Color string  `json:"color"` // "#00FF00", "#0088FF", "#FF0055", "#444444"
 }
 
 // FramePayload is sent over WebSocket to the dumb client

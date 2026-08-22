@@ -330,18 +330,19 @@
         ctx.save();
         ctx.translate(centerX, centerY);
 
-        ctx.strokeStyle = '#00FF00';
-        ctx.lineWidth = window.innerWidth < 768 ? 2.2 : 1.8;
-        ctx.shadowColor = '#00FF00';
-        ctx.shadowBlur = 10;
-
-        ctx.beginPath();
+        // Render each projected 2D line with its environment styling
         for (let i = 0; i < currentLines.length; i++) {
           const line = currentLines[i];
+          ctx.strokeStyle = line.color || '#00FF00';
+          ctx.lineWidth = line.color === '#00FF00' ? (window.innerWidth < 768 ? 2.4 : 2.0) : 1.2;
+          ctx.shadowColor = line.color || '#00FF00';
+          ctx.shadowBlur = line.color === '#00FF00' ? 12 : 4;
+
+          ctx.beginPath();
           ctx.moveTo(line.x1 * scale, -line.y1 * scale);
           ctx.lineTo(line.x2 * scale, -line.y2 * scale);
+          ctx.stroke();
         }
-        ctx.stroke();
         ctx.restore();
       }
 
