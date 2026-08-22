@@ -10,9 +10,9 @@
   <meta name="theme-color" content="#000000">
   <title>GLOBAL ATC RADAR // TACTICAL AIRSPACE CONTROL</title>
 
-  <!-- MapLibre GL JS v4.7.1 (Native 3D Globe Projection like Apple Maps) -->
-  <link href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet" />
-  <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+  <!-- MapLibre GL JS & CSS -->
+  <link href="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css" rel="stylesheet" />
+  <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
 
   <!-- Stable Three.js & GLTFLoader -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -581,10 +581,6 @@
         <button id="btn-map-style-toggle" class="btn-action btn-nav-compact"
           style="padding: 4px 8px; font-size: 8.5px; background: rgba(30,30,30,0.7); border-color: #555;"
           onclick="toggleMapStyle()">SAT</button>
-        <!-- 3D Globe Mode (Apple Maps / Google Earth Style) -->
-        <button id="btn-globe-toggle" class="btn-action btn-cyan btn-nav-compact"
-          style="padding: 4px 8px; font-size: 8.5px; background: rgba(0, 221, 255, 0.35); border-color: #00ddff; color: #00ddff;"
-          onclick="toggleProjection()">GLOBE 3D</button>
         <!-- POV Toggle -->
         <button id="btn-map-pov" class="btn-action btn-amber btn-nav-compact" style="padding: 4px 8px; font-size: 8.5px;"
           onclick="toggleMapCockpitPOV()">POV</button>
@@ -841,36 +837,13 @@
     };
 
     let currentMapStyle = 'satellite';
-    let currentProjection = 'globe'; // Default to authentic 3D Spherical Earth Globe (Apple Maps style)
-
     const map = new maplibregl.Map({
       container: 'map-container',
       style: MAP_STYLES.satellite,
       center: [108.0, -2.0],
-      zoom: 3.2,
-      minZoom: 1.0,
-      maxZoom: 19.0,
+      zoom: 4.8,
       attributionControl: false
     });
-
-    // Set 3D Spherical Globe Projection (Apple Maps style)
-    map.on('style.load', () => {
-      if (map.setProjection) {
-        map.setProjection({ type: currentProjection });
-      }
-    });
-
-    function toggleProjection() {
-      currentProjection = currentProjection === 'globe' ? 'mercator' : 'globe';
-      if (map.setProjection) {
-        map.setProjection({ type: currentProjection });
-      }
-      const btn = document.getElementById('btn-globe-toggle');
-      if (btn) {
-        btn.textContent = currentProjection === 'globe' ? 'GLOBE 3D' : 'FLAT 2D';
-        btn.style.background = currentProjection === 'globe' ? 'rgba(0, 221, 255, 0.35)' : 'rgba(20, 20, 20, 0.7)';
-      }
-    }
 
     function toggleMapStyle() {
       const nextStyle = currentMapStyle === 'satellite' ? 'dark' : 'satellite';
@@ -976,15 +949,15 @@
         }
       } else {
         btn.innerText = 'POV';
-        btn.style.background = 'rgba(255, 170, 0, 0.15)';
-        btn.style.borderColor = '#ffaa00';
+        btn.style.background = 'rgba(25,25,25,0.7)';
+        btn.style.borderColor = 'rgba(255,255,255,0.15)';
         if (overlay3D) overlay3D.style.display = 'none';
 
         // Reset map to top-down 2D orthographic radar view
         map.easeTo({
           pitch: 0,
           bearing: 0,
-          zoom: 3.2,
+          zoom: 4.8,
           duration: 1000
         });
       }
@@ -1340,17 +1313,27 @@
                     const altDeltaFt = (otherAc.altitude - ac.altitude);
                     const relY = -1.2 + (altDeltaFt / 1000.0) * 0.5;
 
+                    // Create wrapper for the traffic aircraft to maintain level cruise attitude (+0.55 pitch)
+                    const trafficContainer = new THREE.Group();
+                    trafficContainer.position.set(relX, relY, relZ);
+
+                    // Relative heading orientation in camera coordinate space
+                    const relHeadingRad = ((otherAc.heading - ac.heading) * Math.PI) / 180.0;
+                    trafficContainer.rotation.y = -relHeadingRad;
+
                     // Clone 3D plane mesh
                     const otherModel = window.trafficPlaneModelTemplate.clone();
                     const trafficScale = window.trafficPlaneScaleFactor || 1.0;
                     otherModel.scale.set(trafficScale, trafficScale, trafficScale);
-                    otherModel.position.set(relX, relY, relZ);
+                    otherModel.position.set(0, 0, 0);
 
-                    // Relative heading orientation
-                    const relHeadingRad = ((otherAc.heading - ac.heading) * Math.PI) / 180.0;
-                    otherModel.rotation.y = -relHeadingRad;
+                    // Apply same level cruise pitch (+0.55) to counteract perspective dive
+                    const modelWrapper = new THREE.Group();
+                    modelWrapper.rotation.x = +0.55;
+                    modelWrapper.add(otherModel);
 
-                    window.trafficAircraftGroup.add(otherModel);
+                    trafficContainer.add(modelWrapper);
+                    window.trafficAircraftGroup.add(trafficContainer);
                   }
                 });
               }
@@ -1596,47 +1579,6 @@
           return `<div class="log-line log-${l.type}">[${l.timestamp}] [${l.callsign}] ${l.message}</div>`;
         }).join('');
         stream.scrollTop = stream.scrollHeight;
-      }
-
-      // Synchronize Aircraft 3D Entities on Cesium Globe
-      if (globeModeEnabled && cesiumViewer && payload.aircraft) {
-        payload.aircraft.forEach(ac => {
-          const altMeters = (ac.altitude || 30000) * 0.3048;
-          const pos = Cesium.Cartesian3.fromDegrees(ac.coord.lng, ac.coord.lat, altMeters);
-          const hdgRad = Cesium.Math.toRadians(ac.heading || 0);
-          const hpr = new Cesium.HeadingPitchRoll(hdgRad, 0, 0);
-          const orientation = Cesium.Transforms.headingPitchRollQuaternion(pos, hpr);
-
-          let entity = cesiumAircraftEntities[ac.callsign];
-          if (!entity) {
-            entity = cesiumViewer.entities.add({
-              name: ac.callsign,
-              position: pos,
-              orientation: orientation,
-              point: {
-                pixelSize: 8,
-                color: Cesium.Color.fromCssColorString('#00ff66'),
-                outlineColor: Cesium.Color.WHITE,
-                outlineWidth: 1.5
-              },
-              label: {
-                text: `${ac.callsign}\nFL${Math.round(ac.altitude/100)}`,
-                font: '10px JetBrains Mono',
-                fillColor: Cesium.Color.WHITE,
-                outlineColor: Cesium.Color.BLACK,
-                outlineWidth: 2,
-                style: Cesium.LabelStyle.FILL_AND_OUTLINE,
-                pixelOffset: new Cesium.Cartesian2(12, -12),
-                distanceDisplayCondition: new Cesium.DistanceDisplayCondition(0, 10000000.0)
-              }
-            });
-            cesiumAircraftEntities[ac.callsign] = entity;
-          } else {
-            entity.position = pos;
-            entity.orientation = orientation;
-            entity.label.text = `${ac.callsign}\nFL${Math.round(ac.altitude/100)}`;
-          }
-        });
       }
     }
 
