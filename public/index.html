@@ -1802,13 +1802,16 @@
               if (isClimbing) pitchOffset = +0.06;   // Nose up
               if (isDescending) pitchOffset = -0.06; // Nose down
 
-              // Banking roll when turning
-              let hdgDiff = (ac.targetHeading - ac.heading + 540) % 360 - 180;
-              let bankRoll = Math.max(-0.25, Math.min(0.25, -hdgDiff * 0.02));
+              // Smoothly interpolated banking roll & pitch for authentic aerodynamic flight
+              let targetHdgDiff = (ac.targetHeading - ac.heading + 540) % 360 - 180;
+              let targetBankRoll = Math.max(-0.30, Math.min(0.30, -targetHdgDiff * 0.025));
+
+              if (typeof currentPlaneBankRoll === 'undefined') window.currentPlaneBankRoll = 0;
+              window.currentPlaneBankRoll += (targetBankRoll - window.currentPlaneBankRoll) * 0.08;
 
               fullPlaneGroup.rotation.x = +0.28 + pitchOffset;
               fullPlaneGroup.rotation.y = 0;
-              fullPlaneGroup.rotation.z = bankRoll + Math.sin(Date.now() * 0.001) * 0.008; // Natural air turbulence roll
+              fullPlaneGroup.rotation.z = window.currentPlaneBankRoll + Math.sin(Date.now() * 0.001) * 0.008; // Fluid aerodynamic roll
               fullPlaneGroup.position.set(0, 0, 0); // 100% Dead Center on screen
 
               // Perspective scale tied 1:1 proportionally to real map zoom level
@@ -2604,14 +2607,19 @@
 
       // In 3D POV Mode: Skip all 2D canvas overlays (no 2D route lines, no sector borders, no waypoints on sky/ground)
       if (mapCockpitPOVEnabled) {
-        // Ultra-Smooth 60 FPS Camera Follow in POV Mode
+        // Ultra-Smooth 60 FPS Camera Follow & Turn Interpolation in POV Mode
         if (targetCamLng !== null && currentCamLng !== null) {
-          const lerpFactor = 0.25;
-          currentCamLng += (targetCamLng - currentCamLng) * lerpFactor;
-          currentCamLat += (targetCamLat - currentCamLat) * lerpFactor;
+          // Continuous smooth damping interpolation (prevents sudden turns or camera snapping)
+          const posLerp = 0.12;
+          const hdgLerp = 0.08;
 
+          currentCamLng += (targetCamLng - currentCamLng) * posLerp;
+          currentCamLat += (targetCamLat - currentCamLat) * posLerp;
+
+          // Smooth shortest-arc compass heading interpolation
           let diffHdg = (targetCamHeading - currentCamHeading + 540) % 360 - 180;
-          currentCamHeading += diffHdg * lerpFactor;
+          currentCamHeading += diffHdg * hdgLerp;
+          currentCamHeading = (currentCamHeading + 360) % 360;
 
           map.jumpTo({
             center: [currentCamLng, currentCamLat],
