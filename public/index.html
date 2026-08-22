@@ -34,11 +34,11 @@
       --panel-bg: rgba(10, 10, 10, 0.95);
       --border-line: #222222;
       --text-pure: #ffffff;
-      --text-dim: #777777;
-      --accent-green: #00ff66;
-      --accent-amber: #ffaa00;
-      --accent-red: #ff2244;
-      --accent-cyan: #00ddff;
+      --text-dim: #666666;
+      --accent-green: #aaaaaa;
+      --accent-amber: #cccccc;
+      --accent-red: #ff4444;
+      --accent-cyan: #aaaaaa;
     }
 
     * {
@@ -283,9 +283,8 @@
       width: 16px;
       height: 16px;
       border-radius: 50%;
-      background: #00ddff;
+      background: #888888;
       border: 2px solid #ffffff;
-      box-shadow: 0 0 8px rgba(0, 221, 255, 0.8);
       cursor: pointer;
     }
 
@@ -326,23 +325,23 @@
     }
 
     .btn-amber {
-      background: rgba(45, 30, 0, 0.75);
-      border-color: var(--accent-amber);
-      color: var(--accent-amber);
+      background: rgba(30, 30, 30, 0.75);
+      border-color: rgba(255,255,255,0.3);
+      color: #ffffff;
     }
 
     .btn-amber:hover {
-      background: rgba(65, 45, 0, 0.9);
+      background: rgba(50, 50, 50, 0.9);
     }
 
     .btn-green {
-      background: rgba(0, 45, 20, 0.75);
-      border-color: var(--accent-green);
-      color: var(--accent-green);
+      background: rgba(30, 30, 30, 0.75);
+      border-color: rgba(255,255,255,0.3);
+      color: #ffffff;
     }
 
     .btn-green:hover {
-      background: rgba(0, 65, 30, 0.9);
+      background: rgba(50, 50, 50, 0.9);
     }
 
     /* Selected Flight Strip Box */
@@ -396,8 +395,8 @@
 
     #handoff-banner {
       display: none;
-      background: rgba(45, 30, 0, 0.85);
-      border: 1px solid var(--accent-amber);
+      background: rgba(20, 20, 20, 0.85);
+      border: 1px solid rgba(255,255,255,0.15);
       border-radius: 3px;
       padding: 8px 10px;
     }
@@ -1468,6 +1467,43 @@
     let babylonPlayerPlane = null;
     let babylonTrafficMeshes = new Map();
 
+    // ── WASD Flight Controls (active only in POV mode) ──────────────────────
+    // W = Climb +1000ft  |  S = Descend -1000ft
+    // A = Turn Left -5°  |  D = Turn Right +5°
+    const wasdHeld = {};
+    let wasdInterval = null;
+
+    function applyWASD() {
+      if (!mapCockpitPOVEnabled) return;
+      if (wasdHeld['w'] || wasdHeld['W']) adjustAltitude(+1000);
+      if (wasdHeld['s'] || wasdHeld['S']) adjustAltitude(-1000);
+      if (wasdHeld['a'] || wasdHeld['A']) adjustHeading(-5);
+      if (wasdHeld['d'] || wasdHeld['D']) adjustHeading(+5);
+    }
+
+    document.addEventListener('keydown', (e) => {
+      if (!mapCockpitPOVEnabled) return;
+      const k = e.key;
+      if (!['w','a','s','d','W','A','S','D'].includes(k)) return;
+      e.preventDefault();
+      if (wasdHeld[k]) return; // already held
+      wasdHeld[k] = true;
+      applyWASD(); // instant first tick
+      if (!wasdInterval) {
+        wasdInterval = setInterval(applyWASD, 300); // repeat every 300ms while held
+      }
+    });
+
+    document.addEventListener('keyup', (e) => {
+      const k = e.key;
+      delete wasdHeld[k];
+      if (!Object.keys(wasdHeld).length && wasdInterval) {
+        clearInterval(wasdInterval);
+        wasdInterval = null;
+      }
+    });
+    // ─────────────────────────────────────────────────────────────────────────
+
     function initBabylonSimulator() {
       const canvasEl = document.getElementById('babylon-canvas');
       if (!canvasEl || typeof BABYLON === 'undefined' || babylonEngine) return;
@@ -1704,10 +1740,7 @@
 
         // Tactical 3D HUD Flight Level Floor Grid (Visual Diagnostic Reference Plane)
         // High-contrast bright green tactical floor grid
-        const flightFloorGrid = new THREE.GridHelper(500, 100, 0x00ff88, 0x006633);
-        flightFloorGrid.position.set(0, -1.8, -10);
-        window.fullFloorGroup.add(flightFloorGrid);
-        window.flightFloorGrid = flightFloorGrid;
+        // Floor grid removed — clean POV with no reference plane
 
         // Add Polar Reference Rings (5 NM, 10 NM, 20 NM rings around player aircraft)
         const ringMat = new THREE.LineBasicMaterial({ color: 0x00e5ff, transparent: true, opacity: 0.6 });
