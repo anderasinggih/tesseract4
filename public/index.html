@@ -2782,8 +2782,6 @@
           if (hdgEl) hdgEl.innerText = `${String(Math.round(ac.heading)).padStart(3, '0')}°`;
 
           // Target coordinates for smooth 60fps lerp interpolation.
-          // Heading uses SOFT reconciliation toward server authority so the local
-          // prediction feed-forward (see POV camera block) is never hard-wiped.
           targetCamLng = ac.coord.lng;
           targetCamLat = ac.coord.lat;
           lastKnownRoll = ac.roll || 0;
@@ -2792,7 +2790,7 @@
             predRoll = lastKnownRoll;
           } else {
             const hdgErr = ((ac.heading - targetCamHeading + 540) % 360) - 180;
-            targetCamHeading += hdgErr * 0.25;
+            targetCamHeading += hdgErr * 0.8;
           }
           targetCamSpeed = ac.speed || 450;
           lastTargetTime = performance.now();
@@ -3240,15 +3238,15 @@
           // ~16ms, so rotation starts the SAME frame the stick goes down.
           if (targetCamHeading === null) targetCamHeading = currentCamHeading;
           const rollCmd = steerDir !== 0 ? steerDir * 25 : 0;
-          predRoll += Math.max(-7 * dt, Math.min(7 * dt, rollCmd - predRoll));
-          predRoll += (lastKnownRoll - predRoll) * (1 - Math.exp(-3 * dt)); // authority blend
+          predRoll += Math.max(-60 * dt, Math.min(60 * dt, rollCmd - predRoll));
+          predRoll += (lastKnownRoll - predRoll) * (1 - Math.exp(-10 * dt)); // authority blend
           const spdKts = Math.max(targetCamSpeed || 450, 120);
-          targetCamHeading = normDeg(targetCamHeading + (1091 * Math.tan(predRoll * Math.PI / 180) / spdKts) * dt);
+          targetCamHeading = normDeg(targetCamHeading + (1091 * Math.tan(predRoll * Math.PI / 180) / spdKts * 15.0) * dt);
 
           // Frame-rate independent damping — responsive bearing follow so
           // WASD steering reads instantly on the rotating map horizon
           const posAlpha = 1 - Math.exp(-12 * dt);
-          const hdgAlpha = 1 - Math.exp(-10 * dt);
+          const hdgAlpha = 1 - Math.exp(-20 * dt);
 
           currentCamLng += (targetCamLng - currentCamLng) * posAlpha;
           currentCamLat += (targetCamLat - currentCamLat) * posAlpha;
