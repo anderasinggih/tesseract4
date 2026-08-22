@@ -1501,8 +1501,8 @@
       if (fullOverlayContainer) {
         fullThreeScene = new THREE.Scene();
         fullThreeCamera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
-        fullThreeCamera.position.set(0, 3.0, 15.0); // Raised up behind tail stabilizer for level cruise view
-        fullThreeCamera.lookAt(0, 2.8, -30);          // Aim toward horizon (Y≈camera Y = level sightline)
+        fullThreeCamera.position.set(0, 2.8, 14.0); // Directly centered behind tail stabilizer
+        fullThreeCamera.lookAt(0, 0.8, -30);         // Aiming straight forward along the horizon
 
         fullThreeRenderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
         fullThreeRenderer.setSize(window.innerWidth, window.innerHeight);
@@ -1795,15 +1795,21 @@
           if (selectedCallsign && currentPayload && currentPayload.aircraft) {
             const ac = currentPayload.aircraft.find(a => a.callsign === selectedCallsign);
             if (ac && fullPlaneGroup) {
-              // Altitude climb/descent pitch reaction (+0.55 level cruise + climb delta)
+              // Level cruise attitude (0.00 level + slight climb/descent pitch)
               const isClimbing = ac.targetAltitude > ac.altitude + 300;
               const isDescending = ac.targetAltitude < ac.altitude - 300;
               let pitchOffset = 0;
-              if (isClimbing) pitchOffset = -0.08;   // Nose up
-              if (isDescending) pitchOffset = +0.08; // Nose down
+              if (isClimbing) pitchOffset = -0.06;   // Nose up
+              if (isDescending) pitchOffset = +0.06; // Nose down
 
-              fullPlaneGroup.rotation.x = +0.55 + pitchOffset;
-              fullPlaneGroup.rotation.z = Math.sin(Date.now() * 0.001) * 0.012; // Natural atmospheric drift
+              // Banking roll when turning
+              let hdgDiff = (ac.targetHeading - ac.heading + 540) % 360 - 180;
+              let bankRoll = Math.max(-0.25, Math.min(0.25, -hdgDiff * 0.02));
+
+              fullPlaneGroup.rotation.x = pitchOffset;
+              fullPlaneGroup.rotation.y = 0;
+              fullPlaneGroup.rotation.z = bankRoll + Math.sin(Date.now() * 0.001) * 0.008; // Natural air turbulence roll
+              fullPlaneGroup.position.set(0, -0.6, 0);
 
               // Perspective scale tied to zoom level
               const zoomScale = Math.pow(2, (povZoomLevel - 10.5) * 0.35);
@@ -1871,9 +1877,9 @@
                     otherModel.scale.set(trafficScale, trafficScale, trafficScale);
                     otherModel.position.set(0, 0, 0);
 
-                    // Apply same level cruise pitch (+0.55)
+                    // Level cruise attitude (0.00 pitch)
                     const modelWrapper = new THREE.Group();
-                    modelWrapper.rotation.x = +0.55;
+                    modelWrapper.rotation.x = 0.0;
                     modelWrapper.add(otherModel);
 
                     trafficContainer.add(modelWrapper);
