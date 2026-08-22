@@ -1061,9 +1061,9 @@
             loadedModel.position.y += (loadedModel.position.y - center.y);
             loadedModel.position.z += (loadedModel.position.z - center.z);
 
-            // Scale to standard 8-unit wingspan
+            // Scale to comfortable ~6.8-unit wingspan (slightly smaller for full-body view)
             const maxDim = Math.max(size.x, size.y, size.z);
-            const scaleFactor = 9.0 / (maxDim || 1.0);
+            const scaleFactor = 6.8 / (maxDim || 1.0);
             loadedModel.scale.set(scaleFactor, scaleFactor, scaleFactor);
 
             // Mathematically verified: nose+X → -Z (fwd), dorsal+Z → +Y (up), wings±Y → ±X (level)
@@ -1158,7 +1158,7 @@
         if (mapCockpitPOVEnabled && fullThreeRenderer && fullThreeScene && fullThreeCamera) {
           if (fullPlaneGroup) {
             // Nose-up level cruise attitude (≈7° up) to counteract map perspective dive illusion
-            fullPlaneGroup.rotation.x = +0.70;
+            fullPlaneGroup.rotation.x = +0.55;
             // Subtle aerodynamic bank roll
             fullPlaneGroup.rotation.z = Math.sin(Date.now() * 0.0018) * 0.03;
           }
