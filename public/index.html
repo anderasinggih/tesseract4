@@ -3224,17 +3224,10 @@
           const dt = Math.min((now - lastFrameTime) / 1000, 0.1);
           lastFrameTime = now;
 
-          // Frame-rate independent damping — responsive bearing follow so
-          // WASD steering reads instantly on the rotating map horizon
-          const posAlpha = 1 - Math.exp(-12 * dt);
-          const hdgAlpha = 1 - Math.exp(-18 * dt);
-
-          currentCamLng += (targetCamLng - currentCamLng) * posAlpha;
-          currentCamLat += (targetCamLat - currentCamLat) * posAlpha;
-
-          // Shortest-path compass heading interpolation (direct smooth tracking)
-          let diffHdg = (targetCamHeading - currentCamHeading + 540) % 360 - 180;
-          currentCamHeading = normDeg(currentCamHeading + diffHdg * hdgAlpha);
+          // Instant 60 FPS compass heading and position tracking (zero delay)
+          currentCamLng = targetCamLng;
+          currentCamLat = targetCamLat;
+          currentCamHeading = targetCamHeading;
 
           // Chase-cam trail anchor: center the map slightly BEHIND the tail so the
           // wide realistic turn arc reads as lateral world motion across the screen
