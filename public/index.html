@@ -1700,7 +1700,7 @@
         window.trafficAircraftGroup = new THREE.Group();
         fullThreeScene.add(window.trafficAircraftGroup);
         window.trafficPlaneModelTemplate = fallbackPlaneGroup.clone();
-        window.trafficPlaneScaleFactor = 12.0;
+        window.trafficPlaneScaleFactor = 11.0;
 
         // Tactical 3D HUD Flight Level Floor Grid (Visual Diagnostic Reference Plane)
         // High-contrast bright green tactical floor grid
@@ -1947,7 +1947,7 @@
               const USER_CALIBRATION_PITCH_X = 19.3; // Rotasi X: Pitch (Dongak + / Nunduk -)
               const USER_CALIBRATION_YAW_Y = 0.0; // Rotasi Y: Yaw / Heading (Putar Kiri - / Kanan +)
               const USER_CALIBRATION_ROLL_Z = 0.0; // Rotasi Z: Roll / Miring Sayap
-              const USER_PLANE_SCALE_MULTIPLIER = 12.0; // Skala ukuran seimbang & proporsional
+              const USER_PLANE_SCALE_MULTIPLIER = 11.0; // Skala ukuran seimbang & proporsional
 
               fullPlaneGroup.rotation.x = pitchOffset + USER_CALIBRATION_PITCH_X;
               fullPlaneGroup.rotation.y = USER_CALIBRATION_YAW_Y;
