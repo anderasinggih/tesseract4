@@ -811,8 +811,33 @@
           '/models/airplane/11803_Airplane_v1_l1.gltf',
           function (gltf) {
             const loadedModel = gltf.scene;
-            loadedModel.scale.set(0.015, 0.015, 0.015);
-            loadedModel.rotation.y = Math.PI; // Face forward
+
+            // Compute Bounding Box to accurately center and auto-scale model regardless of raw unit size
+            const box = new THREE.Box3().setFromObject(loadedModel);
+            const size = box.getSize(new THREE.Vector3());
+            const center = box.getCenter(new THREE.Vector3());
+
+            // Center origin
+            loadedModel.position.x += (loadedModel.position.x - center.x);
+            loadedModel.position.y += (loadedModel.position.y - center.y);
+            loadedModel.position.z += (loadedModel.position.z - center.z);
+
+            // Scale to standard 8-unit wingspan
+            const maxDim = Math.max(size.x, size.y, size.z);
+            const scaleFactor = 9.0 / (maxDim || 1.0);
+            loadedModel.scale.set(scaleFactor, scaleFactor, scaleFactor);
+
+            // Rotate orientation if needed (ensure nose faces -Z forward)
+            loadedModel.rotation.x = -Math.PI / 2;
+
+            // Ensure materials are visible and double-sided
+            loadedModel.traverse((child) => {
+              if (child.isMesh) {
+                child.material.side = THREE.DoubleSide;
+                child.castShadow = true;
+                child.receiveShadow = true;
+              }
+            });
             
             // Clear procedural geometry and add official 3D model
             while(planeGroup.children.length > 0) { 
@@ -823,7 +848,7 @@
             // Clone to Fullscreen 3D Map Overlay
             if (fullPlaneGroup) {
               const fullModel = loadedModel.clone();
-              fullModel.scale.set(0.022, 0.022, 0.022);
+              fullModel.scale.set(scaleFactor * 1.6, scaleFactor * 1.6, scaleFactor * 1.6);
               fullModel.position.set(0, -1.8, 0); // Positioned nicely right in front of camera
               fullPlaneGroup.add(fullModel);
             }
