@@ -857,7 +857,7 @@
 
             // Rotate orientation: 3DS Max Z-up model -> Three.js Y-up level flight
             // X=0: no pitch (eliminates nose-dive), Z=PI/2: yaw so nose faces forward along flight path
-            loadedModel.rotation.set(0, Math.PI, Math.PI / 2);
+            loadedModel.rotation.set(Math.PI, 0, Math.PI / 2);
 
             // Ensure materials are visible and double-sided with realistic metalness
             loadedModel.traverse((child) => {
