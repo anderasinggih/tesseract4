@@ -860,7 +860,7 @@
             // Target Three.js: Y-up, nose=-Z (forward into horizon), dorsal=+Y
             // Step 1: X=-PI/2  →  converts Z-up to Y-up (Z→Y, Y→-Z)
             // Step 2: Y=-PI/2  →  rotates nose: +X → -Z (straight forward)
-            loadedModel.rotation.set(-Math.PI / 2, -Math.PI / 2, 0);
+            loadedModel.rotation.set(-Math.PI / 2, -Math.PI, 0);
 
             // Ensure materials are visible and double-sided with realistic metalness
             loadedModel.traverse((child) => {
