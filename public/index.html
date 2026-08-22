@@ -730,9 +730,53 @@
       <div id="no-flight-hint" style="font-size: 8.5px; color: var(--text-dim);">Select aircraft on radar.</div>
 
       <div id="flight-controls" style="display: none;">
-        <div style="display: flex; justify-content: space-between; margin-bottom: 6px; font-weight: 700; font-size: 9.5px;">
-          <span id="strip-callsign" style="color: #ffffff;">GIA880</span>
-          <span id="strip-route" style="color: #aaaaaa;">WIII -> RJAA</span>
+        <!-- Flightradar24 Authentic Airline & Aircraft Header Banner -->
+        <div style="background: rgba(15, 23, 42, 0.85); border: 1px solid rgba(0, 229, 255, 0.25); border-radius: 6px; padding: 8px 10px; margin-bottom: 10px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+            <div>
+              <span id="fr24-airline" style="font-size: 11px; font-weight: 800; color: #ffffff; display: block; letter-spacing: 0.5px;">GARUDA INDONESIA</span>
+              <span id="fr24-callsign" style="font-size: 12px; font-weight: 800; color: var(--accent-cyan);">GA880 / GIA880</span>
+            </div>
+            <div style="text-align: right;">
+              <span id="fr24-aircraft" style="font-size: 10px; font-weight: 700; color: #ffb703; display: block;">BOEING 777-300ER</span>
+              <span id="fr24-squawk" style="font-size: 8.5px; color: #94a3b8;">SQWK 4521</span>
+            </div>
+          </div>
+
+          <!-- Flightradar24 Departure & Arrival Schedule Card -->
+          <div style="display: grid; grid-template-columns: 1fr auto 1fr; gap: 6px; align-items: center; background: rgba(0,0,0,0.4); padding: 6px 8px; border-radius: 4px; border: 1px solid rgba(255,255,255,0.06);">
+            <!-- Origin / Departure Info -->
+            <div>
+              <div id="fr24-orig-iata" style="font-size: 15px; font-weight: 900; color: #ffffff;">CGK</div>
+              <div id="fr24-orig-city" style="font-size: 8px; color: #94a3b8;">Jakarta, ID</div>
+              <div id="fr24-dep-time" style="font-size: 8.5px; font-weight: 700; color: #4ade80; margin-top: 2px;">DEP 10:45 UTC</div>
+              <div id="fr24-dep-date" style="font-size: 7.5px; color: #64748b;">22 AUG 2026</div>
+            </div>
+
+            <!-- Route Flight Progress Bar -->
+            <div style="text-align: center; padding: 0 4px;">
+              <div id="fr24-duration" style="font-size: 8.5px; font-weight: 700; color: #38bdf8;">7h 35m</div>
+              <div style="width: 50px; height: 3px; background: rgba(255,255,255,0.15); border-radius: 2px; margin: 3px auto; position: relative;">
+                <div id="fr24-progress-bar" style="width: 58%; height: 100%; background: #00e5ff; border-radius: 2px;"></div>
+              </div>
+              <div id="fr24-remaining" style="font-size: 7.5px; color: #f59e0b;">3h 10m left</div>
+            </div>
+
+            <!-- Destination / Arrival Info -->
+            <div style="text-align: right;">
+              <div id="fr24-dest-iata" style="font-size: 15px; font-weight: 900; color: #ffffff;">NRT</div>
+              <div id="fr24-dest-city" style="font-size: 8px; color: #94a3b8;">Tokyo Narita, JP</div>
+              <div id="fr24-arr-time" style="font-size: 8.5px; font-weight: 700; color: #38bdf8; margin-top: 2px;">STA 19:20 UTC</div>
+              <div id="fr24-arr-date" style="font-size: 7.5px; color: #64748b;">22 AUG 2026</div>
+            </div>
+          </div>
+
+          <!-- Live Kinematics Telemetry -->
+          <div style="display: flex; justify-content: space-between; margin-top: 6px; font-size: 8px; color: #cbd5e1; border-top: 1px solid rgba(255,255,255,0.08); padding-top: 4px;">
+            <span>ALT: <b id="fr24-alt" style="color: #ffffff;">37,000 FT</b></span>
+            <span>SPEED: <b id="fr24-spd" style="color: #ffffff;">480 KTS</b></span>
+            <span>DIST: <b id="fr24-dist" style="color: #ffffff;">1,420 / 3,150 NM</b></span>
+          </div>
         </div>
 
         <div class="form-group">
@@ -2008,12 +2052,141 @@
         activeInboundHandoff = null;
       }
 
-      // Update Selected Aircraft Strip & 3D Camera Telemetry
+      // Update Selected Aircraft Strip, Flightradar24 Detailed HUD & 3D Camera Telemetry
       if (selectedCallsign) {
         const ac = payload.aircraft.find(a => a.callsign === selectedCallsign);
         if (ac) {
           document.getElementById('strip-callsign').innerText = `${ac.callsign} (${ac.aircraftType})`;
           document.getElementById('strip-route').innerText = `${ac.origin} -> ${ac.destination} | FL${Math.round(ac.altitude / 100)} | ${Math.round(ac.speed)}KTS`;
+
+          // Dynamic Flightradar24 Data Computation
+          const origApt = payload.airports ? payload.airports.find(a => a.icao === ac.origin) : null;
+          const destApt = payload.airports ? payload.airports.find(a => a.icao === ac.destination) : null;
+
+          const origIATA = origApt ? origApt.iata : ac.origin;
+          const destIATA = destApt ? destApt.iata : ac.destination;
+          const origCity = origApt ? `${origApt.city}, ${origApt.country}` : ac.origin;
+          const destCity = destApt ? `${destApt.city}, ${destApt.country}` : ac.destination;
+
+          // Aircraft Model Full Name Lookup
+          const AIRCRAFT_NAMES = {
+            "B77W": "BOEING 777-300ER",
+            "B772": "BOEING 777-200ER",
+            "B789": "BOEING 787-9 DREAMLINER",
+            "B788": "BOEING 787-8 DREAMLINER",
+            "B78X": "BOEING 787-10 DREAMLINER",
+            "B738": "BOEING 737-800",
+            "B739": "BOEING 737-900ER",
+            "B748": "BOEING 747-8 INTERCONTINENTAL",
+            "A359": "AIRBUS A350-900",
+            "A35K": "AIRBUS A350-1000",
+            "A388": "AIRBUS A380-800",
+            "A339": "AIRBUS A330-900NEO",
+            "A333": "AIRBUS A330-300",
+            "A332": "AIRBUS A330-200",
+            "A320": "AIRBUS A320-200",
+            "A321": "AIRBUS A321NEO"
+          };
+          const fullAircraftName = AIRCRAFT_NAMES[ac.aircraftType] || `${ac.aircraftType} AIRLINER`;
+
+          // Distance Computation (Total Nautical Miles & Progress)
+          let totalDistNM = 1200;
+          let flownDistNM = 600;
+          let remainingDistNM = 600;
+
+          if (origApt && destApt) {
+            const rad = Math.PI / 180.0;
+            const lat1 = origApt.coord.lat * rad, lon1 = origApt.coord.lng * rad;
+            const lat2 = destApt.coord.lat * rad, lon2 = destApt.coord.lng * rad;
+            const latC = ac.coord.lat * rad, lonC = ac.coord.lng * rad;
+
+            const dTot = 3440.065 * 2 * Math.asin(Math.sqrt(Math.sin((lat2-lat1)/2)**2 + Math.cos(lat1)*Math.cos(lat2)*Math.sin((lon2-lon1)/2)**2));
+            const dFlown = 3440.065 * 2 * Math.asin(Math.sqrt(Math.sin((latC-lat1)/2)**2 + Math.cos(lat1)*Math.cos(latC)*Math.sin((lonC-lon1)/2)**2));
+            const dRem = 3440.065 * 2 * Math.asin(Math.sqrt(Math.sin((lat2-latC)/2)**2 + Math.cos(latC)*Math.cos(lat2)*Math.sin((lon2-lonC)/2)**2));
+
+            totalDistNM = Math.max(100, Math.round(dTot));
+            flownDistNM = Math.max(10, Math.round(dFlown));
+            remainingDistNM = Math.max(10, Math.round(dRem));
+          }
+
+          const progressPct = Math.min(99, Math.max(1, Math.round((flownDistNM / (flownDistNM + remainingDistNM)) * 100)));
+          const spd = Math.max(250, ac.speed || 450);
+
+          // Flight Duration & Schedule Timings (Flightradar24 Departure / Arrival calculations)
+          const totalFlightMinutes = Math.round((totalDistNM / spd) * 60);
+          const remainingMinutes = Math.round((remainingDistNM / spd) * 60);
+          const flownMinutes = Math.max(5, totalFlightMinutes - remainingMinutes);
+
+          const now = new Date();
+          const depTime = new Date(now.getTime() - flownMinutes * 60000);
+          const arrTime = new Date(now.getTime() + remainingMinutes * 60000);
+
+          const formatUtcTime = (d) => `${String(d.getUTCHours()).padStart(2, '0')}:${String(d.getUTCMinutes()).padStart(2, '0')} UTC`;
+          const formatUtcDate = (d) => {
+            const months = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
+            return `${d.getUTCDate()} ${months[d.getUTCMonth()]} ${d.getUTCFullYear()}`;
+          };
+
+          const formatDuration = (mins) => {
+            const h = Math.floor(mins / 60);
+            const m = mins % 60;
+            return h > 0 ? `${h}h ${m}m` : `${m}m`;
+          };
+
+          // Populate DOM Elements
+          const frAirline = document.getElementById('fr24-airline');
+          if (frAirline) frAirline.innerText = (ac.airline || 'COMMERCIAL AIRLINE').toUpperCase();
+
+          const frCallsign = document.getElementById('fr24-callsign');
+          if (frCallsign) frCallsign.innerText = ac.callsign;
+
+          const frAircraft = document.getElementById('fr24-aircraft');
+          if (frAircraft) frAircraft.innerText = fullAircraftName;
+
+          const frSquawk = document.getElementById('fr24-squawk');
+          if (frSquawk) frSquawk.innerText = `SQWK ${ac.squawk || '1200'}`;
+
+          const frOrigIata = document.getElementById('fr24-orig-iata');
+          if (frOrigIata) frOrigIata.innerText = origIATA;
+
+          const frOrigCity = document.getElementById('fr24-orig-city');
+          if (frOrigCity) frOrigCity.innerText = origCity;
+
+          const frDepTime = document.getElementById('fr24-dep-time');
+          if (frDepTime) frDepTime.innerText = `DEP ${formatUtcTime(depTime)}`;
+
+          const frDepDate = document.getElementById('fr24-dep-date');
+          if (frDepDate) frDepDate.innerText = formatUtcDate(depTime);
+
+          const frDestIata = document.getElementById('fr24-dest-iata');
+          if (frDestIata) frDestIata.innerText = destIATA;
+
+          const frDestCity = document.getElementById('fr24-dest-city');
+          if (frDestCity) frDestCity.innerText = destCity;
+
+          const frArrTime = document.getElementById('fr24-arr-time');
+          if (frArrTime) frArrTime.innerText = `STA ${formatUtcTime(arrTime)}`;
+
+          const frArrDate = document.getElementById('fr24-arr-date');
+          if (frArrDate) frArrDate.innerText = formatUtcDate(arrTime);
+
+          const frDuration = document.getElementById('fr24-duration');
+          if (frDuration) frDuration.innerText = formatDuration(totalFlightMinutes);
+
+          const frRemaining = document.getElementById('fr24-remaining');
+          if (frRemaining) frRemaining.innerText = `${formatDuration(remainingMinutes)} left`;
+
+          const frProgressBar = document.getElementById('fr24-progress-bar');
+          if (frProgressBar) frProgressBar.style.width = `${progressPct}%`;
+
+          const frAlt = document.getElementById('fr24-alt');
+          if (frAlt) frAlt.innerText = `${Math.round(ac.altitude).toLocaleString()} FT (FL${Math.round(ac.altitude/100)})`;
+
+          const frSpd = document.getElementById('fr24-spd');
+          if (frSpd) frSpd.innerText = `${Math.round(ac.speed)} KTS (${Math.round(ac.speed * 1.852)} KM/H)`;
+
+          const frDist = document.getElementById('fr24-dist');
+          if (frDist) frDist.innerText = `${flownDistNM.toLocaleString()} / ${totalDistNM.toLocaleString()} NM (${progressPct}%)`;
 
           document.getElementById('cam-callsign').innerText = `3D TRACK: ${ac.callsign} [${ac.aircraftType}]`;
           document.getElementById('cam-telemetry').innerText = `HDG ${String(Math.round(ac.heading)).padStart(3, '0')}° / FL${Math.round(ac.altitude / 100)} / ${Math.round(ac.speed)}KT`;
@@ -2303,35 +2476,35 @@
           });
         }
 
-        // 3. Draw Authentic Great-Circle Geodesic Flight Route (Curved on Spherical Earth)
-        if (currentPayload.aircraft && selectedCallsign) {
+        // 3. Draw Authentic Great-Circle Geodesic Flight Route (Flightradar24 Past Origin & Future Destination Track)
+        if (currentPayload.aircraft && selectedCallsign && currentPayload.airports) {
           const selectedAc = currentPayload.aircraft.find(a => a.callsign === selectedCallsign);
-          if (selectedAc && currentPayload.airports) {
+          if (selectedAc) {
+            const origApt = currentPayload.airports.find(a => a.icao === selectedAc.origin);
             const destApt = currentPayload.airports.find(a => a.icao === selectedAc.destination);
-            if (destApt) {
-              // Convert lat/lng to radians for spherical geodesic trigonometry
-              const lat1 = selectedAc.coord.lat * (Math.PI / 180.0);
-              const lon1 = selectedAc.coord.lng * (Math.PI / 180.0);
-              const lat2 = destApt.coord.lat * (Math.PI / 180.0);
-              const lon2 = destApt.coord.lng * (Math.PI / 180.0);
 
-              // Angular distance along great-circle arc
+            // Helper function to draw curved great-circle arc between two coordinates
+            const drawGreatCircleArc = (coord1, coord2, strokeColor, lineWidth, isDashed, shadowGlow) => {
+              const lat1 = coord1.lat * (Math.PI / 180.0);
+              const lon1 = coord1.lng * (Math.PI / 180.0);
+              const lat2 = coord2.lat * (Math.PI / 180.0);
+              const lon2 = coord2.lng * (Math.PI / 180.0);
+
               const d = 2 * Math.asin(Math.sqrt(
                 Math.sin((lat2 - lat1) / 2) ** 2 +
                 Math.cos(lat1) * Math.cos(lat2) * (Math.sin((lon2 - lon1) / 2) ** 2)
               ));
 
               ctx.beginPath();
-              const numSegments = 40;
+              const numSegments = 36;
               for (let i = 0; i <= numSegments; i++) {
                 const f = i / numSegments;
                 let curLat, curLng;
 
                 if (d < 0.0001) {
-                  curLat = selectedAc.coord.lat;
-                  curLng = selectedAc.coord.lng;
+                  curLat = coord1.lat;
+                  curLng = coord1.lng;
                 } else {
-                  // Slerp (Spherical Linear Interpolation) formula
                   const A = Math.sin((1 - f) * d) / Math.sin(d);
                   const B = Math.sin(f * d) / Math.sin(d);
                   const x = A * Math.cos(lat1) * Math.cos(lon1) + B * Math.cos(lat2) * Math.cos(lon2);
@@ -2347,14 +2520,57 @@
                 else ctx.lineTo(pt.x, pt.y);
               }
 
-              ctx.strokeStyle = '#00e5ff';
-              ctx.lineWidth = 1.6;
-              ctx.setLineDash([6, 4]);
-              ctx.shadowColor = '#00e5ff';
-              ctx.shadowBlur = 4;
+              ctx.strokeStyle = strokeColor;
+              ctx.lineWidth = lineWidth;
+              if (isDashed) ctx.setLineDash([5, 5]);
+              else ctx.setLineDash([]);
+              if (shadowGlow) {
+                ctx.shadowColor = strokeColor;
+                ctx.shadowBlur = 6;
+              } else {
+                ctx.shadowBlur = 0;
+              }
               ctx.stroke();
               ctx.shadowBlur = 0;
               ctx.setLineDash([]);
+            };
+
+            // Part A: Flown Route (Origin Airport -> Current Aircraft Position) - White Track
+            if (origApt) {
+              drawGreatCircleArc(origApt.coord, selectedAc.coord, 'rgba(255, 255, 255, 0.75)', 1.8, true, false);
+
+              // Origin Airport Pin Marker (Flightradar24 Takeoff Badge)
+              const oPt = map.project([origApt.coord.lng, origApt.coord.lat]);
+              ctx.beginPath();
+              ctx.arc(oPt.x, oPt.y, 4, 0, Math.PI * 2);
+              ctx.fillStyle = '#ffffff';
+              ctx.fill();
+              ctx.strokeStyle = '#000000';
+              ctx.lineWidth = 1;
+              ctx.stroke();
+
+              ctx.fillStyle = '#ffffff';
+              ctx.font = '700 8.5px "JetBrains Mono", monospace';
+              ctx.fillText(`DEP: ${origApt.iata}`, oPt.x + 6, oPt.y + 3);
+            }
+
+            // Part B: Remaining Route (Current Aircraft Position -> Destination Airport) - Neon Cyan Track
+            if (destApt) {
+              drawGreatCircleArc(selectedAc.coord, destApt.coord, '#00e5ff', 2.2, false, true);
+
+              // Destination Airport Pin Marker (Flightradar24 Landing Badge)
+              const dPt = map.project([destApt.coord.lng, destApt.coord.lat]);
+              ctx.beginPath();
+              ctx.arc(dPt.x, dPt.y, 4, 0, Math.PI * 2);
+              ctx.fillStyle = '#00e5ff';
+              ctx.fill();
+              ctx.strokeStyle = '#ffffff';
+              ctx.lineWidth = 1.2;
+              ctx.stroke();
+
+              ctx.fillStyle = '#00e5ff';
+              ctx.font = '700 8.5px "JetBrains Mono", monospace';
+              ctx.fillText(`ARR: ${destApt.iata}`, dPt.x + 6, dPt.y + 3);
             }
           }
         }
