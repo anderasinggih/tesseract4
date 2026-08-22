@@ -1501,8 +1501,8 @@
       if (fullOverlayContainer) {
         fullThreeScene = new THREE.Scene();
         fullThreeCamera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
-        fullThreeCamera.position.set(0, 2.8, 14.0); // Directly centered behind tail stabilizer
-        fullThreeCamera.lookAt(0, 0.8, -30);         // Aiming straight forward along the horizon
+        fullThreeCamera.position.set(0, 1.8, 14.0); // Directly centered behind tail stabilizer
+        fullThreeCamera.lookAt(0, 0, 0);            // 100% Dead-Center on aircraft origin
 
         fullThreeRenderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
         fullThreeRenderer.setSize(window.innerWidth, window.innerHeight);
@@ -1809,7 +1809,7 @@
               fullPlaneGroup.rotation.x = pitchOffset;
               fullPlaneGroup.rotation.y = 0;
               fullPlaneGroup.rotation.z = bankRoll + Math.sin(Date.now() * 0.001) * 0.008; // Natural air turbulence roll
-              fullPlaneGroup.position.set(0, -0.6, 0);
+              fullPlaneGroup.position.set(0, 0, 0); // 100% Dead Center on screen
 
               // Perspective scale tied to zoom level
               const zoomScale = Math.pow(2, (povZoomLevel - 10.5) * 0.35);
