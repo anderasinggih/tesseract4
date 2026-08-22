@@ -999,7 +999,7 @@
         if (mapCockpitPOVEnabled && fullThreeRenderer && fullThreeScene && fullThreeCamera) {
           if (fullPlaneGroup) {
             // Nose-up level cruise attitude (≈7° up) to counteract map perspective dive illusion
-            fullPlaneGroup.rotation.x = -0.12;
+            fullPlaneGroup.rotation.x = +0.20;
             // Subtle aerodynamic bank roll
             fullPlaneGroup.rotation.z = Math.sin(Date.now() * 0.0018) * 0.03;
           }
