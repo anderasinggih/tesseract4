@@ -1002,9 +1002,9 @@
           if (mapCockpitPOVEnabled) {
             map.easeTo({
               center: [ac.coord.lng, ac.coord.lat],
-              pitch: 78, // Ultra-low cockpit forward nose view
+              pitch: 74, // Ultra-low cockpit forward nose view
               bearing: ac.heading, // Point directly forward along the flight path
-              zoom: 16.2, // Hyper-close cockpit view directly over the plane
+              zoom: 10.5, // Optimal crisp pilot zoom where tiles are 100% available everywhere
               duration: 200, // Smooth interpolation (zero jitter)
               easing: (t) => t
             });
