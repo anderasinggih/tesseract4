@@ -998,9 +998,73 @@
       ctx.restore();
     }
 
-    // 6. Radar Canvas 60 FPS Drawing Loop (Black/White Professional Scope)
+    // Calculate solar subsolar point and draw real-time Day/Night Terminator Shadow
+    function drawDayNightTerminator() {
+      const now = new Date();
+      // Day of year
+      const startOfYear = new Date(now.getUTCFullYear(), 0, 0);
+      const diff = now - startOfYear;
+      const oneDay = 1000 * 60 * 60 * 24;
+      const dayOfYear = Math.floor(diff / oneDay);
+
+      // Solar declination angle delta
+      const declination = -23.44 * Math.cos((2 * Math.PI / 365) * (dayOfYear + 10)) * (Math.PI / 180.0);
+      // Subsolar Longitude in degrees
+      const utcHours = now.getUTCHours() + now.getUTCMinutes() / 60.0 + now.getUTCSeconds() / 3600.0;
+      const sunLng = (12.0 - utcHours) * 15.0;
+
+      // Generate Terminator Night Polygon
+      const nightPoints = [];
+      for (let lng = -180; lng <= 180; lng += 4) {
+        const hourAngle = (lng - sunLng) * (Math.PI / 180.0);
+        let latRad = Math.atan(-Math.cos(hourAngle) / Math.tan(declination));
+        let latDeg = latRad * (180.0 / Math.PI);
+        if (declination > 0) {
+          // Northern summer: night is in the south
+          latDeg = Math.max(-85, Math.min(85, latDeg));
+        } else {
+          // Northern winter: night is in the north
+          latDeg = Math.max(-85, Math.min(85, latDeg));
+        }
+        nightPoints.push({ lat: latDeg, lng: lng });
+      }
+
+      // Complete night polygon depending on solar declination
+      ctx.save();
+      ctx.beginPath();
+      const firstPt = map.project([nightPoints[0].lng, nightPoints[0].lat]);
+      ctx.moveTo(firstPt.x, firstPt.y);
+
+      nightPoints.forEach(pt => {
+        const p = map.project([pt.lng, pt.lat]);
+        ctx.lineTo(p.x, p.y);
+      });
+
+      // Close polygon over polar night region
+      const poleLat = declination > 0 ? -85 : 85;
+      const p1 = map.project([180, poleLat]);
+      const p2 = map.project([-180, poleLat]);
+      ctx.lineTo(p1.x, p1.y);
+      ctx.lineTo(p2.x, p2.y);
+      ctx.closePath();
+
+      // Atmospheric Night Shadow Gradient (Like Apple Maps Earth View)
+      ctx.fillStyle = currentMapStyle === 'satellite' ? 'rgba(0, 5, 15, 0.58)' : 'rgba(0, 0, 0, 0.45)';
+      ctx.fill();
+
+      // Golden Hour Twilight Line
+      ctx.strokeStyle = 'rgba(255, 170, 0, 0.25)';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    // 6. Radar Canvas 60 FPS Drawing Loop (Black/White & Day/Night Solar Terminator)
     function drawRadarScope() {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      // 0. Render Authentic Real-Time Day / Night Solar Shadow
+      drawDayNightTerminator();
 
       if (currentPayload) {
         // 1. Draw Sector Boundary Polygons
