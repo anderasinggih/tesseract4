@@ -137,11 +137,11 @@
         console.error('WebSocket Error:', err);
       };
 
-      // Dumb Client: Receive 2D array of lines and draw immediately
+      // Dumb Client: Receive 2D array of lines and feed into LERP renderer
       ws.onmessage = (event) => {
         try {
           const payload = JSON.parse(event.data);
-          renderFrame(payload);
+          onServerPayload(payload);
         } catch (e) {
           console.error("Frame parse error:", e);
         }
@@ -150,11 +150,61 @@
 
     connect();
 
-    // Render loop directly executing server coordinates
-    function renderFrame(payload) {
+    // Smooth frame interpolation (LERP) for 60+ FPS butter-smooth rendering
+    let currentLines = null;
+    let targetLines = null;
+    let lerpFactor = 0.35;
+    let animFrameId = null;
+
+    function renderLoop() {
+      if (targetLines && targetLines.length > 0) {
+        if (!currentLines || currentLines.length !== targetLines.length) {
+          currentLines = JSON.parse(JSON.stringify(targetLines));
+        } else {
+          // Smoothly interpolate current towards target
+          for (let i = 0; i < targetLines.length; i++) {
+            currentLines[i].x1 += (targetLines[i].x1 - currentLines[i].x1) * lerpFactor;
+            currentLines[i].y1 += (targetLines[i].y1 - currentLines[i].y1) * lerpFactor;
+            currentLines[i].x2 += (targetLines[i].x2 - currentLines[i].x2) * lerpFactor;
+            currentLines[i].y2 += (targetLines[i].y2 - currentLines[i].y2) * lerpFactor;
+          }
+        }
+
+        // Clear Canvas
+        ctx.fillStyle = '#000000';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        const centerX = canvas.width / 2;
+        const centerY = canvas.height / 2;
+        const scale = Math.min(canvas.width, canvas.height) * 0.45;
+
+        ctx.save();
+        ctx.translate(centerX, centerY);
+
+        // Draw projected 2D wireframe edges
+        ctx.strokeStyle = '#00FF00';
+        ctx.lineWidth = 1.6;
+        ctx.shadowColor = '#00FF00';
+        ctx.shadowBlur = 10;
+
+        ctx.beginPath();
+        for (let i = 0; i < currentLines.length; i++) {
+          const line = currentLines[i];
+          ctx.moveTo(line.x1 * scale, -line.y1 * scale);
+          ctx.lineTo(line.x2 * scale, -line.y2 * scale);
+        }
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      requestAnimationFrame(renderLoop);
+    }
+    requestAnimationFrame(renderLoop);
+
+    // Update telemetry & targets on WebSocket message
+    function onServerPayload(payload) {
       const { lines, playerPos, timeMultiplier, tickMs, playerId } = payload;
 
-      // Update HUD telemetry
       if (playerId) playerIdEl.innerText = playerId.substring(0, 8);
       if (playerPos) {
         posDisplay.innerText = `${playerPos.x.toFixed(2)}, ${playerPos.y.toFixed(2)}, ${playerPos.z.toFixed(2)}, ${playerPos.w.toFixed(2)}`;
@@ -166,59 +216,39 @@
         tickDisplay.innerText = `${tickMs} ms`;
       }
 
-      // Clear Canvas
-      ctx.fillStyle = '#000000';
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-      if (!lines || lines.length === 0) return;
-
-      const centerX = canvas.width / 2;
-      const centerY = canvas.height / 2;
-      const scale = Math.min(canvas.width, canvas.height) * 0.45;
-
-      ctx.save();
-      ctx.translate(centerX, centerY);
-
-      // Draw projected 2D wireframe edges
-      ctx.strokeStyle = '#00FF00';
-      ctx.lineWidth = 1.5;
-      ctx.shadowColor = '#00FF00';
-      ctx.shadowBlur = 8;
-
-      ctx.beginPath();
-      for (let i = 0; i < lines.length; i++) {
-        const line = lines[i];
-        ctx.moveTo(line.x1 * scale, -line.y1 * scale);
-        ctx.lineTo(line.x2 * scale, -line.y2 * scale);
+      if (lines && lines.length > 0) {
+        targetLines = lines;
       }
-      ctx.stroke();
-
-      ctx.restore();
     }
 
-    // Capture user inputs and send raw events to Go server
+    // Capture user inputs with smooth continuous key polling
     const activeKeys = new Set();
 
     window.addEventListener('keydown', (e) => {
       const key = e.key.toLowerCase();
-      activeKeys.add(key);
+      if (['w', 'a', 's', 'd', 'q', 'e', 'shift', ' ', 'arrowleft', 'arrowright'].includes(key)) {
+        e.preventDefault();
+        activeKeys.add(key);
+      }
+    });
 
-      if (ws && ws.readyState === WebSocket.OPEN) {
-        // Intercept movement keys
-        if (['w', 'a', 's', 'd', 'q', 'e', 'shift', ' ', 'arrowleft', 'arrowright'].includes(key)) {
-          e.preventDefault();
+    window.addEventListener('keyup', (e) => {
+      const key = e.key.toLowerCase();
+      activeKeys.delete(key);
+    });
+
+    // Send active movement commands at steady 60Hz rate
+    setInterval(() => {
+      if (ws && ws.readyState === WebSocket.OPEN && activeKeys.size > 0) {
+        activeKeys.forEach((key) => {
           ws.send(JSON.stringify({
             type: 'move',
             key: key,
             delta: 0.05
           }));
-        }
+        });
       }
-    });
-
-    window.addEventListener('keyup', (e) => {
-      activeKeys.delete(e.key.toLowerCase());
-    });
+    }, 20);
   </script>
 </body>
 </html>
