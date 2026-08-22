@@ -1901,12 +1901,22 @@
                     const trafficContainer = new THREE.Group();
                     trafficContainer.position.set(relX, relY, relZ);
 
-                    // GLTF model nose points in +X when rotation.y=0 (due to Rx(-π/2)*Rz(+π/2) bake).
-                    // Three.js Y-axis rotation is counter-clockwise.
-                    // Aviation heading 0°=North=-Z in camera space. Need +π/2 offset so North aligns with +X nose.
-                    // Final formula: -(relHeadingDeg * π/180) + π/2  ≡  (90 - relHeadingDeg) * π/180
+                    // Compute level-cruise pitch (same +0.28 as player aircraft) and climb/descent offset
+                    const otherIsClimbing   = otherAc.targetAltitude > otherAc.altitude + 300;
+                    const otherIsDescending = otherAc.targetAltitude < otherAc.altitude - 300;
+                    let otherPitchOffset = 0;
+                    if (otherIsClimbing)   otherPitchOffset = +0.06;
+                    if (otherIsDescending) otherPitchOffset = -0.06;
+
+                    // CRITICAL: Use Euler order 'YXZ' so:
+                    //   1. rotation.y = heading (applied first, in world Y — correct compass direction)
+                    //   2. rotation.x = pitch   (applied second, around world X — SAME axis as player's fullPlaneGroup.rotation.x)
+                    // This guarantees pitch is identical to the player aircraft for ALL headings (head-on, crossing, trailing).
+                    // Without YXZ, the pitch applied in local X becomes a roll for 90°/270° headings and inverts for 180°.
                     const relHeadingDeg = (otherAc.heading - (currentCamHeading || 0) + 360) % 360;
+                    trafficContainer.rotation.order = 'YXZ';
                     trafficContainer.rotation.y = (90 - relHeadingDeg) * (Math.PI / 180.0);
+                    trafficContainer.rotation.x = +0.28 + otherPitchOffset;
 
                     // Clone 3D plane mesh
                     const otherModel = window.trafficPlaneModelTemplate.clone();
@@ -1933,18 +1943,7 @@
                       otherModel.add(hudTargetBox);
                     }
 
-                    // Level cruise attitude matching player aircraft (+0.28 upright pitch + climb/descent)
-                    const otherIsClimbing = otherAc.targetAltitude > otherAc.altitude + 300;
-                    const otherIsDescending = otherAc.targetAltitude < otherAc.altitude - 300;
-                    let otherPitchOffset = 0;
-                    if (otherIsClimbing) otherPitchOffset = +0.06;
-                    if (otherIsDescending) otherPitchOffset = -0.06;
-
-                    const modelWrapper = new THREE.Group();
-                    modelWrapper.rotation.x = +0.28 + otherPitchOffset;
-                    modelWrapper.add(otherModel);
-
-                    trafficContainer.add(modelWrapper);
+                    trafficContainer.add(otherModel);
                     window.trafficAircraftGroup.add(trafficContainer);
                   }
                 });
