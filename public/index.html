@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>The Tesseract Paradox - 4D Real-Time Engine</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    body, html {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: #000000;
+      font-family: 'Courier New', Courier, monospace;
+      color: #00FF00;
+    }
+    #canvas {
+      display: block;
+      width: 100vw;
+      height: 100vh;
+      background: #000000;
+    }
+    #hud {
+      position: absolute;
+      top: 16px;
+      left: 16px;
+      padding: 12px 18px;
+      background: rgba(0, 0, 0, 0.85);
+      border: 1px solid rgba(0, 255, 0, 0.3);
+      border-radius: 6px;
+      font-size: 13px;
+      line-height: 1.5;
+      pointer-events: none;
+      box-shadow: 0 0 15px rgba(0, 255, 0, 0.15);
+      z-index: 10;
+    }
+    #controls {
+      position: absolute;
+      bottom: 16px;
+      left: 16px;
+      padding: 12px 18px;
+      background: rgba(0, 0, 0, 0.85);
+      border: 1px solid rgba(0, 255, 0, 0.3);
+      border-radius: 6px;
+      font-size: 12px;
+      color: #77ff77;
+      pointer-events: none;
+      line-height: 1.5;
+      z-index: 10;
+    }
+    .hud-title {
+      font-weight: bold;
+      letter-spacing: 2px;
+      color: #00FF00;
+      margin-bottom: 6px;
+      text-transform: uppercase;
+    }
+    .status-badge {
+      display: inline-block;
+      width: 8px;
+      height: 8px;
+      background-color: #00FF00;
+      border-radius: 50%;
+      margin-right: 6px;
+      box-shadow: 0 0 8px #00FF00;
+    }
+    .status-disconnected {
+      background-color: #FF0000;
+      box-shadow: 0 0 8px #FF0000;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="canvas"></canvas>
+
+  <div id="hud">
+    <div class="hud-title"><span id="status-indicator" class="status-badge"></span>TESSERACT PARADOX 4D</div>
+    <div>CONNECTION: <span id="conn-status">CONNECTING...</span></div>
+    <div>PLAYER ID: <span id="player-id">---</span></div>
+    <div>POSITION (X,Y,Z,W): <span id="pos-display">0.00, 0.00, 0.00, 1.00</span></div>
+    <div>TIME DILATION: <span id="dilation-display">1.00x</span></div>
+    <div>SERVER TICK: <span id="tick-display">16 ms</span></div>
+  </div>
+
+  <div id="controls">
+    <div style="font-weight: bold; color: #00ff00; margin-bottom: 4px;">CONTROLS:</div>
+    <div>[W / S] Move Y Axis (Up / Down)</div>
+    <div>[A / D] Move X Axis (Left / Right)</div>
+    <div>[Q / E] Move Z Axis (Depth)</div>
+    <div>[SHIFT / SPACE] Move W Axis (Near / Far Black Hole Singularity)</div>
+    <div>[← / →] Rotate 4D Hypercube (XW Plane)</div>
+  </div>
+
+  <script>
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    const connStatus = document.getElementById('conn-status');
+    const statusIndicator = document.getElementById('status-indicator');
+    const playerIdEl = document.getElementById('player-id');
+    const posDisplay = document.getElementById('pos-display');
+    const dilationDisplay = document.getElementById('dilation-display');
+    const tickDisplay = document.getElementById('tick-display');
+
+    function resizeCanvas() {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    }
+    window.addEventListener('resize', resizeCanvas);
+    resizeCanvas();
+
+    // WebSocket connection to Golang Backend
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const wsUrl = `${protocol}//${window.location.host}/ws`;
+    let ws = null;
+
+    function connect() {
+      ws = new WebSocket(wsUrl);
+
+      ws.onopen = () => {
+        connStatus.innerText = 'CONNECTED';
+        connStatus.style.color = '#00FF00';
+        statusIndicator.className = 'status-badge';
+      };
+
+      ws.onclose = () => {
+        connStatus.innerText = 'DISCONNECTED (RECONNECTING...)';
+        connStatus.style.color = '#FF4444';
+        statusIndicator.className = 'status-badge status-disconnected';
+        setTimeout(connect, 2000);
+      };
+
+      ws.onerror = (err) => {
+        console.error('WebSocket Error:', err);
+      };
+
+      // Dumb Client: Receive 2D array of lines and draw immediately
+      ws.onmessage = (event) => {
+        try {
+          const payload = JSON.parse(event.data);
+          renderFrame(payload);
+        } catch (e) {
+          console.error("Frame parse error:", e);
+        }
+      };
+    }
+
+    connect();
+
+    // Render loop directly executing server coordinates
+    function renderFrame(payload) {
+      const { lines, playerPos, timeMultiplier, tickMs, playerId } = payload;
+
+      // Update HUD telemetry
+      if (playerId) playerIdEl.innerText = playerId.substring(0, 8);
+      if (playerPos) {
+        posDisplay.innerText = `${playerPos.x.toFixed(2)}, ${playerPos.y.toFixed(2)}, ${playerPos.z.toFixed(2)}, ${playerPos.w.toFixed(2)}`;
+      }
+      if (timeMultiplier !== undefined) {
+        dilationDisplay.innerText = `${timeMultiplier.toFixed(2)}x`;
+      }
+      if (tickMs !== undefined) {
+        tickDisplay.innerText = `${tickMs} ms`;
+      }
+
+      // Clear Canvas
+      ctx.fillStyle = '#000000';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      if (!lines || lines.length === 0) return;
+
+      const centerX = canvas.width / 2;
+      const centerY = canvas.height / 2;
+      const scale = Math.min(canvas.width, canvas.height) * 0.45;
+
+      ctx.save();
+      ctx.translate(centerX, centerY);
+
+      // Draw projected 2D wireframe edges
+      ctx.strokeStyle = '#00FF00';
+      ctx.lineWidth = 1.5;
+      ctx.shadowColor = '#00FF00';
+      ctx.shadowBlur = 8;
+
+      ctx.beginPath();
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i];
+        ctx.moveTo(line.x1 * scale, -line.y1 * scale);
+        ctx.lineTo(line.x2 * scale, -line.y2 * scale);
+      }
+      ctx.stroke();
+
+      ctx.restore();
+    }
+
+    // Capture user inputs and send raw events to Go server
+    const activeKeys = new Set();
+
+    window.addEventListener('keydown', (e) => {
+      const key = e.key.toLowerCase();
+      activeKeys.add(key);
+
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        // Intercept movement keys
+        if (['w', 'a', 's', 'd', 'q', 'e', 'shift', ' ', 'arrowleft', 'arrowright'].includes(key)) {
+          e.preventDefault();
+          ws.send(JSON.stringify({
+            type: 'move',
+            key: key,
+            delta: 0.05
+          }));
+        }
+      }
+    });
+
+    window.addEventListener('keyup', (e) => {
+      activeKeys.delete(e.key.toLowerCase());
+    });
+  </script>
+</body>
+</html>
