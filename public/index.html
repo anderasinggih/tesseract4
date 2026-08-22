@@ -1700,22 +1700,57 @@
           });
         }
 
-        // 3. Draw Aircraft Route ONLY when Selected
+        // 3. Draw Authentic Great-Circle Geodesic Flight Route (Curved on Spherical Earth)
         if (currentPayload.aircraft && selectedCallsign) {
           const selectedAc = currentPayload.aircraft.find(a => a.callsign === selectedCallsign);
           if (selectedAc && currentPayload.airports) {
             const destApt = currentPayload.airports.find(a => a.icao === selectedAc.destination);
-            const acPt = map.project([selectedAc.coord.lng, selectedAc.coord.lat]);
-
             if (destApt) {
-              const destPt = map.project([destApt.coord.lng, destApt.coord.lat]);
+              // Convert lat/lng to radians for spherical geodesic trigonometry
+              const lat1 = selectedAc.coord.lat * (Math.PI / 180.0);
+              const lon1 = selectedAc.coord.lng * (Math.PI / 180.0);
+              const lat2 = destApt.coord.lat * (Math.PI / 180.0);
+              const lon2 = destApt.coord.lng * (Math.PI / 180.0);
+
+              // Angular distance along great-circle arc
+              const d = 2 * Math.asin(Math.sqrt(
+                Math.sin((lat2 - lat1) / 2) ** 2 +
+                Math.cos(lat1) * Math.cos(lat2) * (Math.sin((lon2 - lon1) / 2) ** 2)
+              ));
+
               ctx.beginPath();
-              ctx.moveTo(acPt.x, acPt.y);
-              ctx.lineTo(destPt.x, destPt.y);
-              ctx.strokeStyle = '#ffffff';
-              ctx.lineWidth = 1.2;
-              ctx.setLineDash([4, 4]);
+              const numSegments = 40;
+              for (let i = 0; i <= numSegments; i++) {
+                const f = i / numSegments;
+                let curLat, curLng;
+
+                if (d < 0.0001) {
+                  curLat = selectedAc.coord.lat;
+                  curLng = selectedAc.coord.lng;
+                } else {
+                  // Slerp (Spherical Linear Interpolation) formula
+                  const A = Math.sin((1 - f) * d) / Math.sin(d);
+                  const B = Math.sin(f * d) / Math.sin(d);
+                  const x = A * Math.cos(lat1) * Math.cos(lon1) + B * Math.cos(lat2) * Math.cos(lon2);
+                  const y = A * Math.cos(lat1) * Math.sin(lon1) + B * Math.cos(lat2) * Math.sin(lon2);
+                  const z = A * Math.sin(lat1) + B * Math.sin(lat2);
+
+                  curLat = Math.atan2(z, Math.sqrt(x * x + y * y)) * (180.0 / Math.PI);
+                  curLng = Math.atan2(y, x) * (180.0 / Math.PI);
+                }
+
+                const pt = map.project([curLng, curLat]);
+                if (i === 0) ctx.moveTo(pt.x, pt.y);
+                else ctx.lineTo(pt.x, pt.y);
+              }
+
+              ctx.strokeStyle = '#00e5ff';
+              ctx.lineWidth = 1.6;
+              ctx.setLineDash([6, 4]);
+              ctx.shadowColor = '#00e5ff';
+              ctx.shadowBlur = 4;
               ctx.stroke();
+              ctx.shadowBlur = 0;
               ctx.setLineDash([]);
             }
           }
