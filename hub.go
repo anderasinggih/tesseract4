@@ -331,17 +331,6 @@ func (h *ATCHub) updateKinematics(dt float64) {
 
 	// 1. Move and steer each aircraft
 	for callsign, ac := range h.aircraft {
-		// Flight Management System (FMS) Auto-Nav: only active when NOT under manual pilot steering
-		// and when wings are level on assigned track.
-		if ac.TargetRoll == 0 && math.Abs(headingDiff(ac.TargetHeading, ac.Heading)) < 0.05 && math.Abs(ac.Roll) < 0.5 {
-			for _, apt := range GlobalMajorAirports {
-				if apt.ICAO == ac.Destination {
-					ac.TargetHeading = CalculateTrueBearing(ac.Coord, apt.Coord)
-					break
-				}
-			}
-		}
-
 		// ── Coordinated turn dynamics ──
 		// When pilot is steering (TargetRoll != 0), TargetHeading continuously syncs with Heading
 		bankCmd := ac.TargetRoll
