@@ -997,66 +997,85 @@
       document.getElementById('cam-telemetry').innerText = `HDG ${String(Math.round(ac.heading)).padStart(3,'0')}° / FL${Math.round(ac.altitude/100)}`;
     }
 
+    // Realistic High-Definition Commercial Airliner Vector Asset
+    const jetImage = new Image();
+    jetImage.src = 'data:image/svg+xml;utf8,' + encodeURIComponent(`
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+        <defs>
+          <linearGradient id="fuselageGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" stop-color="#cccccc"/>
+            <stop offset="35%" stop-color="#ffffff"/>
+            <stop offset="65%" stop-color="#ffffff"/>
+            <stop offset="100%" stop-color="#aaaaaa"/>
+          </linearGradient>
+          <linearGradient id="wingGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" stop-color="#dddddd"/>
+            <stop offset="100%" stop-color="#888888"/>
+          </linearGradient>
+          <filter id="planeShadow" x="-20%" y="-20%" width="140%" height="140%">
+            <feDropShadow dx="0" dy="12" stdDeviation="8" flood-color="#000000" flood-opacity="0.6"/>
+          </filter>
+        </defs>
+        <g filter="url(#planeShadow)">
+          <!-- Main Swept Wings -->
+          <path d="M256 180 L490 320 L480 345 L256 260 L32 345 L22 320 Z" fill="url(#wingGrad)" stroke="#444444" stroke-width="2"/>
+          
+          <!-- Jet Turbofan Engines -->
+          <rect x="170" y="240" width="22" height="60" rx="8" fill="#333333" stroke="#ffffff" stroke-width="1.5"/>
+          <rect x="320" y="240" width="22" height="60" rx="8" fill="#333333" stroke="#ffffff" stroke-width="1.5"/>
+          <circle cx="181" cy="245" r="8" fill="#111111"/>
+          <circle cx="331" cy="245" r="8" fill="#111111"/>
+
+          <!-- Horizontal Stabilizers (Tail Wings) -->
+          <path d="M256 420 L370 480 L360 495 L256 460 L152 495 L142 480 Z" fill="url(#wingGrad)" stroke="#444444" stroke-width="1.5"/>
+
+          <!-- Main Fuselage Body -->
+          <path d="M256 30 C272 70 278 160 278 410 C278 460 268 490 256 500 C244 490 234 460 234 410 C234 160 240 70 256 30 Z" fill="url(#fuselageGrad)" stroke="#333333" stroke-width="2"/>
+
+          <!-- Cockpit Glass Windshield -->
+          <path d="M250 85 L262 85 L268 100 L244 100 Z" fill="#00e5ff" stroke="#0088cc" stroke-width="1"/>
+          <polygon points="242,102 249,102 247,112 238,110" fill="#00b4d8"/>
+          <polygon points="270,102 263,102 265,112 274,110" fill="#00b4d8"/>
+
+          <!-- Wingtip Strobe Lights -->
+          <circle cx="488" cy="332" r="5" fill="#00ff66"/>
+          <circle cx="24" cy="332" r="5" fill="#ff2244"/>
+        </g>
+      </svg>
+    `);
+
     // Function to draw an airplane icon rotated relative to map view
-    function drawAirplaneIcon(x, y, headingDeg, color, size, isSelected) {
+    function drawAirplaneIcon(x, y, headingDeg, color, size, isSelected, isCockpitPOV) {
       ctx.save();
-      ctx.translate(x, y);
 
-      // In MapLibre 3D tilted/rotated view, aircraft canvas rotation must account for current map bearing
-      const currentMapBearing = map.getBearing() || 0;
-      const visualHeading = headingDeg - currentMapBearing;
+      if (isCockpitPOV) {
+        // In 3D Cockpit Mode: Lock the plane rock-solid at the lower-center of the screen
+        const planeCenterX = canvas.width / 2;
+        const planeCenterY = canvas.height * 0.65; // Positioned right in front of the forward cockpit view
 
-      ctx.rotate((visualHeading) * Math.PI / 180.0);
+        ctx.translate(planeCenterX, planeCenterY);
+        // Plane always points straight forward in cockpit view
+        ctx.drawImage(jetImage, -60, -60, 120, 120);
+      } else {
+        ctx.translate(x, y);
 
-      ctx.fillStyle = color;
-      ctx.strokeStyle = color;
-      ctx.lineWidth = 1.5;
+        const currentMapBearing = map.getBearing() || 0;
+        const visualHeading = headingDeg - currentMapBearing;
+        ctx.rotate((visualHeading) * Math.PI / 180.0);
 
-      // High-Detail Jet Silhouette with Cockpit & Wing Engines
-      ctx.beginPath();
-      // Nose
-      ctx.moveTo(0, -size * 1.3);
-      // Right fuselage
-      ctx.lineTo(size * 0.28, -size * 0.3);
-      // Right wing
-      ctx.lineTo(size * 1.4, size * 0.3);
-      ctx.lineTo(size * 1.4, size * 0.55);
-      ctx.lineTo(size * 0.28, size * 0.38);
-      // Right tail
-      ctx.lineTo(size * 0.2, size * 0.95);
-      ctx.lineTo(size * 0.65, size * 1.15);
-      ctx.lineTo(size * 0.65, size * 1.35);
-      ctx.lineTo(0, size * 1.05);
-      // Left tail
-      ctx.lineTo(-size * 0.65, size * 1.35);
-      ctx.lineTo(-size * 0.65, size * 1.15);
-      ctx.lineTo(-size * 0.2, size * 0.95);
-      // Left wing
-      ctx.lineTo(-size * 0.28, size * 0.38);
-      ctx.lineTo(-size * 1.4, size * 0.55);
-      ctx.lineTo(-size * 1.4, size * 0.3);
-      ctx.lineTo(-size * 0.28, -size * 0.3);
-      ctx.closePath();
-      ctx.fill();
+        // Draw HD Jet Image
+        const imgSize = size * 3.6;
+        ctx.drawImage(jetImage, -imgSize / 2, -imgSize / 2, imgSize, imgSize);
 
-      // Wingtip Navigation Strobe Lights
-      ctx.beginPath();
-      ctx.arc(size * 1.4, size * 0.45, 1.8, 0, Math.PI * 2);
-      ctx.fillStyle = '#00ff66'; // Green right nav light
-      ctx.fill();
-      ctx.beginPath();
-      ctx.arc(-size * 1.4, size * 0.45, 1.8, 0, Math.PI * 2);
-      ctx.fillStyle = '#ff2244'; // Red left nav light
-      ctx.fill();
-
-      if (isSelected) {
-        ctx.beginPath();
-        ctx.arc(0, 0, size * 2.0, 0, Math.PI * 2);
-        ctx.strokeStyle = '#ffffff';
-        ctx.lineWidth = 1.5;
-        ctx.setLineDash([3, 3]);
-        ctx.stroke();
-        ctx.setLineDash([]);
+        if (isSelected) {
+          ctx.beginPath();
+          ctx.arc(0, 0, imgSize * 0.65, 0, Math.PI * 2);
+          ctx.strokeStyle = '#ffaa00';
+          ctx.lineWidth = 1.5;
+          ctx.setLineDash([3, 3]);
+          ctx.stroke();
+          ctx.setLineDash([]);
+        }
       }
 
       ctx.restore();
@@ -1218,8 +1237,8 @@
               planeSize = 38; // Super large 3D airplane silhouette right in front of cockpit camera
             }
 
-            // Draw Clean Airplane Silhouette Icon
-            drawAirplaneIcon(pt.x, pt.y, ac.heading, acColor, planeSize, isSelected);
+            // Draw Clean Airplane Silhouette Icon (With Screen Center Lock in 3D Cockpit Mode)
+            drawAirplaneIcon(pt.x, pt.y, ac.heading, acColor, planeSize, isSelected, mapCockpitPOVEnabled && isSelected);
 
             // Detailed Box Tag ONLY shows when Selected OR when Conflict Alert
             if (isSelected || isConflict) {
