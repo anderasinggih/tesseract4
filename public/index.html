@@ -1026,6 +1026,11 @@
         fullPlaneGroup = new THREE.Group();
         fullThreeScene.add(fullPlaneGroup);
 
+        // Group to hold nearby surrounding 3D aircraft models in visual range (< 50 NM)
+        window.trafficAircraftGroup = new THREE.Group();
+        fullThreeScene.add(window.trafficAircraftGroup);
+        window.trafficPlaneModelTemplate = null;
+
         const update3DOverlaySize = () => {
           const w = window.innerWidth;
           const h = window.innerHeight;
@@ -1188,6 +1193,10 @@
               fullModel.scale.set(scaleFactor * 1.5, scaleFactor * 1.5, scaleFactor * 1.5);
               fullModel.position.set(0, -1.2, 0); // Positioned comfortably in forward view
               fullPlaneGroup.add(fullModel);
+
+              // Save template for surrounding traffic rendering
+              window.trafficPlaneModelTemplate = loadedModel.clone();
+              window.trafficPlaneScaleFactor = scaleFactor * 1.5;
             }
           },
           undefined,
@@ -1262,6 +1271,63 @@
           if (selectedCallsign && currentPayload && currentPayload.aircraft && fullAmbient && fullDir) {
             const ac = currentPayload.aircraft.find(a => a.callsign === selectedCallsign);
             if (ac) {
+              // 1. Surrounding 3D Traffic Airborne Visualizer (< 40 NM Range)
+              if (window.trafficAircraftGroup && window.trafficPlaneModelTemplate) {
+                // Clear previous traffic objects
+                while (window.trafficAircraftGroup.children.length > 0) {
+                  window.trafficAircraftGroup.remove(window.trafficAircraftGroup.children[0]);
+                }
+
+                currentPayload.aircraft.forEach(otherAc => {
+                  if (otherAc.callsign === selectedCallsign) return;
+
+                  // Compute lateral distance in Nautical Miles
+                  const lat1 = ac.coord.lat * (Math.PI / 180.0);
+                  const lon1 = ac.coord.lng * (Math.PI / 180.0);
+                  const lat2 = otherAc.coord.lat * (Math.PI / 180.0);
+                  const lon2 = otherAc.coord.lng * (Math.PI / 180.0);
+
+                  const dLat = lat2 - lat1;
+                  const dLon = lon2 - lon1;
+                  const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLon / 2) ** 2;
+                  const distNM = 3440.065 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+                  // Render other aircraft if within pilot visual radius (e.g. < 40 NM)
+                  if (distNM < 40.0) {
+                    // Compute absolute bearing from player to other plane
+                    const y = Math.sin(dLon) * Math.cos(lat2);
+                    const x = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLon);
+                    let bearingToOther = Math.atan2(y, x) * (180.0 / Math.PI);
+                    if (bearingToOther < 0) bearingToOther += 360;
+
+                    // Relative angle relative to player aircraft forward nose heading
+                    let relAngleDeg = (bearingToOther - (ac.heading || 0) + 360) % 360;
+                    const relAngleRad = relAngleDeg * (Math.PI / 180.0);
+
+                    // Map distance (1 NM ≈ 2.5 3D space units)
+                    const sceneDist = Math.max(3.0, distNM * 2.5);
+                    const relX = Math.sin(relAngleRad) * sceneDist;
+                    const relZ = -Math.cos(relAngleRad) * sceneDist; // Forward is -Z
+
+                    // Altitude delta (1000 ft ≈ 0.5 3D space units)
+                    const altDeltaFt = (otherAc.altitude - ac.altitude);
+                    const relY = -1.2 + (altDeltaFt / 1000.0) * 0.5;
+
+                    // Clone 3D plane mesh
+                    const otherModel = window.trafficPlaneModelTemplate.clone();
+                    const trafficScale = window.trafficPlaneScaleFactor || 1.0;
+                    otherModel.scale.set(trafficScale, trafficScale, trafficScale);
+                    otherModel.position.set(relX, relY, relZ);
+
+                    // Relative heading orientation
+                    const relHeadingRad = ((otherAc.heading - ac.heading) * Math.PI) / 180.0;
+                    otherModel.rotation.y = -relHeadingRad;
+
+                    window.trafficAircraftGroup.add(otherModel);
+                  }
+                });
+              }
+
               const now = new Date();
               const utcHours = now.getUTCHours() + now.getUTCMinutes() / 60.0;
               const sunLng = (12.0 - utcHours) * 15.0;
