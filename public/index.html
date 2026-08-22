@@ -1515,7 +1515,7 @@
               center: [currentCamLng, currentCamLat],
               zoom: povZoomLevel,
               bearing: currentCamHeading,
-              pitch: 72
+              pitch: 84
             });
           }
         }
@@ -1593,7 +1593,7 @@
       if (fullOverlayContainer) {
         fullThreeScene = new THREE.Scene();
         fullThreeCamera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 5000);
-        fullThreeCamera.position.set(0, 1.2, 14.0); // Directly behind tail looking forward into the horizon
+        fullThreeCamera.position.set(0, 0.8, 14.0); // Level with fuselage looking straight forward into the horizon
         fullThreeCamera.lookAt(0, 0, 0);            // 100% Dead-Center on aircraft origin
 
         fullThreeRenderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
@@ -2774,7 +2774,7 @@
             center: [currentCamLng, currentCamLat],
             zoom: povZoomLevel,
             bearing: currentCamHeading,
-            pitch: 72
+            pitch: 84
           });
         }
 
