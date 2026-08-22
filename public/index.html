@@ -1383,19 +1383,15 @@
       if (toastTimeout) clearTimeout(toastTimeout);
     }
 
-    let povZoomLevel = 10.5; // Default POV Zoom (range: 6.0 to 14.0)
+    let povZoomLevel = 10.5; // Default POV Zoom (range: 6.0 to 11.0)
 
     function adjustPOVZoom(delta) {
-      povZoomLevel = Math.max(6.0, Math.min(14.0, Math.round((povZoomLevel + delta) * 10) / 10));
+      povZoomLevel = Math.max(6.0, Math.min(11.0, Math.round((povZoomLevel + delta) * 10) / 10));
       const disp = document.getElementById('pov-zoom-display');
       if (disp) disp.innerText = `${povZoomLevel.toFixed(1)}x`;
-
-      // Keep aircraft accurately anchored in 3D perspective space across all zoom scales
-      if (fullPlaneGroup) {
-      }
     }
 
-    // Interactive Mouse Wheel Zoom when in POV Mode
+    // Interactive Mouse Wheel Zoom when in POV Mode (capped at 11x)
     window.addEventListener('wheel', (e) => {
       if (mapCockpitPOVEnabled) {
         e.preventDefault();
@@ -1905,9 +1901,12 @@
                     const trafficContainer = new THREE.Group();
                     trafficContainer.position.set(relX, relY, relZ);
 
-                    // Clockwise angle in Three.js (Y rotation is counter-clockwise, so negate)
+                    // GLTF model nose points in +X when rotation.y=0 (due to Rx(-π/2)*Rz(+π/2) bake).
+                    // Three.js Y-axis rotation is counter-clockwise.
+                    // Aviation heading 0°=North=-Z in camera space. Need +π/2 offset so North aligns with +X nose.
+                    // Final formula: -(relHeadingDeg * π/180) + π/2  ≡  (90 - relHeadingDeg) * π/180
                     const relHeadingDeg = (otherAc.heading - (currentCamHeading || 0) + 360) % 360;
-                    trafficContainer.rotation.y = -(relHeadingDeg * (Math.PI / 180.0));
+                    trafficContainer.rotation.y = (90 - relHeadingDeg) * (Math.PI / 180.0);
 
                     // Clone 3D plane mesh
                     const otherModel = window.trafficPlaneModelTemplate.clone();
