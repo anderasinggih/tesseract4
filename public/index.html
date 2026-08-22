@@ -1515,7 +1515,7 @@
               center: [currentCamLng, currentCamLat],
               zoom: povZoomLevel,
               bearing: currentCamHeading,
-              pitch: 84
+              pitch: 75
             });
           }
         }
@@ -1593,8 +1593,10 @@
       if (fullOverlayContainer) {
         fullThreeScene = new THREE.Scene();
         fullThreeCamera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 5000);
-        fullThreeCamera.position.set(0, 0.8, 14.0); // Level with fuselage looking straight forward into the horizon
-        fullThreeCamera.lookAt(0, 0, 0);            // 100% Dead-Center on aircraft origin
+        // MapLibre pitch is 75° (15° from horizontal).
+        // For 100% optical sync with ground terrain: camera placed along 15° sightline (Y = 14*sin(15°) ≈ 3.62, Z = 14*cos(15°) ≈ 13.52)
+        fullThreeCamera.position.set(0, 3.62, 13.52);
+        fullThreeCamera.lookAt(0, 0, 0); // 100% Dead-Center on aircraft origin
 
         fullThreeRenderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
         fullThreeRenderer.setSize(window.innerWidth, window.innerHeight);
@@ -1924,7 +1926,8 @@
               if (typeof currentPlaneBankRoll === 'undefined') window.currentPlaneBankRoll = 0;
               window.currentPlaneBankRoll += (targetBankRoll - window.currentPlaneBankRoll) * 0.08;
 
-              fullPlaneGroup.rotation.x = +0.28 + pitchOffset;
+              // Level cruise in ground terrain frame (no artificial +0.28 pitch tilt so plane flies 100% parallel with map terrain)
+              fullPlaneGroup.rotation.x = pitchOffset;
               fullPlaneGroup.rotation.y = 0;
               fullPlaneGroup.rotation.z = window.currentPlaneBankRoll + Math.sin(Date.now() * 0.001) * 0.008; // Fluid aerodynamic roll
               fullPlaneGroup.position.set(0, 0, 0); // 100% Dead Center on screen
@@ -2795,7 +2798,7 @@
             center: [currentCamLng, currentCamLat],
             zoom: povZoomLevel,
             bearing: currentCamHeading,
-            pitch: 84
+            pitch: 75
           });
         }
 
