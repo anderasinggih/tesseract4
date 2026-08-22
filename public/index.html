@@ -1226,26 +1226,26 @@
       });
     }
 
-    // 7. Cockpit Airborne Radar Periodic Sweep Ping (Subtle Sub-Sonar Blip)
+    // 7. Tactical Cockpit Airborne Radar Blip (Crisp, High-Tech Pure "Tit" Ping - Zero Pitch Sweep)
     function playRadarSweepPing() {
       initAudioEngine();
       if (!audioCtx) return;
       if (audioCtx.state === 'suspended') audioCtx.resume();
       const now = audioCtx.currentTime;
 
+      // Pure fixed crystal 1760Hz (A6) micro-ping (45ms crisp tactical 'tit')
       const osc = audioCtx.createOscillator();
       const gain = audioCtx.createGain();
       osc.type = 'sine';
-      osc.frequency.setValueAtTime(1450, now);
-      osc.frequency.exponentialRampToValueAtTime(800, now + 0.05);
+      osc.frequency.setValueAtTime(1760, now); // Constant crystal tone, no frequency slide
 
-      gain.gain.setValueAtTime(0.04, now); // Soft ambient cockpit presence
-      gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.08);
+      gain.gain.setValueAtTime(0.045, now);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.045);
 
       osc.connect(gain);
       gain.connect(audioCtx.destination);
       osc.start(now);
-      osc.stop(now + 0.09);
+      osc.stop(now + 0.05);
     }
 
     // 8. Cockpit Master Warning Emergency Pulsing Beep (Urgent BIP-BIP-BIP Alert)
