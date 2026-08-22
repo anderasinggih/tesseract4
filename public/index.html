@@ -46,6 +46,19 @@
       box-sizing: border-box;
       font-family: 'JetBrains Mono', monospace;
       -webkit-touch-callout: none;
+      -webkit-user-select: none;
+      -moz-user-select: none;
+      -ms-user-select: none;
+      user-select: none;
+      -webkit-user-drag: none;
+    }
+
+    /* Keep text selection enabled for input fields only */
+    input, textarea {
+      -webkit-user-select: text;
+      -moz-user-select: text;
+      -ms-user-select: text;
+      user-select: text;
     }
 
     body,
@@ -58,6 +71,8 @@
       color: var(--text-pure);
       position: fixed;
       inset: 0;
+      -webkit-user-select: none;
+      user-select: none;
     }
 
     #map-container, #threejs-overlay, #canvas-overlay {
