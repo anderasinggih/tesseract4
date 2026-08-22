@@ -1283,25 +1283,30 @@
         const btnChase = document.getElementById('btn-pov-chase');
         const btnOrbit = document.getElementById('btn-pov-orbit');
 
-        btnCockpit.style.background = mode === 'cockpit' ? '#333' : '#0a0a0a';
-        btnCockpit.style.borderColor = mode === 'cockpit' ? '#666' : '#333';
-        btnChase.style.background = mode === 'chase' ? '#333' : '#0a0a0a';
-        btnChase.style.borderColor = mode === 'chase' ? '#666' : '#333';
-        btnOrbit.style.background = mode === 'orbit' ? '#333' : '#0a0a0a';
-        btnOrbit.style.borderColor = mode === 'orbit' ? '#666' : '#333';
+        if (btnCockpit) {
+          btnCockpit.style.background = mode === 'cockpit' ? '#333' : '#0a0a0a';
+          btnCockpit.style.borderColor = mode === 'cockpit' ? '#666' : '#333';
+        }
+        if (btnChase) {
+          btnChase.style.background = mode === 'chase' ? '#333' : '#0a0a0a';
+          btnChase.style.borderColor = mode === 'chase' ? '#666' : '#333';
+        }
+        if (btnOrbit) {
+          btnOrbit.style.background = mode === 'orbit' ? '#333' : '#0a0a0a';
+          btnOrbit.style.borderColor = mode === 'orbit' ? '#666' : '#333';
+        }
 
-        if (mode === 'cockpit') {
-          // Cockpit Angle: View from cockpit/nose facing forward and tilted down to view horizon & earth
-          threeCamera.position.set(0, 1.4, 3.8);
-          threeCamera.lookAt(0, -0.6, -15);
-        } else if (mode === 'chase') {
-          // Tail Chase Camera
-          threeCamera.position.set(0, 5, -12);
-          threeCamera.lookAt(0, 0, 5);
-        } else if (mode === 'orbit') {
-          // Isometric 3D Orbit Camera
-          threeCamera.position.set(10, 8, 12);
-          threeCamera.lookAt(0, 0, 0);
+        if (threeCamera) {
+          if (mode === 'cockpit') {
+            threeCamera.position.set(0, 1.4, 3.8);
+            threeCamera.lookAt(0, -0.6, -15);
+          } else if (mode === 'chase') {
+            threeCamera.position.set(0, 5, -12);
+            threeCamera.lookAt(0, 0, 5);
+          } else if (mode === 'orbit') {
+            threeCamera.position.set(10, 8, 12);
+            threeCamera.lookAt(0, 0, 0);
+          }
         }
       };
 
