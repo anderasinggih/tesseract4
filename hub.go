@@ -113,37 +113,38 @@ func (h *ATCHub) addLog(logType, callsign, message string) {
 }
 
 func (h *ATCHub) spawnCommercialFlight() {
-	if len(GlobalMajorAirports) < 2 {
+	if len(GlobalOfficialFlightSchedules) == 0 {
 		return
 	}
-	origIdx := rand.Intn(len(GlobalMajorAirports))
-	destIdx := rand.Intn(len(GlobalMajorAirports))
-	if origIdx == destIdx {
-		destIdx = (origIdx + 1) % len(GlobalMajorAirports)
-	}
 
-	orig := GlobalMajorAirports[origIdx]
-	dest := GlobalMajorAirports[destIdx]
+	// Pick a real-world scheduled route
+	sched := GlobalOfficialFlightSchedules[rand.Intn(len(GlobalOfficialFlightSchedules))]
+	callsign := sched.Callsign
 
-	fleet := AirlineFleets[rand.Intn(len(AirlineFleets))]
-	flightNum := rand.Intn(890) + 100
-	callsign := fmt.Sprintf("%s%d", fleet.Prefix, flightNum)
-
-	// Avoid duplicate callsign
+	// Avoid duplicate active flights
 	if _, exists := h.aircraft[callsign]; exists {
 		return
 	}
 
-	acType := fleet.Types[rand.Intn(len(fleet.Types))]
+	// Lookup official origin and destination airports
+	var orig, dest *Airport
+	for _, apt := range GlobalMajorAirports {
+		if apt.ICAO == sched.Origin {
+			aptCopy := apt
+			orig = &aptCopy
+		}
+		if apt.ICAO == sched.Destination {
+			aptCopy := apt
+			dest = &aptCopy
+		}
+	}
+
+	if orig == nil || dest == nil {
+		return
+	}
+
 	squawk := fmt.Sprintf("%04d", rand.Intn(7000)+1000)
-
-	// Calculate initial heading towards destination
 	bearing := CalculateTrueBearing(orig.Coord, dest.Coord)
-
-	// Random initial flight level (FL240 to FL390)
-	flightLevels := []int{24000, 28000, 31000, 33000, 35000, 37000, 39000}
-	initialAlt := flightLevels[rand.Intn(len(flightLevels))]
-	speed := float64(rand.Intn(60) + 430) // 430 - 490 kts
 
 	// Determine starting sector
 	sectorID := "sec-wiii"
@@ -154,8 +155,8 @@ func (h *ATCHub) spawnCommercialFlight() {
 		}
 	}
 
-	// Slightly offset start coordinate along the path for immediate traffic spread
-	startFraction := rand.Float64() * 0.4
+	// Position aircraft along its authentic great-circle flight path
+	startFraction := rand.Float64() * 0.85
 	startCoord := GeoCoord{
 		Lat: orig.Coord.Lat + (dest.Coord.Lat-orig.Coord.Lat)*startFraction,
 		Lng: orig.Coord.Lng + (dest.Coord.Lng-orig.Coord.Lng)*startFraction,
@@ -163,18 +164,18 @@ func (h *ATCHub) spawnCommercialFlight() {
 
 	h.aircraft[callsign] = &Aircraft{
 		Callsign:       callsign,
-		Airline:        fleet.Airline,
-		AircraftType:   acType,
+		Airline:        sched.Airline,
+		AircraftType:   sched.AircraftType,
 		Squawk:         squawk,
 		Origin:         orig.ICAO,
 		Destination:    dest.ICAO,
 		Coord:          startCoord,
-		Altitude:       initialAlt,
-		TargetAltitude: initialAlt,
+		Altitude:       sched.CruiseFL,
+		TargetAltitude: sched.CruiseFL,
 		Heading:        bearing,
 		TargetHeading:  bearing,
-		Speed:          speed,
-		TargetSpeed:    speed,
+		Speed:          float64(sched.CruiseSpeed),
+		TargetSpeed:    float64(sched.CruiseSpeed),
 		SectorID:       sectorID,
 		HandoffState:   "NONE",
 		ConflictAlert:  false,
