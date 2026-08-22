@@ -1518,31 +1518,39 @@
 
     // ── WASD Flight Controls (active only in POV mode) ──────────────────────
     // W = Climb +1000ft  |  S = Descend -1000ft
-    // A = Turn Left -5°  |  D = Turn Right +5°
+    // A = Turn Left -3°  |  D = Turn Right +3°  (per 120ms tick → ~25°/sec)
     const wasdHeld = {};
     let wasdInterval = null;
+    // Local command state — incremented every tick, independent of server update rate
+    let wasdCmdHeading  = null;
+    let wasdCmdAltitude = null;
 
     function applyWASD() {
       if (!mapCockpitPOVEnabled || !selectedCallsign || !currentPayload || !ws || ws.readyState !== WebSocket.OPEN) return;
       const ac = currentPayload.aircraft && currentPayload.aircraft.find(a => a.callsign === selectedCallsign);
       if (!ac) return;
 
-      // Read LIVE aircraft values — never touch the slider, no sound spam
+      // Sync from real aircraft on first call (then keep incrementing locally)
+      if (wasdCmdHeading  === null) wasdCmdHeading  = ac.heading;
+      if (wasdCmdAltitude === null) wasdCmdAltitude = ac.altitude;
+
+      // Turn left / right — increment local cmd each tick, send continuously
       if (wasdHeld['a'] || wasdHeld['A']) {
-        const nextHdg = (ac.heading - 3 + 360) % 360; // turn left 3°/tick
-        ws.send(JSON.stringify({ type: 'set_heading', callsign: selectedCallsign, heading: nextHdg }));
+        wasdCmdHeading = (wasdCmdHeading - 3 + 360) % 360;
+        ws.send(JSON.stringify({ type: 'set_heading', callsign: selectedCallsign, heading: wasdCmdHeading }));
       }
       if (wasdHeld['d'] || wasdHeld['D']) {
-        const nextHdg = (ac.heading + 3 + 360) % 360; // turn right 3°/tick
-        ws.send(JSON.stringify({ type: 'set_heading', callsign: selectedCallsign, heading: nextHdg }));
+        wasdCmdHeading = (wasdCmdHeading + 3 + 360) % 360;
+        ws.send(JSON.stringify({ type: 'set_heading', callsign: selectedCallsign, heading: wasdCmdHeading }));
       }
+      // Climb / descend
       if (wasdHeld['w'] || wasdHeld['W']) {
-        const nextAlt = Math.min(43000, ac.altitude + 500); // climb 500ft/tick
-        ws.send(JSON.stringify({ type: 'set_altitude', callsign: selectedCallsign, altitude: nextAlt }));
+        wasdCmdAltitude = Math.min(43000, wasdCmdAltitude + 500);
+        ws.send(JSON.stringify({ type: 'set_altitude', callsign: selectedCallsign, altitude: wasdCmdAltitude }));
       }
       if (wasdHeld['s'] || wasdHeld['S']) {
-        const nextAlt = Math.max(1000, ac.altitude - 500); // descend 500ft/tick
-        ws.send(JSON.stringify({ type: 'set_altitude', callsign: selectedCallsign, altitude: nextAlt }));
+        wasdCmdAltitude = Math.max(1000, wasdCmdAltitude - 500);
+        ws.send(JSON.stringify({ type: 'set_altitude', callsign: selectedCallsign, altitude: wasdCmdAltitude }));
       }
     }
 
@@ -1565,6 +1573,9 @@
       if (!Object.keys(wasdHeld).length && wasdInterval) {
         clearInterval(wasdInterval);
         wasdInterval = null;
+        // Reset local cmd so next keypress re-syncs to actual aircraft state
+        wasdCmdHeading  = null;
+        wasdCmdAltitude = null;
       }
     });
     // ─────────────────────────────────────────────────────────────────────────
