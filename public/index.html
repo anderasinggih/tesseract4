@@ -853,15 +853,6 @@
             ],
             tileSize: 256,
             attribution: '© ESRI, Maxar, Earthstar Geographics'
-          },
-          'nasa-night': {
-            type: 'raster',
-            tiles: [
-              'https://map1.vis.earthdata.nasa.gov/wmts-webmerc/VIIRS_Black_Marble/default/GoogleMapsCompatible_Level8/{z}/{y}/{x}.jpg'
-            ],
-            tileSize: 256,
-            maxzoom: 8,
-            attribution: '© NASA Earthdata VIIRS Black Marble'
           }
         },
         layers: [
@@ -871,17 +862,6 @@
             source: 'esri-satellite',
             minzoom: 0,
             maxzoom: 19
-          },
-          {
-            id: 'nasa-night-layer',
-            type: 'raster',
-            source: 'nasa-night',
-            minzoom: 0,
-            maxzoom: 8,
-            paint: {
-              'raster-opacity': 0.75,
-              'raster-resampling': 'linear'
-            }
           }
         ]
       }
@@ -1128,15 +1108,15 @@
       // Wireframe Flight Horizon Ground Grid
       const gridHelper = new THREE.GridHelper(60, 30, 0x333333, 0x181818);
       gridHelper.position.y = -4;
-      threeScene.add(gridHelper);
+      if (threeScene) threeScene.add(gridHelper);
       earthGrid = gridHelper;
 
       // Lights
       const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
-      threeScene.add(ambientLight);
+      if (threeScene) threeScene.add(ambientLight);
       const dirLight = new THREE.DirectionalLight(0xffffff, 1.2);
       dirLight.position.set(10, 20, 10);
-      threeScene.add(dirLight);
+      if (threeScene) threeScene.add(dirLight);
 
       // Ultra-Realistic 3D Jet Airliner Geometry (Boeing / Airbus Standard)
       const planeGroup = new THREE.Group();
@@ -1224,6 +1204,11 @@
       planeGroup.add(engL);
       planeGroup.add(engR);
 
+      if (threeScene) {
+        threeScene.add(planeGroup);
+        plane3DMesh = planeGroup;
+      }
+
       // Load User's Official 11803_Airplane_v1_l1.gltf 3D Model
       if (window.THREE && THREE.GLTFLoader) {
         const loader = new THREE.GLTFLoader();
@@ -1270,6 +1255,9 @@
 
             // Clone to Fullscreen 3D Map Overlay
             if (fullPlaneGroup) {
+              while (fullPlaneGroup.children.length > 0) {
+                fullPlaneGroup.remove(fullPlaneGroup.children[0]);
+              }
               const fullModel = loadedModel.clone();
               fullModel.scale.set(scaleFactor * 1.5, scaleFactor * 1.5, scaleFactor * 1.5);
               fullModel.position.set(0, -1.2, 0); // Positioned comfortably in forward view
@@ -1286,9 +1274,6 @@
           }
         );
       }
-
-      threeScene.add(planeGroup);
-      plane3DMesh = planeGroup;
 
       let currentPOVMode = 'cockpit'; // 'cockpit', 'chase', 'orbit'
 
