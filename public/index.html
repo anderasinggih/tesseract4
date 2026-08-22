@@ -931,10 +931,18 @@
     const ctx = canvas.getContext('2d');
 
     function resizeCanvas() {
-      canvas.width = window.innerWidth;
-      canvas.height = window.innerHeight;
+      const w = window.innerWidth;
+      const h = window.innerHeight;
+      canvas.width = w;
+      canvas.height = h;
+      if (typeof map !== 'undefined' && map && map.resize) {
+        map.resize();
+      }
     }
     window.addEventListener('resize', resizeCanvas);
+    window.addEventListener('orientationchange', () => {
+      setTimeout(resizeCanvas, 150);
+    });
     resizeCanvas();
 
     // 2. Three.js 3D Aircraft Chase Camera
@@ -982,10 +990,16 @@
         fullPlaneGroup = new THREE.Group();
         fullThreeScene.add(fullPlaneGroup);
 
-        window.addEventListener('resize', () => {
-          fullThreeCamera.aspect = window.innerWidth / window.innerHeight;
+        const update3DOverlaySize = () => {
+          const w = window.innerWidth;
+          const h = window.innerHeight;
+          fullThreeCamera.aspect = w / h;
           fullThreeCamera.updateProjectionMatrix();
-          fullThreeRenderer.setSize(window.innerWidth, window.innerHeight);
+          fullThreeRenderer.setSize(w, h);
+        };
+        window.addEventListener('resize', update3DOverlaySize);
+        window.addEventListener('orientationchange', () => {
+          setTimeout(update3DOverlaySize, 150);
         });
       }
 
