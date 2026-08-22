@@ -1866,7 +1866,7 @@
                 currentPayload.aircraft.forEach(otherAc => {
                   if (otherAc.callsign === selectedCallsign) return;
 
-                  // Compute lateral distance in Nautical Miles
+                  // Compute real Great-Circle distance and bearing from player aircraft to other aircraft
                   const lat1 = ac.coord.lat * (Math.PI / 180.0);
                   const lon1 = ac.coord.lng * (Math.PI / 180.0);
                   const lat2 = otherAc.coord.lat * (Math.PI / 180.0);
@@ -1882,32 +1882,32 @@
 
                   // Render other aircraft if within current visual horizon
                   if (distNM < maxVisualNM) {
-                    // Compute absolute bearing from player to other plane
+                    // True compass bearing from player aircraft to the other aircraft (0-360)
                     const y = Math.sin(dLon) * Math.cos(lat2);
                     const x = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLon);
-                    let bearingToOther = Math.atan2(y, x) * (180.0 / Math.PI);
-                    if (bearingToOther < 0) bearingToOther += 360;
+                    let trueBearing = Math.atan2(y, x) * (180.0 / Math.PI);
+                    if (trueBearing < 0) trueBearing += 360;
 
-                    // Relative angle relative to player aircraft forward nose heading
-                    let relAngleDeg = (bearingToOther - (currentCamHeading || 0) + 360) % 360;
+                    // Relative bearing angle from player's current camera compass heading (0 = directly ahead, 90 = right, 180 = behind, 270 = left)
+                    let relAngleDeg = (trueBearing - (currentCamHeading || 0) + 360) % 360;
                     const relAngleRad = relAngleDeg * (Math.PI / 180.0);
 
-                    // Dynamic distance in 3D scene scaled with real zoom level (staying locked on coordinates)
+                    // Physical 3D distance in screen coordinates (forward along camera is -Z, right is +X)
                     const sceneDist = distNM * 2.5 * currentActualScale;
                     const relX = Math.sin(relAngleRad) * sceneDist;
-                    const relZ = -Math.cos(relAngleRad) * sceneDist; // Forward is -Z
+                    const relZ = -Math.cos(relAngleRad) * sceneDist;
 
-                    // Altitude delta scaled proportionally
+                    // Real flight altitude delta (1000 ft ≈ 0.5 units) scaled to map zoom
                     const altDeltaFt = (otherAc.altitude - ac.altitude);
                     const relY = (altDeltaFt / 1000.0) * 0.5 * currentActualScale;
 
-                    // Create container for traffic aircraft at correct relative offset
+                    // Container positioned in camera coordinate frame
                     const trafficContainer = new THREE.Group();
                     trafficContainer.position.set(relX, relY, relZ);
 
-                    // True heading rotation in 3D scene (relative to own aircraft forward axis)
-                    const relHdgDeg = (otherAc.heading - currentCamHeading + 360) % 360;
-                    trafficContainer.rotation.y = (relHdgDeg * Math.PI) / 180.0;
+                    // Clockwise angle in Three.js (Y rotation is counter-clockwise, so negate)
+                    const relHeadingDeg = (otherAc.heading - (currentCamHeading || 0) + 360) % 360;
+                    trafficContainer.rotation.y = -(relHeadingDeg * (Math.PI / 180.0));
 
                     // Clone 3D plane mesh
                     const otherModel = window.trafficPlaneModelTemplate.clone();
