@@ -681,20 +681,20 @@
 
       // Fullscreen 3D Overlay Renderer for Main Cockpit Map View
       const fullOverlayContainer = document.getElementById('threejs-overlay');
-      let fullThreeRenderer, fullThreeScene, fullThreeCamera, fullPlaneGroup;
+      let fullThreeRenderer, fullThreeScene, fullThreeCamera, fullPlaneGroup, fullAmbient, fullDir;
       if (fullOverlayContainer) {
         fullThreeScene = new THREE.Scene();
         fullThreeCamera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
-        fullThreeCamera.position.set(0, 5, -14); // Positioned right behind and above the cockpit
-        fullThreeCamera.lookAt(0, -0.5, 10);
+        fullThreeCamera.position.set(0, 4.5, 13.5); // Positioned behind and looking forward over plane
+        fullThreeCamera.lookAt(0, 0, -10);
 
         fullThreeRenderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
         fullThreeRenderer.setSize(window.innerWidth, window.innerHeight);
         fullOverlayContainer.appendChild(fullThreeRenderer.domElement);
 
-        const fullAmbient = new THREE.AmbientLight(0xffffff, 1.2);
+        fullAmbient = new THREE.AmbientLight(0xffffff, 0.4); // Adaptive Day/Night Ambient Light
         fullThreeScene.add(fullAmbient);
-        const fullDir = new THREE.DirectionalLight(0xffffff, 1.5);
+        fullDir = new THREE.DirectionalLight(0xffeedd, 0.6); // Sunlight / Moonlight
         fullDir.position.set(5, 15, 10);
         fullThreeScene.add(fullDir);
 
@@ -830,15 +830,17 @@
             const scaleFactor = 9.0 / (maxDim || 1.0);
             loadedModel.scale.set(scaleFactor, scaleFactor, scaleFactor);
 
-            // Rotate orientation if needed (ensure nose faces -Z forward)
-            loadedModel.rotation.x = -Math.PI / 2;
+            // Rotate orientation: 11803_Airplane model raw orientation fix -> Nose faces directly forward (-Z)
+            loadedModel.rotation.set(-Math.PI / 2, 0, Math.PI);
 
-            // Ensure materials are visible and double-sided
+            // Ensure materials are visible and double-sided with realistic metalness
             loadedModel.traverse((child) => {
               if (child.isMesh) {
                 child.material.side = THREE.DoubleSide;
-                child.castShadow = true;
-                child.receiveShadow = true;
+                if (child.material) {
+                  child.material.roughness = 0.4;
+                  child.material.metalness = 0.3;
+                }
               }
             });
             
@@ -851,8 +853,8 @@
             // Clone to Fullscreen 3D Map Overlay
             if (fullPlaneGroup) {
               const fullModel = loadedModel.clone();
-              fullModel.scale.set(scaleFactor * 1.6, scaleFactor * 1.6, scaleFactor * 1.6);
-              fullModel.position.set(0, -1.8, 0); // Positioned nicely right in front of camera
+              fullModel.scale.set(scaleFactor * 1.5, scaleFactor * 1.5, scaleFactor * 1.5);
+              fullModel.position.set(0, -1.2, 0); // Positioned comfortably in forward view
               fullPlaneGroup.add(fullModel);
             }
           },
@@ -921,6 +923,45 @@
             // Subtle aerodynamic bank roll
             fullPlaneGroup.rotation.z = Math.sin(Date.now() * 0.0018) * 0.03;
           }
+
+          // Dynamic Day/Night Lighting Adaptation based on Selected Aircraft Longitude
+          if (selectedCallsign && currentPayload && currentPayload.aircraft && fullAmbient && fullDir) {
+            const ac = currentPayload.aircraft.find(a => a.callsign === selectedCallsign);
+            if (ac) {
+              const now = new Date();
+              const utcHours = now.getUTCHours() + now.getUTCMinutes() / 60.0;
+              const sunLng = (12.0 - utcHours) * 15.0;
+              
+              // Angle between plane longitude and sun meridian (-180 to 180)
+              let diffLng = Math.abs(ac.coord.lng - sunLng);
+              if (diffLng > 180) diffLng = 360 - diffLng;
+
+              // Is Day (> 90 deg from sun is Night)
+              const isDay = diffLng < 85;
+              const isTwilight = diffLng >= 85 && diffLng <= 105;
+
+              if (isDay) {
+                // Daytime: Clear natural sunlight
+                fullAmbient.intensity = 0.55;
+                fullAmbient.color.setHex(0xffffff);
+                fullDir.intensity = 0.85;
+                fullDir.color.setHex(0xfffaed);
+              } else if (isTwilight) {
+                // Golden hour / Sunset
+                fullAmbient.intensity = 0.38;
+                fullAmbient.color.setHex(0xffaa66);
+                fullDir.intensity = 0.5;
+                fullDir.color.setHex(0xff8833);
+              } else {
+                // Nighttime: Deep cinematic moonlight (dim, sleek)
+                fullAmbient.intensity = 0.18;
+                fullAmbient.color.setHex(0x557799);
+                fullDir.intensity = 0.22;
+                fullDir.color.setHex(0x6688aa);
+              }
+            }
+          }
+
           fullThreeRenderer.render(fullThreeScene, fullThreeCamera);
         }
       }
