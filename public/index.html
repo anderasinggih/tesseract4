@@ -1083,10 +1083,34 @@
         fullPlaneGroup = new THREE.Group();
         fullThreeScene.add(fullPlaneGroup);
 
+        // Instant Procedural Jet Airliner Fallback for Fullscreen Overlay (Zero-wait render)
+        const fallbackBodyGeo = new THREE.CylinderGeometry(0.7, 0.45, 12, 32);
+        fallbackBodyGeo.rotateX(Math.PI / 2);
+        const fallbackBodyMat = new THREE.MeshStandardMaterial({ color: 0xf0f0f0, metalness: 0.4, roughness: 0.3 });
+        const fallbackFuselage = new THREE.Mesh(fallbackBodyGeo, fallbackBodyMat);
+        const fallbackPlaneGroup = new THREE.Group();
+        fallbackPlaneGroup.add(fallbackFuselage);
+
+        const fallbackNoseGeo = new THREE.ConeGeometry(0.7, 2.5, 32);
+        fallbackNoseGeo.rotateX(-Math.PI / 2);
+        const fallbackNose = new THREE.Mesh(fallbackNoseGeo, fallbackBodyMat);
+        fallbackNose.position.set(0, 0, 7.2);
+        fallbackPlaneGroup.add(fallbackNose);
+
+        const fallbackWingGeo = new THREE.BoxGeometry(14, 0.12, 3.2);
+        const fallbackWings = new THREE.Mesh(fallbackWingGeo, fallbackBodyMat);
+        fallbackWings.position.set(0, 0, 0.5);
+        fallbackPlaneGroup.add(fallbackWings);
+
+        fallbackPlaneGroup.scale.set(0.6, 0.6, 0.6);
+        fallbackPlaneGroup.position.set(0, -1.2, 0);
+        fullPlaneGroup.add(fallbackPlaneGroup);
+
         // Group to hold nearby surrounding 3D aircraft models in visual range (< 50 NM)
         window.trafficAircraftGroup = new THREE.Group();
         fullThreeScene.add(window.trafficAircraftGroup);
-        window.trafficPlaneModelTemplate = null;
+        window.trafficPlaneModelTemplate = fallbackPlaneGroup.clone();
+        window.trafficPlaneScaleFactor = 1.0;
 
         const update3DOverlaySize = () => {
           const w = window.innerWidth;
