@@ -1795,18 +1795,18 @@
           if (selectedCallsign && currentPayload && currentPayload.aircraft) {
             const ac = currentPayload.aircraft.find(a => a.callsign === selectedCallsign);
             if (ac && fullPlaneGroup) {
-              // Upright level cruise attitude (-0.15 nose-up offset to keep aircraft perfectly upright & level)
+              // Upright level cruise attitude (+0.28 nose-up offset to lift the nose upright)
               const isClimbing = ac.targetAltitude > ac.altitude + 300;
               const isDescending = ac.targetAltitude < ac.altitude - 300;
               let pitchOffset = 0;
-              if (isClimbing) pitchOffset = -0.06;   // Nose up
-              if (isDescending) pitchOffset = +0.06; // Nose down
+              if (isClimbing) pitchOffset = +0.06;   // Nose up
+              if (isDescending) pitchOffset = -0.06; // Nose down
 
               // Banking roll when turning
               let hdgDiff = (ac.targetHeading - ac.heading + 540) % 360 - 180;
               let bankRoll = Math.max(-0.25, Math.min(0.25, -hdgDiff * 0.02));
 
-              fullPlaneGroup.rotation.x = -0.15 + pitchOffset;
+              fullPlaneGroup.rotation.x = +0.28 + pitchOffset;
               fullPlaneGroup.rotation.y = 0;
               fullPlaneGroup.rotation.z = bankRoll + Math.sin(Date.now() * 0.001) * 0.008; // Natural air turbulence roll
               fullPlaneGroup.position.set(0, 0, 0); // 100% Dead Center on screen
