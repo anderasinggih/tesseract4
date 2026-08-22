@@ -1901,22 +1901,29 @@
                     const trafficContainer = new THREE.Group();
                     trafficContainer.position.set(relX, relY, relZ);
 
-                    // Compute level-cruise pitch (same +0.28 as player aircraft) and climb/descent offset
+                    // Pitch: same +0.28 level-cruise attitude as player aircraft (+ climb/descent offsets)
                     const otherIsClimbing   = otherAc.targetAltitude > otherAc.altitude + 300;
                     const otherIsDescending = otherAc.targetAltitude < otherAc.altitude - 300;
                     let otherPitchOffset = 0;
                     if (otherIsClimbing)   otherPitchOffset = +0.06;
                     if (otherIsDescending) otherPitchOffset = -0.06;
 
-                    // CRITICAL: Use Euler order 'YXZ' so:
-                    //   1. rotation.y = heading (applied first, in world Y — correct compass direction)
-                    //   2. rotation.x = pitch   (applied second, around world X — SAME axis as player's fullPlaneGroup.rotation.x)
-                    // This guarantees pitch is identical to the player aircraft for ALL headings (head-on, crossing, trailing).
-                    // Without YXZ, the pitch applied in local X becomes a roll for 90°/270° headings and inverts for 180°.
+                    // Heading math:
+                    // The GLTF model's baked rotation (Rx(-π/2)*Rz(+π/2)) already makes nose point in -Z
+                    // when trafficContainer.rotation.y = 0 (same as player aircraft looking forward).
+                    // Euler XYZ order matrix = Ry(y) * Rx(x):
+                    //   rotation.x = pitch is applied first (in local X = world X when y=0)
+                    //   rotation.y = heading rotates the already-pitched nose to correct compass direction
+                    // Formula: rotation.y = -relHeadingDeg * π/180  (no offset needed)
+                    //   relHdg=0   → rotation.y=0   → nose in -Z (same dir as player) → we see back    ✓
+                    //   relHdg=90  → rotation.y=-π/2 → nose in +X (East/right)                         ✓
+                    //   relHdg=180 → rotation.y=-π   → nose in +Z (toward camera, head-on)             ✓
+                    //   relHdg=270 → rotation.y=-3π/2→ nose in -X (West/left)                          ✓
                     const relHeadingDeg = (otherAc.heading - (currentCamHeading || 0) + 360) % 360;
-                    trafficContainer.rotation.order = 'YXZ';
-                    trafficContainer.rotation.y = (90 - relHeadingDeg) * (Math.PI / 180.0);
+                    trafficContainer.rotation.order = 'XYZ'; // default - pitch (X) applied before heading (Y)
                     trafficContainer.rotation.x = +0.28 + otherPitchOffset;
+                    trafficContainer.rotation.y = -relHeadingDeg * (Math.PI / 180.0);
+                    trafficContainer.rotation.z = 0;
 
                     // Clone 3D plane mesh
                     const otherModel = window.trafficPlaneModelTemplate.clone();
@@ -1933,8 +1940,6 @@
                           child.material.emissiveIntensity = 0.85;
                         }
                       });
-
-                      // Add Tactical HUD Target Box around surrounding aircraft
                       const boxGeo = new THREE.BoxGeometry(7.5 * trafficScale, 2.8 * trafficScale, 7.5 * trafficScale);
                       const boxEdges = new THREE.EdgesGeometry(boxGeo);
                       const boxMat = new THREE.LineBasicMaterial({ color: 0x00ff88, linewidth: 1.5 });
