@@ -1037,6 +1037,8 @@
 
     // 2. Three.js 3D Aircraft Chase Camera
     let threeScene, threeCamera, threeRenderer, plane3DMesh, earthGrid;
+    let fullThreeRenderer, fullThreeScene, fullThreeCamera, fullPlaneGroup, fullAmbient, fullDir;
+
     function init3DView() {
       const container = document.getElementById('view-3d-canvas');
       if (container) {
@@ -1057,7 +1059,6 @@
 
       // Fullscreen 3D Overlay Renderer for Main Cockpit Map View
       const fullOverlayContainer = document.getElementById('threejs-overlay');
-      let fullThreeRenderer, fullThreeScene, fullThreeCamera, fullPlaneGroup, fullAmbient, fullDir;
       if (fullOverlayContainer) {
         fullThreeScene = new THREE.Scene();
         fullThreeCamera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
