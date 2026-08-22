@@ -2133,11 +2133,9 @@
               if (isDescending) pitchOffset = -0.06; // Nose down
 
               // Smoothly interpolated banking roll & pitch for authentic aerodynamic flight
-              let targetHdgDiff = (ac.targetHeading - ac.heading + 540) % 360 - 180;
-              let targetBankRoll = Math.max(-0.30, Math.min(0.30, -targetHdgDiff * 0.025));
-
+              const backendRollRad = ((ac.roll || 0) * Math.PI / 180.0);
               if (typeof currentPlaneBankRoll === 'undefined') window.currentPlaneBankRoll = 0;
-              window.currentPlaneBankRoll += (targetBankRoll - window.currentPlaneBankRoll) * 0.08;
+              window.currentPlaneBankRoll += (backendRollRad - window.currentPlaneBankRoll) * 0.25;
 
               // ─── USER CALIBRATION ROTATION & SCALE (Ubah nilai di sini) ───
               // Ganti angka di bawah ini untuk merotasi pesawat & floor grid bersamaan:
@@ -2146,14 +2144,13 @@
               const USER_CALIBRATION_ROLL_Z = 0.0; // Rotasi Z: Roll / Miring Sayap
               const USER_PLANE_SCALE_MULTIPLIER = 0.85; // Skala ukuran seimbang & proporsional
 
-              // ── WASD Visual Animation (GTA-style pitch & bank lerp) ────────
-              // Target pitch/roll from WASD state, smoothly interpolated each frame
-              const WASD_LERP = 0.08;
+              // ── WASD Visual Animation (GTA-style instant pitch & bank lerp) ────────
+              const WASD_LERP = 0.25;
               let wasdPitchTarget = 0, wasdRollTarget = 0;
               if (wasdHeld['w'] || wasdHeld['W']) wasdPitchTarget = +0.22;  // nose up
               if (wasdHeld['s'] || wasdHeld['S']) wasdPitchTarget = -0.22;  // nose down
-              if (wasdHeld['a'] || wasdHeld['A']) wasdRollTarget  = +0.30;  // bank left
-              if (wasdHeld['d'] || wasdHeld['D']) wasdRollTarget  = -0.30;  // bank right
+              if (wasdHeld['a'] || wasdHeld['A']) wasdRollTarget  = +0.35;  // bank left
+              if (wasdHeld['d'] || wasdHeld['D']) wasdRollTarget  = -0.35;  // bank right
               window.wasdVisPitch = ((window.wasdVisPitch || 0) + (wasdPitchTarget - (window.wasdVisPitch || 0)) * WASD_LERP);
               window.wasdVisRoll  = ((window.wasdVisRoll  || 0) + (wasdRollTarget  - (window.wasdVisRoll  || 0)) * WASD_LERP);
               // ───────────────────────────────────────────────────────────────
