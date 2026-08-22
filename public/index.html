@@ -52,38 +52,36 @@
     html {
       width: 100%;
       height: 100%;
+      height: 100dvh;
       overflow: hidden;
       background: var(--bg-black);
       color: var(--text-pure);
+      position: fixed;
+      inset: 0;
     }
 
-    #map-container {
+    #map-container, #threejs-overlay, #canvas-overlay {
       position: absolute;
       top: 0;
       left: 0;
       width: 100vw;
+      width: 100dvw;
       height: 100vh;
+      height: 100dvh;
+    }
+
+    #map-container {
       z-index: 1;
       background: #000000;
     }
 
     #threejs-overlay {
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100vw;
-      height: 100vh;
       pointer-events: none;
       z-index: 2;
       display: none;
     }
 
     #canvas-overlay {
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100vw;
-      height: 100vh;
       pointer-events: none;
       z-index: 3;
     }
@@ -97,11 +95,12 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
-      padding: 10px 16px;
-      background: var(--panel-bg);
-      border: 1px solid var(--border-line);
-      border-radius: 4px;
-      backdrop-filter: blur(8px);
+      padding: 8px 14px;
+      background: rgba(10, 10, 10, 0.65);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 6px;
+      backdrop-filter: blur(16px) saturate(180%);
+      -webkit-backdrop-filter: blur(16px) saturate(180%);
       z-index: 10;
     }
 
@@ -112,16 +111,16 @@
     }
 
     .brand-title {
-      font-size: 12px;
+      font-size: 11px;
       font-weight: 800;
       letter-spacing: 1.5px;
       color: #ffffff;
     }
 
     .brand-tag {
-      font-size: 9px;
+      font-size: 8.5px;
       padding: 2px 6px;
-      background: #1a1a1a;
+      background: rgba(25, 25, 25, 0.6);
       border: 1px solid #333333;
       border-radius: 2px;
       color: var(--text-dim);
@@ -155,10 +154,11 @@
     /* Glass Panels */
     .glass-deck {
       position: absolute;
-      background: var(--panel-bg);
-      border: 1px solid var(--border-line);
-      border-radius: 4px;
-      backdrop-filter: blur(8px);
+      background: rgba(10, 10, 10, 0.65);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 6px;
+      backdrop-filter: blur(20px) saturate(180%);
+      -webkit-backdrop-filter: blur(20px) saturate(180%);
       z-index: 10;
       padding: 14px;
     }
@@ -168,7 +168,7 @@
       top: 66px;
       left: 12px;
       width: 320px;
-      max-height: calc(100vh - 80px);
+      max-height: calc(100dvh - 80px);
       overflow-y: auto;
     }
 
@@ -188,8 +188,8 @@
 
     .mission-box {
       padding: 8px 10px;
-      background: #111111;
-      border: 1px solid #282828;
+      background: rgba(0, 0, 0, 0.4);
+      border: 1px solid rgba(255, 255, 255, 0.08);
       border-radius: 3px;
       margin-bottom: 12px;
       font-size: 9.5px;
@@ -216,8 +216,8 @@
     .form-input {
       width: 100%;
       padding: 7px 9px;
-      background: #000000;
-      border: 1px solid var(--border-line);
+      background: rgba(0, 0, 0, 0.6);
+      border: 1px solid rgba(255, 255, 255, 0.15);
       border-radius: 3px;
       color: #ffffff;
       font-size: 11px;
@@ -225,7 +225,7 @@
     }
 
     .form-input:focus {
-      border-color: #555555;
+      border-color: #777777;
     }
 
     .btn-action {
@@ -236,44 +236,44 @@
       letter-spacing: 0.5px;
       border-radius: 3px;
       cursor: pointer;
-      border: 1px solid #333333;
-      background: #161616;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      background: rgba(25, 25, 25, 0.7);
       color: #ffffff;
       transition: background 0.15s, border-color 0.15s;
       text-transform: uppercase;
     }
 
     .btn-action:hover {
-      background: #252525;
-      border-color: #666666;
+      background: rgba(45, 45, 45, 0.85);
+      border-color: #888888;
     }
 
     .btn-amber {
-      background: #1c1505;
+      background: rgba(45, 30, 0, 0.75);
       border-color: var(--accent-amber);
       color: var(--accent-amber);
     }
 
     .btn-amber:hover {
-      background: #2e2208;
+      background: rgba(65, 45, 0, 0.9);
     }
 
     .btn-green {
-      background: #051c0e;
+      background: rgba(0, 45, 20, 0.75);
       border-color: var(--accent-green);
       color: var(--accent-green);
     }
 
     .btn-green:hover {
-      background: #092e18;
+      background: rgba(0, 65, 30, 0.9);
     }
 
     /* Selected Flight Strip Box */
     #flight-strip-box {
       margin-top: 10px;
       padding: 10px;
-      background: #0a0a0a;
-      border: 1px solid var(--border-line);
+      background: rgba(0, 0, 0, 0.5);
+      border: 1px solid rgba(255, 255, 255, 0.1);
       border-radius: 3px;
     }
 
@@ -282,7 +282,7 @@
       top: 66px;
       right: 12px;
       width: 350px;
-      max-height: calc(100vh - 80px);
+      max-height: calc(100dvh - 80px);
       display: flex;
       flex-direction: column;
       gap: 10px;
@@ -293,8 +293,8 @@
       position: relative;
       width: 100%;
       height: 180px;
-      background: #000000;
-      border: 1px solid var(--border-line);
+      background: rgba(0, 0, 0, 0.6);
+      border: 1px solid rgba(255, 255, 255, 0.12);
       border-radius: 3px;
       overflow: hidden;
     }
@@ -319,7 +319,7 @@
 
     #handoff-banner {
       display: none;
-      background: #1c1505;
+      background: rgba(45, 30, 0, 0.85);
       border: 1px solid var(--accent-amber);
       border-radius: 3px;
       padding: 8px 10px;
@@ -336,14 +336,14 @@
       display: flex;
       justify-content: space-between;
       padding: 4px 6px;
-      background: #0d0d0d;
-      border: 1px solid #1a1a1a;
+      background: rgba(15, 15, 15, 0.6);
+      border: 1px solid rgba(255, 255, 255, 0.08);
       border-radius: 2px;
     }
 
     #radio-stream {
-      background: #000000;
-      border: 1px solid var(--border-line);
+      background: rgba(0, 0, 0, 0.5);
+      border: 1px solid rgba(255, 255, 255, 0.1);
       border-radius: 3px;
       padding: 8px 10px;
       height: 140px;
@@ -390,48 +390,48 @@
 
     /* HUD Toggle Button */
     #btn-hud-toggle {
-      padding: 5px 12px;
-      font-size: 9px;
+      padding: 5px 10px;
+      font-size: 8.5px;
       font-weight: 800;
       letter-spacing: 0.5px;
-      border-radius: 3px;
+      border-radius: 4px;
       cursor: pointer;
-      border: 1px solid #444;
-      background: #1a1a1a;
-      color: #aaa;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      background: rgba(25, 25, 25, 0.7);
+      color: #ccc;
       text-transform: uppercase;
       transition: all 0.15s;
       white-space: nowrap;
     }
 
     #btn-hud-toggle:hover {
-      background: #2a2a2a;
+      background: rgba(45, 45, 45, 0.85);
       color: #fff;
-      border-color: #666;
+      border-color: #888;
     }
 
     #btn-hud-toggle.hud-off {
       border-color: var(--accent-amber);
       color: var(--accent-amber);
-      background: #1c1505;
+      background: rgba(45, 30, 0, 0.8);
     }
 
-    /* Mobile Responsive Overhaul */
-    @media (max-width: 768px) {
+    /* Mobile Responsive Overhaul (Portrait & Landscape) */
+    @media (max-width: 900px) {
       /* Sleek Translucent Frosted Glass Top Bar */
       #top-bar {
-        padding: 5px 8px;
+        padding: 4px 6px;
         top: 6px;
         left: 6px;
         right: 6px;
         display: flex;
         align-items: center;
         justify-content: space-between;
-        gap: 4px;
-        border-radius: 8px;
+        gap: 3px;
+        border-radius: 6px;
         background: rgba(10, 10, 10, 0.45) !important;
-        backdrop-filter: blur(16px) saturate(180%) !important;
-        -webkit-backdrop-filter: blur(16px) saturate(180%) !important;
+        backdrop-filter: blur(20px) saturate(180%) !important;
+        -webkit-backdrop-filter: blur(20px) saturate(180%) !important;
         border: 1px solid rgba(255, 255, 255, 0.1) !important;
       }
 
@@ -442,8 +442,9 @@
       }
 
       .brand-title {
-        font-size: 8.5px;
+        font-size: 8px;
         letter-spacing: 0.5px;
+        font-weight: 800;
       }
 
       .brand-tag {
@@ -461,36 +462,30 @@
         margin-left: 2px !important;
       }
 
-      #btn-style-satellite, #btn-style-dark, #btn-map-pov {
+      .btn-nav-compact {
         padding: 3px 5px !important;
-        font-size: 7px !important;
+        font-size: 7.5px !important;
         background: rgba(20, 20, 20, 0.6) !important;
+        border-radius: 3px !important;
       }
 
-      #btn-fullscreen, #btn-hud-toggle {
-        padding: 3px 6px !important;
-        font-size: 7px !important;
-        background: rgba(20, 20, 20, 0.6) !important;
-      }
-
-      /* Left panel: Ultra-Compact Frosted Glass Bottom Sheet */
+      /* Left panel: Ultra-Compact Frosted Glass Bottom Sheet / Side Sheet */
       #sector-deck {
         top: auto;
-        bottom: 0;
+        bottom: 6px;
         left: 6px;
         right: 6px;
         width: auto;
-        max-height: 40vh;
-        border-radius: 14px 14px 0 0;
+        max-height: 42dvh;
+        border-radius: 10px;
         overflow-y: auto;
         -webkit-overflow-scrolling: touch;
-        padding: 8px 12px 16px;
+        padding: 8px 10px 12px;
         background: rgba(10, 10, 10, 0.55) !important;
-        backdrop-filter: blur(20px) saturate(180%) !important;
-        -webkit-backdrop-filter: blur(20px) saturate(180%) !important;
+        backdrop-filter: blur(24px) saturate(180%) !important;
+        -webkit-backdrop-filter: blur(24px) saturate(180%) !important;
         border: 1px solid rgba(255, 255, 255, 0.12) !important;
-        border-bottom: none !important;
-        box-shadow: 0 -8px 30px rgba(0, 0, 0, 0.6);
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.7);
         z-index: 20;
       }
 
@@ -499,44 +494,57 @@
         display: none !important;
       }
 
-      /* Right panel: hidden on mobile */
+      /* Right telemetry deck hidden on mobile to avoid clutter */
       #telemetry-deck {
         display: none !important;
       }
 
       .deck-title {
-        font-size: 8.5px;
-        margin-bottom: 6px;
-        padding-bottom: 4px;
+        font-size: 8px;
+        margin-bottom: 4px;
+        padding-bottom: 3px;
       }
 
       .form-group {
-        margin-bottom: 4px;
+        margin-bottom: 3px;
       }
 
       .form-group label {
-        font-size: 7px;
+        font-size: 6.5px;
         margin-bottom: 1px;
       }
 
       .form-input {
-        font-size: 9px;
-        padding: 4px 6px;
+        font-size: 8.5px;
+        padding: 3px 5px;
         background: rgba(0, 0, 0, 0.6) !important;
         border: 1px solid rgba(255, 255, 255, 0.12) !important;
       }
 
       .btn-action {
-        padding: 5px 6px;
-        font-size: 8px;
+        padding: 4px 5px;
+        font-size: 7.5px;
         background: rgba(25, 25, 25, 0.65);
       }
 
       #flight-strip-box {
-        margin-top: 4px;
-        padding: 5px 6px;
+        margin-top: 3px;
+        padding: 4px 6px;
         background: rgba(0, 0, 0, 0.5) !important;
         border: 1px solid rgba(255, 255, 255, 0.08) !important;
+      }
+    }
+
+    /* Mobile Landscape Specific Tweaks */
+    @media (max-width: 900px) and (orientation: landscape) {
+      #sector-deck {
+        top: 42px;
+        bottom: 6px;
+        left: 6px;
+        right: auto;
+        width: 250px;
+        max-height: calc(100dvh - 48px);
+        border-radius: 8px;
       }
     }
   </style>
@@ -554,37 +562,37 @@
       <span class="brand-title">GLOBAL ATC RADAR</span>
       <span class="brand-tag">ICAO LIVE 60FPS</span>
 
-      <!-- Map Style & View Mode Switcher (Clean, no emojis) -->
-      <div style="display: flex; gap: 4px; margin-left: 10px;">
-        <button id="btn-style-satellite" class="btn-action"
-          style="padding: 4px 9px; font-size: 8.5px; background: #222; border-color: #555;"
-          onclick="switchMapStyle('satellite')">SATELLITE HD</button>
-        <button id="btn-style-dark" class="btn-action"
-          style="padding: 4px 9px; font-size: 8.5px; background: #0a0a0a; border-color: #333;"
-          onclick="switchMapStyle('dark')">RADAR DARK</button>
-        <button id="btn-map-pov" class="btn-action btn-amber" style="padding: 4px 9px; font-size: 8.5px;"
-          onclick="toggleMapCockpitPOV()">3D COCKPIT POV</button>
+      <!-- Map Style & View Mode Switcher (Concise, Clean) -->
+      <div style="display: flex; gap: 4px; margin-left: 6px;">
+        <button id="btn-style-satellite" class="btn-action btn-nav-compact"
+          style="padding: 4px 8px; font-size: 8.5px; background: rgba(30,30,30,0.7); border-color: #555;"
+          onclick="switchMapStyle('satellite')">SAT HD</button>
+        <button id="btn-style-dark" class="btn-action btn-nav-compact"
+          style="padding: 4px 8px; font-size: 8.5px; background: rgba(10,10,10,0.7); border-color: #333;"
+          onclick="switchMapStyle('dark')">DARK</button>
+        <button id="btn-map-pov" class="btn-action btn-amber btn-nav-compact" style="padding: 4px 8px; font-size: 8.5px;"
+          onclick="toggleMapCockpitPOV()">3D POV</button>
       </div>
     </div>
     <div class="status-items">
       <div class="stat-badge">
-        <span class="stat-lbl">ASSIGNED FIR SECTOR</span>
-        <span class="stat-val" id="my-sector-name">WIII_FIR (Jakarta)</span>
+        <span class="stat-lbl">ASSIGNED FIR</span>
+        <span class="stat-val" id="my-sector-name">WIII_FIR</span>
       </div>
       <div class="stat-badge">
-        <span class="stat-lbl">ACTIVE FLIGHTS</span>
+        <span class="stat-lbl">FLIGHTS</span>
         <span class="stat-val" id="flights-count">0</span>
       </div>
       <div class="stat-badge">
-        <span class="stat-lbl">SEPARATION CONFLICTS</span>
+        <span class="stat-lbl">CONFLICTS</span>
         <span class="stat-val" id="alerts-count">0</span>
       </div>
     </div>
-    <div style="display: flex; gap: 4px; align-items: center;">
+    <div style="display: flex; gap: 3px; align-items: center;">
       <!-- Mobile Fullscreen Button -->
-      <button id="btn-fullscreen" class="btn-action" style="padding: 4px 8px; font-size: 8px; background: #161616; border-color: #444;" onclick="toggleFullScreen()" title="Enter/Exit Fullscreen">FULLSCREEN</button>
+      <button id="btn-fullscreen" class="btn-action btn-nav-compact" style="padding: 4px 8px; font-size: 8px; background: rgba(20,20,20,0.7); border-color: #444;" onclick="toggleFullScreen()" title="Enter/Exit Fullscreen">FS</button>
       <!-- HUD Minimize Toggle -->
-      <button id="btn-hud-toggle" onclick="toggleHUD()" title="Toggle HUD panels">HUD ON</button>
+      <button id="btn-hud-toggle" class="btn-nav-compact" onclick="toggleHUD()" title="Toggle HUD panels">HUD ON</button>
     </div>
   </div>
 
@@ -903,7 +911,7 @@
       const overlay3D = document.getElementById('threejs-overlay');
 
       if (mapCockpitPOVEnabled) {
-        btn.innerText = '2D ORTHO RADAR';
+        btn.innerText = '2D RADAR';
         btn.style.background = '#382200';
         btn.style.borderColor = 'var(--accent-amber)';
         if (overlay3D) overlay3D.style.display = 'block';
@@ -913,7 +921,7 @@
           selectAircraft(currentPayload.aircraft[0]);
         }
       } else {
-        btn.innerText = '3D COCKPIT POV';
+        btn.innerText = '3D POV';
         btn.style.background = '#161616';
         btn.style.borderColor = '#333333';
         if (overlay3D) overlay3D.style.display = 'none';
