@@ -340,16 +340,26 @@ func (h *ATCHub) updateKinematics(dt float64) {
 			bankCmd = math.Max(-25.0, math.Min(25.0, 3.0*headingDiff(ac.TargetHeading, ac.Heading)))
 		}
 
-		// Fast instant roll response: 60 deg/s
+		// Fast instant roll response (arcade-style: 120 deg/s)
 		if ac.Roll < bankCmd {
-			ac.Roll = math.Min(ac.Roll+60.0*dt, bankCmd)
+			ac.Roll = math.Min(ac.Roll+120.0*dt, bankCmd)
 		} else if ac.Roll > bankCmd {
-			ac.Roll = math.Max(ac.Roll-60.0*dt, bankCmd)
+			ac.Roll = math.Max(ac.Roll-120.0*dt, bankCmd)
 		}
 
-		// Rate of turn: responsive arcade turn (~18 deg/s at 25 deg bank)
-		tas := math.Max(ac.Speed, 120.0)
-		rot := 1091.0 * math.Tan(ac.Roll*math.Pi/180.0) / tas * 15.0
+		// Rate of turn: instant direct rotation (~25 deg/s)
+		var rot float64
+		if ac.TargetRoll != 0 {
+			// Direct arcade turn when pilot holds key
+			if ac.TargetRoll > 0 {
+				rot = 25.0
+			} else {
+				rot = -25.0
+			}
+		} else {
+			tas := math.Max(ac.Speed, 120.0)
+			rot = 1091.0 * math.Tan(ac.Roll*math.Pi/180.0) / tas * 15.0
+		}
 		ac.Heading += rot * dt
 		if ac.Heading < 0 {
 			ac.Heading += 360

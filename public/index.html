@@ -3233,10 +3233,10 @@
           // ~16ms, so rotation starts the SAME frame the stick goes down.
           if (targetCamHeading === null) targetCamHeading = currentCamHeading;
           const rollCmd = steerDir !== 0 ? steerDir * 25 : 0;
-          predRoll += Math.max(-60 * dt, Math.min(60 * dt, rollCmd - predRoll));
-          predRoll += (lastKnownRoll - predRoll) * (1 - Math.exp(-10 * dt)); // authority blend
-          const spdKts = Math.max(targetCamSpeed || 450, 120);
-          targetCamHeading = normDeg(targetCamHeading + (1091 * Math.tan(predRoll * Math.PI / 180) / spdKts * 15.0) * dt);
+          predRoll += Math.max(-120 * dt, Math.min(120 * dt, rollCmd - predRoll));
+          predRoll += (lastKnownRoll - predRoll) * (1 - Math.exp(-15 * dt)); // authority blend
+          const rotDir = steerDir !== 0 ? (steerDir > 0 ? 25.0 : -25.0) : (1091 * Math.tan(predRoll * Math.PI / 180) / Math.max(targetCamSpeed || 450, 120) * 15.0);
+          targetCamHeading = normDeg(targetCamHeading + rotDir * dt);
 
           // Frame-rate independent damping — responsive bearing follow so
           // WASD steering reads instantly on the rotating map horizon
