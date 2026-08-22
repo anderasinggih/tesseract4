@@ -575,6 +575,15 @@
             ],
             tileSize: 256,
             attribution: '© ESRI, Maxar, Earthstar Geographics'
+          },
+          'nasa-night': {
+            type: 'raster',
+            tiles: [
+              'https://map1.vis.earthdata.nasa.gov/wmts-webmerc/VIIRS_Black_Marble/default/GoogleMapsCompatible_Level8/{z}/{y}/{x}.jpg'
+            ],
+            tileSize: 256,
+            maxzoom: 8,
+            attribution: '© NASA Earthdata VIIRS Black Marble'
           }
         },
         layers: [
@@ -830,8 +839,8 @@
             const scaleFactor = 9.0 / (maxDim || 1.0);
             loadedModel.scale.set(scaleFactor, scaleFactor, scaleFactor);
 
-            // Rotate orientation: 11803_Airplane model raw orientation fix -> Nose faces directly forward (-Z)
-            loadedModel.rotation.set(-Math.PI / 2, 0, Math.PI);
+            // Rotate orientation: 11803_Airplane model raw orientation fix -> Point nose straight forward away from camera
+            loadedModel.rotation.set(-Math.PI / 2, 0, 0); // Yaw 0 so nose points straight ahead to the horizon
 
             // Ensure materials are visible and double-sided with realistic metalness
             loadedModel.traverse((child) => {
@@ -1337,14 +1346,24 @@
       ctx.lineTo(p2.x, p2.y);
       ctx.closePath();
 
-      // Atmospheric Night Shadow Gradient (Like Apple Maps Earth View)
-      ctx.fillStyle = currentMapStyle === 'satellite' ? 'rgba(0, 5, 15, 0.58)' : 'rgba(0, 0, 0, 0.45)';
+      // Atmospheric Night Shadow Gradient (Deep Dark Night Sky + City Glow Filter)
+      if (currentMapStyle === 'satellite') {
+        const nightGrad = ctx.createLinearGradient(0, 0, 0, canvas.height);
+        nightGrad.addColorStop(0, 'rgba(0, 8, 20, 0.78)');
+        nightGrad.addColorStop(1, 'rgba(0, 4, 12, 0.85)');
+        ctx.fillStyle = nightGrad;
+      } else {
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.65)';
+      }
       ctx.fill();
 
-      // Golden Hour Twilight Line
-      ctx.strokeStyle = 'rgba(255, 170, 0, 0.25)';
-      ctx.lineWidth = 1.5;
+      // Golden Hour Twilight Line with Ambient Atmospheric Glow
+      ctx.strokeStyle = 'rgba(255, 180, 50, 0.65)';
+      ctx.lineWidth = 3.0;
+      ctx.shadowColor = '#ff9900';
+      ctx.shadowBlur = 12;
       ctx.stroke();
+      ctx.shadowBlur = 0;
       ctx.restore();
     }
 
