@@ -837,6 +837,8 @@
     let targetCamLng = null;
     let targetCamLat = null;
     let targetCamHeading = null;
+    let targetCamSpeed = 0;
+    let lastFrameTime = null;
 
     // ─── HUD Minimize Toggle ───────────────────────────────────────────────
     let hudVisible = window.innerWidth > 768; // Default open on desktop, clean minimized on mobile
@@ -1447,6 +1449,7 @@
           targetCamLng = ac.coord.lng;
           targetCamLat = ac.coord.lat;
           targetCamHeading = ac.heading;
+          targetCamSpeed = ac.speed || 450;
           if (currentCamLng === null) {
             currentCamLng = targetCamLng;
             currentCamLat = targetCamLat;
@@ -1824,17 +1827,33 @@
         }
       }
 
-      // Smooth 60 FPS Camera Lerp Interpolation in POV Mode
+      // Ultra-Smooth 60 FPS Dead-Reckoning Kinematics & Camera Follow in POV Mode
       if (mapCockpitPOVEnabled && targetCamLng !== null && currentCamLng !== null) {
-        // High-precision linear interpolation factor
-        const lerpFactor = 0.12;
-        currentCamLng += (targetCamLng - currentCamLng) * lerpFactor;
-        currentCamLat += (targetCamLat - currentCamLat) * lerpFactor;
+        const now = performance.now();
+        if (!lastFrameTime) lastFrameTime = now;
+        const dtSec = Math.min((now - lastFrameTime) / 1000.0, 0.05); // Frame delta time (clamped)
+        lastFrameTime = now;
 
-        // Smooth shortest-path angle interpolation
+        // Kinematics forward projection (Dead-Reckoning)
+        if (targetCamSpeed > 0) {
+          const hdgRad = (targetCamHeading || 0) * (Math.PI / 180.0);
+          const speedNMps = targetCamSpeed / 3600.0;
+          const distNM = speedNMps * dtSec;
+          const latDegPerNM = 1.0 / 60.0;
+          const lngDegPerNM = 1.0 / (60.0 * Math.max(0.1, Math.cos(currentCamLat * Math.PI / 180.0)));
+
+          currentCamLat += distNM * Math.cos(hdgRad) * latDegPerNM;
+          currentCamLng += distNM * Math.sin(hdgRad) * lngDegPerNM;
+        }
+
+        // Soft convergence towards authoritative server position
+        currentCamLng += (targetCamLng - currentCamLng) * 0.08;
+        currentCamLat += (targetCamLat - currentCamLat) * 0.08;
+
+        // Smooth shortest-path compass heading interpolation
         let diffHdg = (targetCamHeading - currentCamHeading + 180) % 360 - 180;
         if (diffHdg < -180) diffHdg += 360;
-        currentCamHeading += diffHdg * lerpFactor;
+        currentCamHeading += diffHdg * 0.1;
 
         map.jumpTo({
           center: [currentCamLng, currentCamLat],
@@ -1842,6 +1861,8 @@
           bearing: currentCamHeading,
           zoom: 11.0
         });
+      } else {
+        lastFrameTime = performance.now();
       }
 
       requestAnimationFrame(drawRadarScope);
