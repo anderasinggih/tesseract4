@@ -593,6 +593,17 @@
             source: 'esri-satellite',
             minzoom: 0,
             maxzoom: 19
+          },
+          {
+            id: 'nasa-night-layer',
+            type: 'raster',
+            source: 'nasa-night',
+            minzoom: 0,
+            maxzoom: 8,
+            paint: {
+              'raster-opacity': 0.75,
+              'raster-resampling': 'linear'
+            }
           }
         ]
       }
@@ -1346,22 +1357,11 @@
       ctx.lineTo(p2.x, p2.y);
       ctx.closePath();
 
-      // Atmospheric Night Shadow Gradient (Deep Dark Night Sky + City Glow Filter)
-      if (currentMapStyle === 'satellite') {
-        const nightGrad = ctx.createLinearGradient(0, 0, 0, canvas.height);
-        nightGrad.addColorStop(0, 'rgba(0, 8, 20, 0.78)');
-        nightGrad.addColorStop(1, 'rgba(0, 4, 12, 0.85)');
-        ctx.fillStyle = nightGrad;
-      } else {
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.65)';
-      }
-      ctx.fill();
-
-      // Golden Hour Twilight Line with Ambient Atmospheric Glow
-      ctx.strokeStyle = 'rgba(255, 180, 50, 0.65)';
-      ctx.lineWidth = 3.0;
-      ctx.shadowColor = '#ff9900';
-      ctx.shadowBlur = 12;
+      // Golden Hour Twilight Line with Ambient Glow (Apple Maps Style)
+      ctx.strokeStyle = 'rgba(255, 180, 50, 0.75)';
+      ctx.lineWidth = 2.5;
+      ctx.shadowColor = '#ffaa00';
+      ctx.shadowBlur = 10;
       ctx.stroke();
       ctx.shadowBlur = 0;
       ctx.restore();
