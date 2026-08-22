@@ -2045,18 +2045,16 @@
         const newLogs = payload.logs.slice(lastLogLength);
         lastLogLength = payload.logs.length;
 
-        // Check if new incoming logs contain emergency or handoff tasks and speak live radio voice
+        // Check if new incoming logs contain emergency or handoff tasks
         newLogs.forEach(l => {
           if (l.type === 'ALERT' || l.type === 'EMERGENCY' || l.message.includes('MAYDAY')) {
             playAlertChime(); // Urgent Boeing Master Caution Chime
             showTacticalToast(`MAYDAY ALERT: ${l.message}`, 'ALERT');
-            speakAtcRadio(`Mayday Mayday Mayday. ${l.callsign}. ${l.message}`, true);
-          } else if (l.type === 'COMMS') {
-            speakAtcRadio(`${l.callsign}, ${l.message}`, false);
+            // Brief high-urgency emergency pilot call only
+            speakAtcRadio(`Mayday Mayday, ${l.callsign}, emergency 7700`, true);
           } else if (l.type === 'SYS' || l.type === 'HANDOFF') {
             playTaskPing(); // Mission Task update ping
             showTacticalToast(`ATC MISSION: ${l.message}`, 'HANDOFF');
-            speakAtcRadio(`${l.message}`, false);
           }
         });
 
