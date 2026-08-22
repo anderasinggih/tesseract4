@@ -6,121 +6,111 @@ import (
 	"time"
 )
 
-// TestConcurrentMovementAndPhysics tests race conditions between InputReader, Physics, and WritePump
-func TestConcurrentMovementAndPhysics(t *testing.T) {
-	player := &Player{
-		ID: "test-player-1",
-		Position: Vector4{
-			X: 0, Y: 0, Z: 0, W: 1.0,
-		},
-		Yaw:      0,
-		Pitch:    0,
-		HyperRot: 0,
-		Score:    0,
-		Send:     make(chan []byte, 256),
-	}
+// TestWarRoomHubConcurrentAttackDefense tests high concurrency between red attackers and blue defenders
+func TestWarRoomHubConcurrentAttackDefense(t *testing.T) {
+	hub := NewWarRoomHub()
+	go hub.Run()
 
 	done := make(chan struct{})
 	var wg sync.WaitGroup
 
-	// Drain send channel to simulate active consumer
-	go func() {
-		for {
-			select {
-			case <-done:
-				return
-			case <-player.Send:
-			}
+	// Spawn 20 simulated operators
+	for i := 0; i < 20; i++ {
+		agent := &AgentConnection{
+			ID:      "agent-test",
+			Alias:   "Operator",
+			Faction: "red",
+			City:    "Jakarta",
+			Send:    make(chan []byte, 64),
 		}
-	}()
+		hub.register <- agent
 
-	// Goroutine 1: Bombard state updates (Simulating InputReader writes)
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		keys := []string{"w", "a", "s", "d", "arrowup", "arrowdown", "shift", " ", "e", "q", "r"}
-		for i := 0; i < 5000; i++ {
-			select {
-			case <-done:
-				return
-			default:
-				player.Mutex.Lock()
-				key := keys[i%len(keys)]
-				switch key {
-				case "a":
-					player.Position.X -= 0.05
-				case "d":
-					player.Position.X += 0.05
-				case "w":
-					player.Position.Z += 0.05
-				case "s":
-					player.Position.Z -= 0.05
-				case "arrowup":
-					player.Position.Y += 0.05
-				case "arrowdown":
-					player.Position.Y -= 0.05
-				case "shift":
-					player.Position.W -= 0.05
-				case "e":
-					player.Position.W += 0.05
-				case "q":
-					player.Yaw -= 0.02
-				case "r":
-					player.Pitch += 0.02
+		// Consume outbound stream
+		go func(a *AgentConnection) {
+			for {
+				select {
+				case <-done:
+					return
+				case <-a.Send:
 				}
-				player.Mutex.Unlock()
 			}
-		}
-	}()
+		}(agent)
+	}
 
-	// Goroutine 2: Continuous reads & mathematical projection (Simulating Physics loop)
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		for i := 0; i < 5000; i++ {
-			select {
-			case <-done:
-				return
-			default:
-				player.Mutex.RLock()
-				pos := player.Position
-				yaw := player.Yaw
-				pitch := player.Pitch
-				hyperRot := player.HyperRot
-				player.Mutex.RUnlock()
-
-				_ = CalculateTimeMultiplier(pos.W)
-				_ = GenerateProjectedLines(pos, yaw, pitch, hyperRot, nil, nil)
-
-				player.Mutex.Lock()
-				player.HyperRot += 0.01
-				player.Mutex.Unlock()
-			}
-		}
-	}()
-
-	// Goroutine 3: Actor Model Hub message passing (Zero Mutex contention)
-	hub := NewHub()
-	go hub.Run()
-
+	// Goroutine 1: Rapid red team attack launches
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
 		for i := 0; i < 500; i++ {
-			p := &Player{
-				ID:   "player-temp",
-				Send: make(chan []byte, 16),
+			select {
+			case <-done:
+				return
+			default:
+				hub.LaunchAttack("agent-red", "Jakarta", "Washington DC", "DDoS SYN Flood", 500)
+				time.Sleep(1 * time.Millisecond)
 			}
-			hub.register <- p
-			hub.Broadcast <- []byte(`{"ping": true}`)
-			_ = hub.GetPlayerCount()
-			_, _, _ = hub.GetGameSnapshot("self")
-			hub.CheckCollectOrb(p)
-			hub.unregister <- p
+		}
+	}()
+
+	// Goroutine 2: Rapid blue team defense mitigations
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		for i := 0; i < 500; i++ {
+			select {
+			case <-done:
+				return
+			default:
+				hub.DeployDefense("agent-blue", "bgp_null_route", "test-arc", "Washington DC")
+				hub.DeployDefense("agent-blue", "firewall_patch", "", "Tokyo")
+				time.Sleep(1 * time.Millisecond)
+			}
+		}
+	}()
+
+	// Goroutine 3: Continuous snapshot readers (Simulating 30Hz WebSocket streamers)
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		for i := 0; i < 500; i++ {
+			select {
+			case <-done:
+				return
+			default:
+				_ = hub.GetSnapshot("agent-test")
+				time.Sleep(1 * time.Millisecond)
+			}
 		}
 	}()
 
 	time.Sleep(100 * time.Millisecond)
 	close(done)
 	wg.Wait()
+}
+
+// TestGeodesicGreatCircleMath verifies mathematical correctness of spherical slerp waypoints
+func TestGeodesicGreatCircleMath(t *testing.T) {
+	p1 := GeoCoord{Lat: -6.2088, Lng: 106.8456} // Jakarta
+	p2 := GeoCoord{Lat: 35.6762, Lng: 139.6503} // Tokyo
+
+	dist := CalculateGreatCircleDistance(p1, p2)
+	if dist < 5000 || dist > 6500 {
+		t.Fatalf("Unexpected Great-Circle distance Jakarta-Tokyo: %f km", dist)
+	}
+
+	mid := CalculateGeodesicWaypoint(p1, p2, 0.5)
+	if mid.Lat == 0 && mid.Lng == 0 {
+		t.Fatalf("Failed to calculate mid-waypoint")
+	}
+
+	// Shannon entropy test
+	plain := []byte("AAAAABBBBBCCCCCDDDDD")
+	plainEntropy := CalculateShannonEntropy(plain)
+
+	randomBytes := GenerateRandomPayloadBytes(256, true)
+	randomEntropy := CalculateShannonEntropy(randomBytes)
+
+	if randomEntropy <= plainEntropy {
+		t.Fatalf("Random encrypted payload should have higher entropy than patterned plain text")
+	}
 }

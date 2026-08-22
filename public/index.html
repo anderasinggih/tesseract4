@@ -2,258 +2,511 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <title>The Tesseract Paradox - 4D Real-Time Engine</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>CYBER WARFARE OPS // GLOBAL THREAT MATRIX</title>
+  
+  <!-- MapLibre GL JS & CSS (mapcn Foundation) -->
+  <link href="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css" rel="stylesheet" />
+  <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
+  
+  <!-- Google Fonts: Orbitron & JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;800&family=Orbitron:wght@600;800;900&display=swap" rel="stylesheet">
+
   <style>
+    :root {
+      --bg-dark: #07090e;
+      --panel-bg: rgba(10, 15, 26, 0.85);
+      --border-color: rgba(0, 255, 136, 0.25);
+      --red-team: #ff0055;
+      --red-glow: rgba(255, 0, 85, 0.4);
+      --blue-team: #00d4ff;
+      --blue-glow: rgba(0, 212, 255, 0.4);
+      --neon-green: #00ff88;
+      --purple-accent: #b026ff;
+    }
+
     * {
       margin: 0;
       padding: 0;
       box-sizing: border-box;
+      font-family: 'JetBrains Mono', monospace;
       -webkit-touch-callout: none;
-      -webkit-user-select: none;
-      user-select: none;
-      touch-action: none;
     }
+
     body, html {
       width: 100%;
       height: 100%;
       overflow: hidden;
-      background: #000000;
-      font-family: -apple-system, BlinkMacSystemFont, 'Courier New', Courier, monospace;
-      color: #00FF00;
+      background: var(--bg-dark);
+      color: #e2e8f0;
     }
-    #canvas {
-      display: block;
+
+    #map-container {
+      position: absolute;
+      top: 0;
+      left: 0;
       width: 100vw;
       height: 100vh;
-      background: #000000;
-    }
-    #crosshair {
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      width: 10px;
-      height: 10px;
-      transform: translate(-50%, -50%);
-      pointer-events: none;
-      z-index: 5;
-    }
-    #crosshair::before, #crosshair::after {
-      content: '';
-      position: absolute;
-      background: rgba(0, 255, 0, 0.7);
-    }
-    #crosshair::before {
-      top: 4px;
-      left: -8px;
-      width: 26px;
-      height: 2px;
-    }
-    #crosshair::after {
-      top: -8px;
-      left: 4px;
-      width: 2px;
-      height: 26px;
-    }
-    #hud {
-      position: absolute;
-      top: 12px;
-      left: 12px;
-      padding: 8px 12px;
-      background: rgba(0, 0, 0, 0.8);
-      border: 1px solid rgba(0, 255, 0, 0.3);
-      border-radius: 6px;
-      font-size: 11px;
-      line-height: 1.4;
-      pointer-events: none;
-      box-shadow: 0 0 10px rgba(0, 255, 0, 0.15);
-      z-index: 10;
-      max-width: 90vw;
-    }
-    .hud-title {
-      font-weight: bold;
-      letter-spacing: 1.5px;
-      color: #00FF00;
-      margin-bottom: 3px;
-      text-transform: uppercase;
-      font-size: 11px;
-    }
-    .status-badge {
-      display: inline-block;
-      width: 7px;
-      height: 7px;
-      background-color: #00FF00;
-      border-radius: 50%;
-      margin-right: 5px;
-      box-shadow: 0 0 6px #00FF00;
-    }
-    .status-disconnected {
-      background-color: #FF0000;
-      box-shadow: 0 0 6px #FF0000;
+      z-index: 1;
+      background: #05070a;
     }
 
-    /* Desktop Controls Help */
-    #desktop-controls {
-      position: absolute;
-      bottom: 16px;
-      left: 16px;
-      padding: 10px 14px;
-      background: rgba(0, 0, 0, 0.85);
-      border: 1px solid rgba(0, 255, 0, 0.3);
-      border-radius: 6px;
-      font-size: 11px;
-      color: #77ff77;
-      pointer-events: none;
-      line-height: 1.4;
-      z-index: 10;
-    }
-
-    #pointer-lock-prompt {
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      padding: 14px 20px;
-      background: rgba(0, 0, 0, 0.9);
-      border: 2px solid #00FF00;
-      border-radius: 8px;
-      text-align: center;
-      font-size: 13px;
-      letter-spacing: 1px;
-      box-shadow: 0 0 20px rgba(0, 255, 0, 0.3);
-      z-index: 20;
-      cursor: pointer;
-    }
-
-    /* Mobile Touch Controls */
-    #mobile-controls {
-      display: none;
+    #canvas-overlay {
       position: absolute;
       top: 0;
       left: 0;
       width: 100vw;
       height: 100vh;
       pointer-events: none;
-      z-index: 15;
+      z-index: 2;
     }
 
-    /* Touch Joystick Zone (Left side) */
-    #joystick-zone {
+    /* Top Bar Header */
+    #top-bar {
       position: absolute;
-      bottom: 24px;
-      left: 20px;
-      width: 130px;
-      height: 130px;
-      background: rgba(0, 255, 0, 0.08);
-      border: 2px solid rgba(0, 255, 0, 0.35);
-      border-radius: 50%;
-      pointer-events: auto;
-    }
-    #joystick-thumb {
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      width: 50px;
-      height: 50px;
-      background: rgba(0, 255, 0, 0.4);
-      border: 2px solid #00FF00;
-      border-radius: 50%;
-      transform: translate(-50%, -50%);
-      box-shadow: 0 0 10px rgba(0, 255, 0, 0.5);
+      top: 14px;
+      left: 16px;
+      right: 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 20px;
+      background: var(--panel-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      backdrop-filter: blur(12px);
+      z-index: 10;
+      box-shadow: 0 4px 24px rgba(0, 0, 0, 0.7);
     }
 
-    /* Touch Action Buttons (Right side) */
-    #action-pad {
-      position: absolute;
-      bottom: 24px;
-      right: 20px;
-      display: grid;
-      grid-template-columns: repeat(2, 54px);
+    .brand-title {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 16px;
+      font-weight: 900;
+      letter-spacing: 2px;
+      color: #fff;
+      display: flex;
+      align-items: center;
       gap: 10px;
-      pointer-events: auto;
     }
-    .touch-btn {
-      width: 54px;
-      height: 54px;
-      background: rgba(0, 0, 0, 0.7);
-      border: 1.5px solid rgba(0, 255, 0, 0.6);
-      border-radius: 12px;
-      color: #00FF00;
-      font-weight: bold;
-      font-size: 11px;
+
+    .status-pulse {
+      width: 10px;
+      height: 10px;
+      background: var(--neon-green);
+      border-radius: 50%;
+      box-shadow: 0 0 10px var(--neon-green);
+      animation: pulse 1.5s infinite;
+    }
+
+    @keyframes pulse {
+      0% { transform: scale(0.9); opacity: 0.7; }
+      50% { transform: scale(1.3); opacity: 1; box-shadow: 0 0 16px var(--neon-green); }
+      100% { transform: scale(0.9); opacity: 0.7; }
+    }
+
+    .metrics-bar {
+      display: flex;
+      gap: 20px;
+      font-size: 12px;
+    }
+
+    .metric-badge {
       display: flex;
       flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      box-shadow: 0 0 8px rgba(0, 255, 0, 0.2);
-    }
-    .touch-btn:active, .touch-btn.active {
-      background: rgba(0, 255, 0, 0.35);
-      border-color: #00FF00;
+      align-items: flex-end;
     }
 
-    /* Mobile media query detection */
-    @media (hover: none) and (pointer: coarse) {
-      #desktop-controls { display: none !important; }
-      #pointer-lock-prompt { display: none !important; }
-      #mobile-controls { display: block; }
+    .metric-val {
+      font-weight: 800;
+      font-size: 14px;
+    }
+
+    /* Floating Side Panels */
+    .glass-panel {
+      position: absolute;
+      background: var(--panel-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 10px;
+      backdrop-filter: blur(14px);
+      z-index: 10;
+      padding: 16px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.8);
+    }
+
+    /* Left Control Deck (Attacker / Defender Action) */
+    #action-deck {
+      top: 80px;
+      left: 16px;
+      width: 320px;
+      max-height: calc(100vh - 100px);
+      overflow-y: auto;
+    }
+
+    .panel-title {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 12px;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      color: var(--neon-green);
+      margin-bottom: 12px;
+      border-bottom: 1px solid rgba(0, 255, 136, 0.2);
+      padding-bottom: 6px;
+      display: flex;
+      justify-content: space-between;
+    }
+
+    .faction-toggle {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-bottom: 14px;
+    }
+
+    .faction-btn {
+      padding: 10px;
+      border-radius: 6px;
+      font-weight: 800;
+      font-size: 11px;
+      cursor: pointer;
+      border: 1.5px solid transparent;
+      transition: all 0.2s ease;
+      text-align: center;
+      background: rgba(255, 255, 255, 0.05);
+      color: #aaa;
+    }
+
+    .faction-btn.red-active {
+      background: rgba(255, 0, 85, 0.15);
+      border-color: var(--red-team);
+      color: var(--red-team);
+      box-shadow: 0 0 14px var(--red-glow);
+    }
+
+    .faction-btn.blue-active {
+      background: rgba(0, 212, 255, 0.15);
+      border-color: var(--blue-team);
+      color: var(--blue-team);
+      box-shadow: 0 0 14px var(--blue-glow);
+    }
+
+    .form-group {
+      margin-bottom: 12px;
+    }
+
+    .form-group label {
+      display: block;
+      font-size: 10px;
+      color: #94a3b8;
+      margin-bottom: 4px;
+      text-transform: uppercase;
+    }
+
+    .form-control {
+      width: 100%;
+      padding: 8px 10px;
+      background: rgba(0, 0, 0, 0.6);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 6px;
+      color: #fff;
+      font-size: 11px;
+      outline: none;
+    }
+
+    .form-control:focus {
+      border-color: var(--neon-green);
+    }
+
+    .strike-btn {
+      width: 100%;
+      padding: 12px;
+      font-family: 'Orbitron', sans-serif;
+      font-weight: 900;
+      font-size: 12px;
+      letter-spacing: 1.5px;
+      border-radius: 6px;
+      cursor: pointer;
+      border: none;
+      transition: all 0.2s;
+      margin-top: 6px;
+      text-transform: uppercase;
+    }
+
+    .strike-btn-red {
+      background: var(--red-team);
+      color: #fff;
+      box-shadow: 0 0 16px var(--red-glow);
+    }
+    .strike-btn-red:hover {
+      background: #ff1a6b;
+      box-shadow: 0 0 24px var(--red-team);
+    }
+
+    .strike-btn-blue {
+      background: var(--blue-team);
+      color: #05070a;
+      box-shadow: 0 0 16px var(--blue-glow);
+    }
+    .strike-btn-blue:hover {
+      background: #33ddff;
+      box-shadow: 0 0 24px var(--blue-team);
+    }
+
+    /* Right Telemetry & Matrix Terminal Feed */
+    #telemetry-deck {
+      top: 80px;
+      right: 16px;
+      width: 380px;
+      max-height: calc(100vh - 100px);
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    #terminal-stream {
+      background: rgba(0, 0, 0, 0.85);
+      border: 1px solid rgba(0, 255, 136, 0.2);
+      border-radius: 6px;
+      padding: 10px;
+      height: 240px;
+      overflow-y: auto;
+      font-size: 10px;
+      line-height: 1.5;
+    }
+
+    .log-line {
+      margin-bottom: 4px;
+      word-break: break-all;
+    }
+    .log-WARN { color: #ff0055; }
+    .log-CRIT { color: #ff3300; font-weight: bold; }
+    .log-DEFENSE { color: #00d4ff; font-weight: bold; }
+    .log-INFO { color: #00ff88; }
+
+    /* Active Threat List for Blue Team Interception */
+    #intercept-list {
+      max-height: 180px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .threat-card {
+      background: rgba(255, 0, 85, 0.08);
+      border: 1px solid rgba(255, 0, 85, 0.3);
+      border-radius: 6px;
+      padding: 8px 10px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 10px;
+    }
+
+    .intercept-action-btn {
+      padding: 5px 8px;
+      background: var(--blue-team);
+      color: #05070a;
+      font-weight: 800;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 9px;
+      letter-spacing: 0.5px;
+    }
+
+    /* Mobile Adaptations */
+    @media (max-width: 900px) {
+      #top-bar { padding: 8px 12px; }
+      .brand-title { font-size: 12px; }
+      .metrics-bar { gap: 10px; font-size: 10px; }
+      #action-deck {
+        top: 64px;
+        left: 8px;
+        right: 8px;
+        width: auto;
+        max-height: 38vh;
+      }
+      #telemetry-deck {
+        bottom: 8px;
+        top: auto;
+        left: 8px;
+        right: 8px;
+        width: auto;
+        max-height: 32vh;
+      }
     }
   </style>
 </head>
 <body>
-  <div id="crosshair"></div>
-  <canvas id="canvas"></canvas>
 
-  <div id="pointer-lock-prompt">
-    <div style="font-weight: bold; font-size: 15px; margin-bottom: 4px;">[ CLICK TO PLAY (FPS MODE) ]</div>
-    <div style="color: #88ff88; font-size: 11px;">Mouse untuk Mengarahkan Kamera</div>
-  </div>
+  <!-- MapLibre GL Map Element -->
+  <div id="map-container"></div>
+  
+  <!-- Cyber-Missile Geodesic Canvas Layer -->
+  <canvas id="canvas-overlay"></canvas>
 
-  <div id="hud">
-    <div class="hud-title"><span id="status-indicator" class="status-badge"></span>TESSERACT PARADOX 4D</div>
-    <div style="color: #FFD700; font-weight: bold; margin: 2px 0;">🎯 MISI: Kumpulkan Quantum Core Emas (💎)</div>
-    <div>SKOR KAMU: <span id="score-display" style="color: #FFD700; font-weight: bold;">0</span> PTS</div>
-    <div>POS: <span id="pos-display">0.00, 0.00, 0.00, 1.00</span></div>
-    <div>DILATION: <span id="dilation-display">1.00x</span> | TICK: <span id="tick-display">16 ms</span></div>
-    <div id="leaderboard-box" style="margin-top: 5px; border-top: 1px dashed rgba(0,255,0,0.3); padding-top: 3px;">
-      <div style="font-weight: bold; color: #00FFFF; font-size: 10px;">🏆 TOP PLAYERS MABAR:</div>
-      <div id="leaderboard-list" style="font-size: 10px; color: #88ff88;">-</div>
+  <!-- Top Real-Time Threat Status Bar -->
+  <div id="top-bar">
+    <div class="brand-title">
+      <span class="status-pulse"></span>
+      CYBER WARFARE OPS // MAPCN MATRIX
+    </div>
+    <div class="metrics-bar">
+      <div class="metric-badge">
+        <span style="color: #94a3b8;">GLOBAL DEFCON</span>
+        <span class="metric-val" id="defcon-val" style="color: #ff0055;">DEFCON 4</span>
+      </div>
+      <div class="metric-badge">
+        <span style="color: #94a3b8;">RED vs BLUE SCORE</span>
+        <span class="metric-val"><span id="red-score" style="color: var(--red-team);">0</span> : <span id="blue-score" style="color: var(--blue-team);">0</span></span>
+      </div>
+      <div class="metric-badge">
+        <span style="color: #94a3b8;">AVG SHANNON ENTROPY</span>
+        <span class="metric-val" id="entropy-val" style="color: #00ff88;">4.20 H(X)</span>
+      </div>
     </div>
   </div>
 
-  <div id="desktop-controls">
-    <div style="font-weight: bold; color: #00ff00; margin-bottom: 2px;">🎮 DESKTOP CONTROLS:</div>
-    <div>[MOUSE] Look / Arah Pandang</div>
-    <div>[W / S] Maju / Mundur</div>
-    <div>[A / D] Strafe Kiri / Kanan</div>
-    <div>[SPACE / C] Naik / Turun (Y)</div>
-    <div>[SHIFT / E] W-Axis (Black Hole)</div>
+  <!-- Left Control Deck: Faction Action Console -->
+  <div id="action-deck" class="glass-panel">
+    <div class="panel-title">
+      <span>SENTINEL DECK</span>
+      <span id="agent-id-badge" style="color: #00d4ff;">AGENT-INIT</span>
+    </div>
+
+    <!-- Faction Selector -->
+    <div class="faction-toggle">
+      <div id="btn-faction-red" class="faction-btn red-active" onclick="setFaction('red')">RED TEAM<br><span style="font-size: 9px; font-weight: normal;">[ATTACKER]</span></div>
+      <div id="btn-faction-blue" class="faction-btn" onclick="setFaction('blue')">BLUE TEAM<br><span style="font-size: 9px; font-weight: normal;">[DEFENDER]</span></div>
+    </div>
+
+    <div class="form-group">
+      <label>OPERATOR ALIAS</label>
+      <input type="text" id="operator-alias" class="form-control" value="Specter-01" onchange="syncAgentProfile()">
+    </div>
+
+    <div class="form-group">
+      <label>STATION BASE (CITY)</label>
+      <select id="origin-city" class="form-control" onchange="syncAgentProfile()">
+        <option value="Jakarta">Jakarta [ID] - AS131440</option>
+        <option value="Singapore">Singapore [SG] - AS4657</option>
+        <option value="Tokyo">Tokyo [JP] - AS2514</option>
+        <option value="Frankfurt">Frankfurt [DE] - AS8881</option>
+        <option value="Washington DC">Washington DC [US] - AS396982</option>
+        <option value="London">London [GB] - AS5459</option>
+        <option value="Sydney">Sydney [AU] - AS1221</option>
+        <option value="São Paulo">São Paulo [BR] - AS22548</option>
+        <option value="Seoul">Seoul [KR] - AS9318</option>
+        <option value="Zurich">Zurich [CH] - AS3303</option>
+        <option value="Hong Kong">Hong Kong [HK] - AS9381</option>
+        <option value="San Francisco">San Francisco [US] - AS13335</option>
+      </select>
+    </div>
+
+    <!-- Red Team Action Form -->
+    <div id="red-controls">
+      <div class="form-group">
+        <label>TARGET INFRASTRUCTURE</label>
+        <select id="target-city" class="form-control">
+          <option value="Washington DC">Washington DC (199.19.0.1)</option>
+          <option value="Tokyo">Tokyo (133.242.18.5)</option>
+          <option value="Frankfurt">Frankfurt (194.109.6.99)</option>
+          <option value="London">London (195.66.224.1)</option>
+          <option value="Singapore">Singapore (165.21.100.2)</option>
+          <option value="Jakarta">Jakarta (103.119.214.1)</option>
+          <option value="Hong Kong">Hong Kong (202.45.84.1)</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label>CYBER EXPLOIT VECTOR</label>
+        <select id="attack-vector" class="form-control">
+          <option value="DDoS SYN Flood">⚡ DDoS SYN Flood (100 Gbps)</option>
+          <option value="Ransomware Encryptor">🔐 Ransomware Payload (High Entropy)</option>
+          <option value="Kernel 0-Day Exploit">☣️ Kernel Remote 0-Day Exploit</option>
+          <option value="DNS Amplification">📡 DNS Amplification Reflection</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label>BURST PAYLOAD SIZE: <span id="payload-display" style="color: var(--neon-green);">450 MB</span></label>
+        <input type="range" id="payload-size" min="100" max="1000" step="50" value="450" class="form-control" oninput="document.getElementById('payload-display').innerText = this.value + ' MB'">
+      </div>
+
+      <button class="strike-btn strike-btn-red" onclick="launchCyberAttack()">🚀 LAUNCH CYBER STRIKE</button>
+    </div>
+
+    <!-- Blue Team Action Form -->
+    <div id="blue-controls" style="display: none;">
+      <div class="form-group">
+        <label>QUANTUM FIREWALL NODE SHIELD</label>
+        <select id="shield-target-city" class="form-control">
+          <option value="Jakarta">Jakarta Grid</option>
+          <option value="Washington DC">Washington DC Grid</option>
+          <option value="Frankfurt">Frankfurt Core</option>
+          <option value="Tokyo">Tokyo Gateway</option>
+        </select>
+      </div>
+      <button class="strike-btn strike-btn-blue" onclick="deployNodeShield()">🛡️ DEPLOY QUANTUM SHIELD</button>
+    </div>
   </div>
 
-  <!-- Mobile Touch Controls Overlay -->
-  <div id="mobile-controls">
-    <!-- Virtual Joystick for WASD Movement -->
-    <div id="joystick-zone">
-      <div id="joystick-thumb"></div>
+  <!-- Right Telemetry Deck -->
+  <div id="telemetry-deck" class="glass-panel">
+    <div class="panel-title">
+      <span>INCOMING THREAT INTERCEPTION</span>
+      <span id="active-arcs-count" style="color: #ff0055;">0 ARCS</span>
+    </div>
+    <div id="intercept-list">
+      <div style="color: #64748b; font-size: 10px;">Scanning global airspace for cyber missiles...</div>
     </div>
 
-    <!-- Action Buttons for Height (Y) and Hyper-dimension (W) -->
-    <div id="action-pad">
-      <button class="touch-btn" id="btn-up">▲<span style="font-size: 9px;">NAIK</span></button>
-      <button class="touch-btn" id="btn-shift">W-<span style="font-size: 9px;">HOLE</span></button>
-      <button class="touch-btn" id="btn-down">▼<span style="font-size: 9px;">TURUN</span></button>
-      <button class="touch-btn" id="btn-e">W+<span style="font-size: 9px;">FAR</span></button>
+    <div class="panel-title" style="margin-top: 8px;">
+      <span>LIVE THREAT TELEMETRY MATRIX</span>
+      <span style="color: var(--neon-green);">30 FPS REAL-TIME</span>
     </div>
+    <div id="terminal-stream"></div>
   </div>
 
   <script>
-    const canvas = document.getElementById('canvas');
+    // 1. Initialize MapLibre GL Dark Map (mapcn Dark Styling)
+    const map = new maplibregl.Map({
+      container: 'map-container',
+      style: {
+        version: 8,
+        sources: {
+          'carto-dark': {
+            type: 'raster',
+            tiles: [
+              'https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png',
+              'https://b.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png',
+              'https://c.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png'
+            ],
+            tileSize: 256,
+            attribution: '© OpenStreetMap, © CARTO'
+          }
+        },
+        layers: [
+          {
+            id: 'carto-dark-layer',
+            type: 'raster',
+            source: 'carto-dark',
+            minzoom: 0,
+            maxzoom: 19
+          }
+        ]
+      },
+      center: [20, 20],
+      zoom: 1.8,
+      attributionControl: false
+    });
+
+    // 2. Setup Canvas Overlay for High-Performance Geodesic Arc Rendering
+    const canvas = document.getElementById('canvas-overlay');
     const ctx = canvas.getContext('2d');
-    const statusIndicator = document.getElementById('status-indicator');
-    const posDisplay = document.getElementById('pos-display');
-    const dilationDisplay = document.getElementById('dilation-display');
-    const tickDisplay = document.getElementById('tick-display');
-    const lockPrompt = document.getElementById('pointer-lock-prompt');
 
     function resizeCanvas() {
       canvas.width = window.innerWidth;
@@ -262,281 +515,206 @@
     window.addEventListener('resize', resizeCanvas);
     resizeCanvas();
 
-    // Desktop Pointer Lock
-    lockPrompt.addEventListener('click', () => {
-      canvas.requestPointerLock();
-    });
-
-    document.addEventListener('pointerlockchange', () => {
-      if (document.pointerLockElement === canvas) {
-        lockPrompt.style.display = 'none';
-      } else {
-        lockPrompt.style.display = 'block';
-      }
-    });
-
-    // WebSocket connection
+    // 3. WebSocket Connection with War Room Actor Model Engine
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     const wsUrl = `${protocol}//${window.location.host}/ws`;
     let ws = null;
+    let currentFaction = 'red';
+    let selfAgentId = '';
+    let warState = null;
 
-    function connect() {
+    function connectWS() {
       ws = new WebSocket(wsUrl);
 
       ws.onopen = () => {
-        statusIndicator.className = 'status-badge';
-      };
-
-      ws.onclose = () => {
-        statusIndicator.className = 'status-badge status-disconnected';
-        setTimeout(connect, 2000);
-      };
-
-      ws.onerror = (err) => {
-        console.error('WebSocket Error:', err);
+        console.log("Connected to Cyber Warfare War Room.");
+        syncAgentProfile();
       };
 
       ws.onmessage = (event) => {
         try {
-          const payload = JSON.parse(event.data);
-          onServerPayload(payload);
+          warState = JSON.parse(event.data);
+          renderWarRoomState(warState);
         } catch (e) {
           console.error("Frame parse error:", e);
         }
       };
+
+      ws.onclose = () => {
+        setTimeout(connectWS, 2000);
+      };
+    }
+    connectWS();
+
+    function setFaction(faction) {
+      currentFaction = faction;
+      document.getElementById('btn-faction-red').className = `faction-btn ${faction === 'red' ? 'red-active' : ''}`;
+      document.getElementById('btn-faction-blue').className = `faction-btn ${faction === 'blue' ? 'blue-active' : ''}`;
+      document.getElementById('red-controls').style.display = faction === 'red' ? 'block' : 'none';
+      document.getElementById('blue-controls').style.display = faction === 'blue' ? 'block' : 'none';
+      syncAgentProfile();
     }
 
-    connect();
-
-    // High-performance direct frame rendering (Anti-Glitch)
-    let activeLines = [];
-
-    function renderLoop() {
-      // Clear Canvas
-      ctx.fillStyle = '#000000';
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-      if (activeLines && activeLines.length > 0) {
-        const centerX = canvas.width / 2;
-        const centerY = canvas.height / 2;
-        const scale = Math.min(canvas.width, canvas.height) * (window.innerWidth < 768 ? 0.65 : 0.55);
-
-        ctx.save();
-        ctx.translate(centerX, centerY);
-
-        // Render each 2D wireframe line directly
-        for (let i = 0; i < activeLines.length; i++) {
-          const line = activeLines[i];
-          ctx.strokeStyle = line.color || '#00FF00';
-          ctx.lineWidth = line.color === '#00FF00' ? (window.innerWidth < 768 ? 2.4 : 2.0) : 1.2;
-          ctx.shadowColor = line.color || '#00FF00';
-          ctx.shadowBlur = line.color === '#00FF00' ? 12 : 4;
-
-          ctx.beginPath();
-          ctx.moveTo(line.x1 * scale, -line.y1 * scale);
-          ctx.lineTo(line.x2 * scale, -line.y2 * scale);
-          ctx.stroke();
-        }
-        ctx.restore();
-      }
-
-      requestAnimationFrame(renderLoop);
+    function syncAgentProfile() {
+      if (!ws || ws.readyState !== WebSocket.OPEN) return;
+      const alias = document.getElementById('operator-alias').value;
+      const city = document.getElementById('origin-city').value;
+      ws.send(JSON.stringify({
+        type: 'join',
+        alias: alias,
+        faction: currentFaction,
+        city: city
+      }));
     }
-    requestAnimationFrame(renderLoop);
 
-    const scoreDisplay = document.getElementById('score-display');
-    const leaderboardList = document.getElementById('leaderboard-list');
+    function launchCyberAttack() {
+      if (!ws || ws.readyState !== WebSocket.OPEN) return;
+      const targetCity = document.getElementById('target-city').value;
+      const vector = document.getElementById('attack-vector').value;
+      const payloadMB = parseInt(document.getElementById('payload-size').value, 10);
 
-    function onServerPayload(payload) {
-      const { lines, playerPos, timeMultiplier, tickMs, score, leaderboard, playerId } = payload;
+      ws.send(JSON.stringify({
+        type: 'attack',
+        targetCity: targetCity,
+        vector: vector,
+        payloadMb: payloadMB
+      }));
+    }
 
-      if (score !== undefined && scoreDisplay) {
-        scoreDisplay.innerText = score;
+    function interceptArc(arcId) {
+      if (!ws || ws.readyState !== WebSocket.OPEN) return;
+      ws.send(JSON.stringify({
+        type: 'defend',
+        actionType: 'bgp_null_route',
+        arcId: arcId
+      }));
+    }
+
+    function deployNodeShield() {
+      if (!ws || ws.readyState !== WebSocket.OPEN) return;
+      const city = document.getElementById('shield-target-city').value;
+      ws.send(JSON.stringify({
+        type: 'defend',
+        actionType: 'firewall_patch',
+        targetCity: city
+      }));
+    }
+
+    // 4. Update HUD and Terminal Matrix
+    let lastLogCount = 0;
+    function renderWarRoomState(state) {
+      if (!state) return;
+
+      if (state.agentId && state.agentId !== selfAgentId) {
+        selfAgentId = state.agentId;
+        document.getElementById('agent-id-badge').innerText = `SENTINEL-${selfAgentId}`;
       }
-      if (leaderboard && leaderboardList) {
-        leaderboardList.innerHTML = leaderboard.slice(0, 3).map((p, idx) => {
-          const isMe = p.id === playerId;
-          const name = isMe ? `KAMU (${p.id.slice(0, 5)})` : `P${idx + 1} (${p.id.slice(0, 5)})`;
-          return `<div style="${isMe ? 'color: #FFD700; font-weight: bold;' : ''}">#${idx + 1} ${name}: ${p.score} PTS</div>`;
+
+      document.getElementById('defcon-val').innerText = state.threatLevel;
+      document.getElementById('red-score').innerText = state.redScore;
+      document.getElementById('blue-score').innerText = state.blueScore;
+      document.getElementById('entropy-val').innerText = `${state.globalEntropy.toFixed(2)} H(X)`;
+      document.getElementById('active-arcs-count').innerText = `${state.activeArcs.length} ARCS`;
+
+      // Intercept list update
+      const interceptContainer = document.getElementById('intercept-list');
+      if (state.activeArcs.length === 0) {
+        interceptContainer.innerHTML = '<div style="color: #64748b; font-size: 10px;">Airspace clear. No active cyber missiles.</div>';
+      } else {
+        interceptContainer.innerHTML = state.activeArcs.map(arc => {
+          return `
+            <div class="threat-card" style="border-color: ${arc.color}">
+              <div>
+                <div style="font-weight: bold; color: ${arc.color};">${arc.vector}</div>
+                <div style="color: #94a3b8;">${arc.originCity} ➔ ${arc.targetCity} (${arc.payloadSize}MB)</div>
+              </div>
+              <div>
+                ${arc.neutralized 
+                  ? `<span style="color: #00d4ff; font-weight: bold;">[DEFLECTED]</span>` 
+                  : `<button class="intercept-action-btn" onclick="interceptArc('${arc.id}')">BGP NULL-ROUTE</button>`
+                }
+              </div>
+            </div>
+          `;
         }).join('');
       }
-      if (playerPos) {
-        posDisplay.innerText = `${playerPos.x.toFixed(1)}, ${playerPos.y.toFixed(1)}, ${playerPos.z.toFixed(1)}, ${playerPos.w.toFixed(1)}`;
-      }
-      if (timeMultiplier !== undefined) {
-        dilationDisplay.innerText = `${timeMultiplier.toFixed(2)}x`;
-      }
-      if (tickMs !== undefined) {
-        tickDisplay.innerText = `${tickMs.toFixed(0)}ms`;
-      }
 
-      if (lines) {
-        activeLines = lines;
+      // Terminal Logs Auto-scroll
+      if (state.logs && state.logs.length !== lastLogCount) {
+        lastLogCount = state.logs.length;
+        const term = document.getElementById('terminal-stream');
+        term.innerHTML = state.logs.map(l => {
+          return `<div class="log-line log-${l.level}">[${l.timestamp}] [${l.tag}] ${l.message}</div>`;
+        }).join('');
+        term.scrollTop = term.scrollHeight;
       }
     }
 
-    // Input States
-    let accumulatedDX = 0;
-    let accumulatedDY = 0;
-    const activeKeys = new Set();
+    // 5. 60FPS Geodesic Ballistic Laser Arc Renderer
+    function drawGeodesicArcs() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // Desktop Mouse Look
-    window.addEventListener('mousemove', (e) => {
-      if (document.pointerLockElement === canvas) {
-        accumulatedDX += e.movementX;
-        accumulatedDY += e.movementY;
-      }
-    });
+      if (warState && warState.nodes) {
+        // Draw Target Infrastructure Nodes on Map
+        warState.nodes.forEach(node => {
+          const pt = map.project([node.coord.lng, node.coord.lat]);
+          if (pt.x >= 0 && pt.x <= canvas.width && pt.y >= 0 && pt.y <= canvas.height) {
+            // Pulse circle
+            ctx.beginPath();
+            ctx.arc(pt.x, pt.y, node.shield ? 12 : 7, 0, Math.PI * 2);
+            ctx.fillStyle = node.shield ? 'rgba(0, 212, 255, 0.4)' : (node.health < 50 ? 'rgba(255, 0, 85, 0.6)' : 'rgba(0, 255, 136, 0.3)');
+            ctx.fill();
+            ctx.strokeStyle = node.shield ? '#00d4ff' : (node.health < 50 ? '#ff0055' : '#00ff88');
+            ctx.lineWidth = 1.5;
+            ctx.stroke();
 
-    // Desktop Keyboard
-    window.addEventListener('keydown', (e) => {
-      const key = e.key.toLowerCase();
-      const validKeys = ['w', 'a', 's', 'd', 'arrowup', 'arrowdown', ' ', 'shift', 'e', 'c', 'q', 'r'];
-      if (validKeys.includes(key)) {
-        e.preventDefault();
-        activeKeys.add(key);
-      }
-    });
-
-    window.addEventListener('keyup', (e) => {
-      activeKeys.delete(e.key.toLowerCase());
-    });
-
-    // --- MOBILE TOUCH CONTROLS ---
-    // 1. Touch Camera Swipe (Right half of screen)
-    let touchLookId = null;
-    let lastTouchX = 0;
-    let lastTouchY = 0;
-
-    canvas.addEventListener('touchstart', (e) => {
-      for (let i = 0; i < e.changedTouches.length; i++) {
-        const t = e.changedTouches[i];
-        if (t.clientX > window.innerWidth * 0.35 && touchLookId === null) {
-          touchLookId = t.identifier;
-          lastTouchX = t.clientX;
-          lastTouchY = t.clientY;
-        }
-      }
-    }, { passive: false });
-
-    canvas.addEventListener('touchmove', (e) => {
-      for (let i = 0; i < e.changedTouches.length; i++) {
-        const t = e.changedTouches[i];
-        if (t.identifier === touchLookId) {
-          const dx = t.clientX - lastTouchX;
-          const dy = t.clientY - lastTouchY;
-          accumulatedDX += dx * 2.0;
-          accumulatedDY += dy * 2.0;
-          lastTouchX = t.clientX;
-          lastTouchY = t.clientY;
-        }
-      }
-    }, { passive: false });
-
-    const endTouchLook = (e) => {
-      for (let i = 0; i < e.changedTouches.length; i++) {
-        if (e.changedTouches[i].identifier === touchLookId) {
-          touchLookId = null;
-        }
-      }
-    };
-    canvas.addEventListener('touchend', endTouchLook);
-    canvas.addEventListener('touchcancel', endTouchLook);
-
-    // 2. Touch Joystick for Movement (Left half)
-    const joyZone = document.getElementById('joystick-zone');
-    const joyThumb = document.getElementById('joystick-thumb');
-    let joyTouchId = null;
-    let joyCenterX = 0;
-    let joyCenterY = 0;
-
-    joyZone.addEventListener('touchstart', (e) => {
-      const touch = e.changedTouches[0];
-      joyTouchId = touch.identifier;
-      const rect = joyZone.getBoundingClientRect();
-      joyCenterX = rect.left + rect.width / 2;
-      joyCenterY = rect.top + rect.height / 2;
-      handleJoystickMove(touch.clientX, touch.clientY);
-    }, { passive: false });
-
-    joyZone.addEventListener('touchmove', (e) => {
-      for (let i = 0; i < e.changedTouches.length; i++) {
-        if (e.changedTouches[i].identifier === joyTouchId) {
-          handleJoystickMove(e.changedTouches[i].clientX, e.changedTouches[i].clientY);
-        }
-      }
-    }, { passive: false });
-
-    const endJoystick = (e) => {
-      for (let i = 0; i < e.changedTouches.length; i++) {
-        if (e.changedTouches[i].identifier === joyTouchId) {
-          joyTouchId = null;
-          joyThumb.style.transform = 'translate(-50%, -50%)';
-          activeKeys.delete('w');
-          activeKeys.delete('s');
-          activeKeys.delete('a');
-          activeKeys.delete('d');
-        }
-      }
-    };
-    joyZone.addEventListener('touchend', endJoystick);
-    joyZone.addEventListener('touchcancel', endJoystick);
-
-    function handleJoystickMove(clientX, clientY) {
-      const deltaX = clientX - joyCenterX;
-      const deltaY = clientY - joyCenterY;
-      const dist = Math.min(45, Math.hypot(deltaX, deltaY));
-      const angle = Math.atan2(deltaY, deltaX);
-
-      const thumbX = Math.cos(angle) * dist;
-      const thumbY = Math.sin(angle) * dist;
-      joyThumb.style.transform = `translate(calc(-50% + ${thumbX}px), calc(-50% + ${thumbY}px))`;
-
-      // Map to WASD keys based on joystick position
-      if (deltaY < -15) activeKeys.add('w'); else activeKeys.delete('w');
-      if (deltaY > 15) activeKeys.add('s'); else activeKeys.delete('s');
-      if (deltaX < -15) activeKeys.add('a'); else activeKeys.delete('a');
-      if (deltaX > 15) activeKeys.add('d'); else activeKeys.delete('d');
-    }
-
-    // 3. Touch Action Buttons (Up, Down, Shift, E)
-    function setupTouchBtn(id, key) {
-      const el = document.getElementById(id);
-      const start = (e) => { e.preventDefault(); activeKeys.add(key); el.classList.add('active'); };
-      const end = (e) => { e.preventDefault(); activeKeys.delete(key); el.classList.remove('active'); };
-      el.addEventListener('touchstart', start, { passive: false });
-      el.addEventListener('touchend', end);
-      el.addEventListener('touchcancel', end);
-    }
-    setupTouchBtn('btn-up', 'arrowup');
-    setupTouchBtn('btn-down', 'arrowdown');
-    setupTouchBtn('btn-shift', 'shift');
-    setupTouchBtn('btn-e', 'e');
-
-    // 60Hz Unified Network Emitter
-    setInterval(() => {
-      if (!ws || ws.readyState !== WebSocket.OPEN) return;
-
-      if (accumulatedDX !== 0 || accumulatedDY !== 0) {
-        ws.send(JSON.stringify({
-          type: 'look',
-          dx: accumulatedDX,
-          dy: accumulatedDY
-        }));
-        accumulatedDX = 0;
-        accumulatedDY = 0;
-      }
-
-      if (activeKeys.size > 0) {
-        activeKeys.forEach((key) => {
-          ws.send(JSON.stringify({
-            type: 'move',
-            key: key,
-            delta: 0.08
-          }));
+            // Label
+            ctx.fillStyle = '#ffffff';
+            ctx.font = '10px JetBrains Mono';
+            ctx.fillText(`${node.city} (${node.health}%)`, pt.x + 10, pt.y + 3);
+          }
         });
       }
-    }, 16);
+
+      if (warState && warState.activeArcs) {
+        warState.activeArcs.forEach(arc => {
+          const startPt = map.project([arc.originCoord.lng, arc.originCoord.lat]);
+          const targetPt = map.project([arc.targetCoord.lng, arc.targetCoord.lat]);
+          const currentPt = map.project([arc.currentPos.lng, arc.currentPos.lat]);
+
+          // Quadratic curved trajectory line
+          const midX = (startPt.x + targetPt.x) / 2;
+          const midY = (startPt.y + targetPt.y) / 2 - Math.min(120, Math.hypot(targetPt.x - startPt.x, targetPt.y - startPt.y) * 0.3);
+
+          ctx.beginPath();
+          ctx.moveTo(startPt.x, startPt.y);
+          ctx.quadraticCurveTo(midX, midY, targetPt.x, targetPt.y);
+          ctx.strokeStyle = arc.neutralized ? 'rgba(0, 212, 255, 0.3)' : (arc.color + '44');
+          ctx.lineWidth = 2;
+          ctx.setLineDash([4, 4]);
+          ctx.stroke();
+          ctx.setLineDash([]);
+
+          // Glowing missile head particle at current progress
+          ctx.beginPath();
+          ctx.arc(currentPt.x, currentPt.y, 5, 0, Math.PI * 2);
+          ctx.fillStyle = arc.neutralized ? '#00d4ff' : arc.color;
+          ctx.shadowColor = arc.color;
+          ctx.shadowBlur = 12;
+          ctx.fill();
+          ctx.shadowBlur = 0;
+        });
+      }
+
+      requestAnimationFrame(drawGeodesicArcs);
+    }
+
+    map.on('load', () => {
+      requestAnimationFrame(drawGeodesicArcs);
+    });
+    map.on('move', () => {
+      // Re-trigger sync on map pan/zoom
+    });
   </script>
 </body>
 </html>

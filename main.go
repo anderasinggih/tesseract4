@@ -11,67 +11,91 @@ import (
 	"github.com/google/uuid"
 )
 
-// Vector4 represents a 4-dimensional point (X, Y, Z, W)
-type Vector4 struct {
-	X float64 `json:"x"`
-	Y float64 `json:"y"`
-	Z float64 `json:"z"`
-	W float64 `json:"w"`
+// AttackArc represents a real-time cyber projectile flying over the world map
+type AttackArc struct {
+	ID          string   `json:"id"`
+	AttackerID  string   `json:"attackerId"`
+	Attacker    string   `json:"attacker"`
+	OriginCity  string   `json:"originCity"`
+	OriginCoord GeoCoord `json:"originCoord"`
+	TargetCity  string   `json:"targetCity"`
+	TargetCoord GeoCoord `json:"targetCoord"`
+	TargetIP    string   `json:"targetIp"`
+	TargetASN   string   `json:"targetAsn"`
+	Vector      string   `json:"vector"` // "DDoS SYN Flood", "Ransomware Encryptor", "Kernel 0-Day Exploit", "DNS Amplification"
+	Color       string   `json:"color"`  // "#FF0033" (Red), "#9900FF" (Purple), "#00FF66" (Green)
+	Progress    float64  `json:"progress"` // 0.0 to 1.0 (Interpolated geodesic flight)
+	CurrentPos  GeoCoord `json:"currentPos"`
+	PayloadSize int      `json:"payloadSize"` // in KB or MB
+	Entropy     float64  `json:"entropy"`     // Shannon entropy index
+	Neutralized bool     `json:"neutralized"`
+	MitigatedBy string   `json:"mitigatedBy,omitempty"`
 }
 
-// Line2D represents a projected 2D line segment with color styling
-type Line2D struct {
-	X1    float64 `json:"x1"`
-	Y1    float64 `json:"y1"`
-	X2    float64 `json:"x2"`
-	Y2    float64 `json:"y2"`
-	Color string  `json:"color"` // "#00FF00", "#0088FF", "#FF0055", "#444444"
+// SentinelAgent represents an active connected player/operator
+type SentinelAgent struct {
+	ID        string   `json:"id"`
+	Alias     string   `json:"alias"`
+	Faction   string   `json:"faction"` // "red", "blue"
+	City      string   `json:"city"`
+	Coord     GeoCoord `json:"coord"`
+	Attacks   int      `json:"attacks"`
+	Defends   int      `json:"defends"`
+	Score     int      `json:"score"`
 }
 
-// Orb represents a collectible Quantum Core in 3D/4D space
-type Orb struct {
-	ID       int     `json:"id"`
-	Position Vector4 `json:"position"`
-	Active   bool    `json:"active"`
+// TerminalLog represents a real-time cybersecurity telemetry event
+type TerminalLog struct {
+	Timestamp string `json:"timestamp"`
+	Level     string `json:"level"` // "WARN", "CRIT", "DEFENSE", "INFO"
+	Message   string `json:"message"`
+	Tag       string `json:"tag"`
 }
 
-// PlayerState represents another player's snapshot
-type PlayerState struct {
-	ID       string  `json:"id"`
-	Position Vector4 `json:"position"`
-	Yaw      float64 `json:"yaw"`
-	Pitch    float64 `json:"pitch"`
-	Score    int     `json:"score"`
+// TargetNode represents a global infrastructure point with live health
+type TargetNode struct {
+	City    string   `json:"city"`
+	Country string   `json:"country"`
+	Coord   GeoCoord `json:"coord"`
+	IP      string   `json:"ip"`
+	ASN     string   `json:"asn"`
+	Health  int      `json:"health"` // 0 to 100%
+	Shield  bool     `json:"shield"`
 }
 
-// FramePayload is sent over WebSocket to the dumb client
-type FramePayload struct {
-	Lines          []Line2D      `json:"lines"`
-	PlayerPos      Vector4       `json:"playerPos"`
-	TimeMultiplier float64       `json:"timeMultiplier"`
-	TickMs         float64       `json:"tickMs"`
-	PlayerID       string        `json:"playerId"`
-	Score          int           `json:"score"`
-	Leaderboard    []PlayerState `json:"leaderboard"`
-	OtherPlayers   []PlayerState `json:"otherPlayers"`
+// WarRoomState is broadcast to clients at 30Hz
+type WarRoomState struct {
+	Type          string          `json:"type"` // "state_update"
+	AgentID       string          `json:"agentId"`
+	Agents        []SentinelAgent `json:"agents"`
+	ActiveArcs    []AttackArc     `json:"activeArcs"`
+	Nodes         []TargetNode    `json:"nodes"`
+	Logs          []TerminalLog   `json:"logs"`
+	RedScore      int             `json:"redScore"`
+	BlueScore     int             `json:"blueScore"`
+	GlobalEntropy float64         `json:"globalEntropy"`
+	ThreatLevel   string          `json:"threatLevel"` // "DEFCON 4", "DEFCON 3", "DEFCON 2", "DEFCON 1"
 }
 
-// InputCommand represents raw movement or mouse look from the frontend
-type InputCommand struct {
-	Type  string  `json:"type"`  // "move", "look"
-	Key   string  `json:"key"`   // "w", "s", "a", "d", "arrowup", "arrowdown", "shift", "space", "q", "e"
-	Delta float64 `json:"delta"` // magnitude
-	DX    float64 `json:"dx"`    // Mouse delta X (Yaw)
-	DY    float64 `json:"dy"`    // Mouse delta Y (Pitch)
+// ClientCommand represents commands sent by users
+type ClientCommand struct {
+	Type       string  `json:"type"` // "join", "attack", "defend"
+	Alias      string  `json:"alias,omitempty"`
+	Faction    string  `json:"faction,omitempty"` // "red", "blue"
+	City       string  `json:"city,omitempty"`
+	TargetCity string  `json:"targetCity,omitempty"`
+	Vector     string  `json:"vector,omitempty"`
+	ArcID      string  `json:"arcId,omitempty"` // For intercepting
+	ActionType string  `json:"actionType,omitempty"` // "bgp_null_route", "rate_limit", "firewall_patch"
+	PayloadMB  int     `json:"payloadMb,omitempty"`
 }
-
 
 // Global Actor Model Hub instance
-var GameHub = NewHub()
+var GlobalWarRoom = NewWarRoomHub()
 
 func main() {
-	// Start the "Mandor" Broker Goroutine
-	go GameHub.Run()
+	// Start the Cyber Warfare Hub Goroutine
+	go GlobalWarRoom.Run()
 
 	app := fiber.New(fiber.Config{
 		DisableStartupMessage: false,
@@ -94,51 +118,41 @@ func main() {
 
 	// WebSocket route
 	app.Get("/ws", websocket.New(func(c *websocket.Conn) {
-		// 1. Master Switch (Context with Cancel)
 		ctx, cancel := context.WithCancel(context.Background())
+		agentID := uuid.New().String()[:8]
 
-		playerID := uuid.New().String()
-		player := &Player{
-			ID: playerID,
-			Position: Vector4{
-				X: 0,
-				Y: 0,
-				Z: 0,
-				W: 1.0, // Initial distance from singularity
-			},
-			Yaw:      0,
-			Pitch:    0,
-			HyperRot: 0,
-			Conn:     c,
-			Send:     make(chan []byte, 256), // Buffer antrean pengiriman keluar
+		// Random default city assignment for new sentinel
+		defaultNode := GlobalNodes[len(agentID)%len(GlobalNodes)]
+		agent := &AgentConnection{
+			ID:      agentID,
+			Alias:   "Agent-" + agentID,
+			Faction: "red",
+			City:    defaultNode.City,
+			Coord:   defaultNode.Coord,
+			Conn:    c,
+			Send:    make(chan []byte, 256),
 		}
 
-		// 1. Kirim surat pendaftaran ke Mandor (Zero Mutex!)
-		GameHub.register <- player
+		// Register Sentinel in War Room
+		GlobalWarRoom.register <- agent
 
-		// 2. Luncurkan Goroutine "Kurir" (WritePump) di background
-		go player.WritePump()
+		// Launch dedicated asynchronous writer
+		go agent.WritePump()
 
-		// 3. Guaranteed Cleanup via Defer
 		defer func() {
-			// Pull Master Switch: instantly terminates PhysicsAndTemporalLoop
 			cancel()
-
-			// Kirim surat pengunduran diri ke Mandor (Zero Mutex contention)
-			GameHub.unregister <- player
-
-			// Close physical socket connection
+			GlobalWarRoom.unregister <- agent
 			c.Close()
 		}()
 
-		// 4. Launch Physics & Temporal calculation in background goroutine with context
-		go player.PhysicsLoop(ctx)
+		// Launch telemetry stream
+		go agent.TelemetryLoop(ctx)
 
-		// 5. ReadPump (Blocks main handler loop while socket is alive)
-		player.ReadPump(c)
+		// Read incoming player actions
+		agent.ReadPump(c)
 	}))
 
-	log.Println("⚡ The Tesseract Paradox Server is starting on http://localhost:8080")
+	log.Println("🛡️ Cyber Warfare Ops Server is live on http://localhost:8080")
 	if err := app.Listen(":8080"); err != nil {
 		log.Fatalf("Server error: %v", err)
 	}
