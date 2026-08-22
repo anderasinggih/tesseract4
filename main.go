@@ -28,13 +28,22 @@ type Line2D struct {
 	Color string  `json:"color"` // "#00FF00", "#0088FF", "#FF0055", "#444444"
 }
 
+// PlayerState represents another player's snapshot
+type PlayerState struct {
+	ID       string  `json:"id"`
+	Position Vector4 `json:"position"`
+	Yaw      float64 `json:"yaw"`
+	Pitch    float64 `json:"pitch"`
+}
+
 // FramePayload is sent over WebSocket to the dumb client
 type FramePayload struct {
-	Lines          []Line2D `json:"lines"`
-	PlayerPos      Vector4  `json:"playerPos"`
-	TimeMultiplier float64  `json:"timeMultiplier"`
-	TickMs         float64  `json:"tickMs"`
-	PlayerID       string   `json:"playerId"`
+	Lines          []Line2D      `json:"lines"`
+	PlayerPos      Vector4       `json:"playerPos"`
+	TimeMultiplier float64       `json:"timeMultiplier"`
+	TickMs         float64       `json:"tickMs"`
+	PlayerID       string        `json:"playerId"`
+	OtherPlayers   []PlayerState `json:"otherPlayers"`
 }
 
 // InputCommand represents raw movement or mouse look from the frontend

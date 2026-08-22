@@ -152,16 +152,20 @@ func (p *Player) PhysicsLoop(ctx context.Context) {
 			timeMultiplier := CalculateTimeMultiplier(currentPos.W)
 			effectiveTickMs := float64(BaseTick) / timeMultiplier
 
-			// 2. Generate 2D projected lines with true Minecraft-style FPS view matrix
-			lines := GenerateProjectedLines(currentPos, yaw, pitch, hyperRot)
+			// 2. Fetch other players snapshot for multiplayer mabar
+			otherPlayers := GameHub.GetOtherPlayersSnapshot(p.ID)
 
-			// 3. Construct payload
+			// 3. Generate 2D projected lines with true Minecraft-style FPS view matrix
+			lines := GenerateProjectedLines(currentPos, yaw, pitch, hyperRot, otherPlayers)
+
+			// 4. Construct payload
 			payload := FramePayload{
 				Lines:          lines,
 				PlayerPos:      currentPos,
 				TimeMultiplier: timeMultiplier,
 				TickMs:         effectiveTickMs,
 				PlayerID:       p.ID,
+				OtherPlayers:   otherPlayers,
 			}
 
 			// 4. Deliver to send queue

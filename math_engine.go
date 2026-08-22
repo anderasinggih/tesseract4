@@ -126,45 +126,45 @@ func TransformWorldPoint(worldPt, cameraPos Vector4, yaw, pitch float64) (float6
 	return Project4Dto2D(rPitch, DistanceD)
 }
 
-// GenerateProjectedLines builds the 4D Tesseract and 3D Cyber-Grid Environment
-func GenerateProjectedLines(pos Vector4, yaw, pitch, hyperRot float64) []Line2D {
-	lines := make([]Line2D, 0, 128)
+// GenerateProjectedLines builds the 4D Tesseract, 3D Cyber-Grid, and Other Player Avatars
+func GenerateProjectedLines(pos Vector4, yaw, pitch, hyperRot float64, otherPlayers []PlayerState) []Line2D {
+	lines := make([]Line2D, 0, 256)
 
 	// ==========================================
 	// 1. ENVIRONMENT: CYBER-GRID FLOOR (Lantai Kotak-Kotak 3D)
 	// ==========================================
-	floorY := -2.0 // Ketinggian lantai di bawah pemain
+	floorY := -2.0
 	gridSize := 16.0
 	gridStep := 2.0
 
-	// Garis grid horizontal (Sumbu X)
+	// Garis grid horizontal
 	for z := -gridSize; z <= gridSize; z += gridStep {
 		p1x, p1y, ok1 := TransformWorldPoint(Vector4{X: -gridSize, Y: floorY, Z: z, W: 0}, pos, yaw, pitch)
 		p2x, p2y, ok2 := TransformWorldPoint(Vector4{X: gridSize, Y: floorY, Z: z, W: 0}, pos, yaw, pitch)
 		if ok1 && ok2 {
 			color := "#003322"
 			if z == 0 {
-				color = "#00FF88" // Garis tengah X
+				color = "#00FF88"
 			}
 			lines = append(lines, Line2D{X1: p1x, Y1: p1y, X2: p2x, Y2: p2y, Color: color})
 		}
 	}
 
-	// Garis grid vertikal (Sumbu Z)
+	// Garis grid vertikal
 	for x := -gridSize; x <= gridSize; x += gridStep {
 		p1x, p1y, ok1 := TransformWorldPoint(Vector4{X: x, Y: floorY, Z: -gridSize, W: 0}, pos, yaw, pitch)
 		p2x, p2y, ok2 := TransformWorldPoint(Vector4{X: x, Y: floorY, Z: gridSize, W: 0}, pos, yaw, pitch)
 		if ok1 && ok2 {
 			color := "#003322"
 			if x == 0 {
-				color = "#0088FF" // Garis tengah Z
+				color = "#0088FF"
 			}
 			lines = append(lines, Line2D{X1: p1x, Y1: p1y, X2: p2x, Y2: p2y, Color: color})
 		}
 	}
 
 	// ==========================================
-	// 2. ENVIRONMENT: 4 CORNER PILLARS (Pilar Penanda Ruang)
+	// 2. ENVIRONMENT: 4 CORNER PILLARS
 	// ==========================================
 	corners := [][2]float64{
 		{-8, -8}, {8, -8}, {-8, 8}, {8, 8},
@@ -182,14 +182,10 @@ func GenerateProjectedLines(pos Vector4, yaw, pitch, hyperRot float64) []Line2D 
 	// ==========================================
 	var tesseractPts [16][2]float64
 	var tesseractVisible [16]bool
-
-	// Posisi tesseract melayang di dunia (Z = 5.0 di depan spawn)
 	tesseractCenter := Vector4{X: 0, Y: 0, Z: 6.0, W: 0}
 
 	for i, v := range BaseTesseractVertices {
-		// 4D Rotation pada objek hiperkubus
 		r4d := RotateXW(v, hyperRot)
-
 		worldVertex := Vector4{
 			X: r4d.X*1.2 + tesseractCenter.X,
 			Y: r4d.Y*1.2 + tesseractCenter.Y,
@@ -213,6 +209,48 @@ func GenerateProjectedLines(pos Vector4, yaw, pitch, hyperRot float64) []Line2D 
 				Y2:    p2[1],
 				Color: "#00FF00", // Neon Green Hypercube
 			})
+		}
+	}
+
+	// ==========================================
+	// 4. MULTIPLAYER: AVATAR PEMAIN LAIN (Hologram Cube)
+	// ==========================================
+	avatarBox := [8][3]float64{
+		{-0.4, -0.4, -0.4}, {0.4, -0.4, -0.4}, {0.4, 0.4, -0.4}, {-0.4, 0.4, -0.4},
+		{-0.4, -0.4, 0.4}, {0.4, -0.4, 0.4}, {0.4, 0.4, 0.4}, {-0.4, 0.4, 0.4},
+	}
+	avatarEdges := [12][2]int{
+		{0, 1}, {1, 2}, {2, 3}, {3, 0},
+		{4, 5}, {5, 6}, {6, 7}, {7, 4},
+		{0, 4}, {1, 5}, {2, 6}, {3, 7},
+	}
+
+	for _, other := range otherPlayers {
+		var box2D [8][2]float64
+		var boxVis [8]bool
+
+		for i, pt := range avatarBox {
+			worldPt := Vector4{
+				X: other.Position.X + pt[0],
+				Y: other.Position.Y + pt[1],
+				Z: other.Position.Z + pt[2],
+				W: other.Position.W,
+			}
+			px, py, ok := TransformWorldPoint(worldPt, pos, yaw, pitch)
+			box2D[i] = [2]float64{px, py}
+			boxVis[i] = ok
+		}
+
+		for _, edge := range avatarEdges {
+			if boxVis[edge[0]] && boxVis[edge[1]] {
+				lines = append(lines, Line2D{
+					X1:    box2D[edge[0]][0],
+					Y1:    box2D[edge[0]][1],
+					X2:    box2D[edge[1]][0],
+					Y2:    box2D[edge[1]][1],
+					Color: "#00FFFF", // Cyan Hologram untuk teman/lawan mabar
+				})
+			}
 		}
 	}
 

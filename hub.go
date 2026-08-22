@@ -7,23 +7,15 @@ import (
 
 // Hub bertindak sebagai "Mandor" tunggal (Actor Model / Channel Broker)
 type Hub struct {
-	// Map murni, TIDAK ADA Mutex!
-	clients map[*Player]bool
-
-	// Kotak surat untuk pemain baru yang mau masuk
-	register chan *Player
-
-	// Kotak surat untuk pemain yang mau keluar/disconnect
-	unregister chan *Player
-
-	// Kotak surat utama tempat Mandor menerima pengumuman broadcast
-	Broadcast chan []byte
-
-	// Kotak surat untuk query jumlah pemain aktif
+	clients       map[*Player]bool
+	register      chan *Player
+	unregister    chan *Player
+	Broadcast     chan []byte
 	countRequests chan chan int
+	getPlayers    chan chan []*Player
 }
 
-// NewHub menginisialisasi sang Mandor dengan kotak surat (buffered channel)
+// NewHub menginisialisasi sang Mandor dengan kotak surat
 func NewHub() *Hub {
 	return &Hub{
 		clients:       make(map[*Player]bool),
@@ -31,10 +23,11 @@ func NewHub() *Hub {
 		unregister:    make(chan *Player, 1024),
 		Broadcast:     make(chan []byte, 4096),
 		countRequests: make(chan chan int, 64),
+		getPlayers:    make(chan chan []*Player, 64),
 	}
 }
 
-// Run adalah Jantung Actor Model: Event Loop tunggal yang memproses antrean bebas lag
+// Run adalah Jantung Actor Model: Event Loop tunggal
 func (h *Hub) Run() {
 	log.Println("👔 [Hub Mandor] Event Loop Actor Model + Non-Blocking Broadcast Pump aktif.")
 	for {
@@ -46,32 +39,54 @@ func (h *Hub) Run() {
 		case player := <-h.unregister:
 			if _, ok := h.clients[player]; ok {
 				delete(h.clients, player)
-				close(player.Send) // Tutup kotak suratnya
+				close(player.Send)
 				fmt.Printf("[Hub] Pemain %s keluar. Total aktif: %d\n", player.ID, len(h.clients))
 			}
 
 		case message := <-h.Broadcast:
-			// Mandor memfotokopi pesan ke seluruh kotak surat (RAM-to-RAM nanoseconds)
 			for player := range h.clients {
 				select {
 				case player.Send <- message:
-					// Berhasil masuk ke antrean kurir pemain
-
 				default:
-					// RAHASIA ANTI-LAG:
-					// Kalau buffer pemain ini penuh (karena internet lambat/stuck),
-					// Mandor TIDAK AKAN MENUNGGU!
-					// Mandor langsung memutuskan pemain ini agar 9.999 pemain lain tidak lag.
 					close(player.Send)
 					delete(h.clients, player)
-					fmt.Printf("[Hub] Pemain %s di-disconnect karena buffer jenuh (Slow Consumer Protection).\n", player.ID)
 				}
 			}
 
 		case respChan := <-h.countRequests:
 			respChan <- len(h.clients)
+
+		case respChan := <-h.getPlayers:
+			list := make([]*Player, 0, len(h.clients))
+			for p := range h.clients {
+				list = append(list, p)
+			}
+			respChan <- list
 		}
 	}
+}
+
+// GetOtherPlayersSnapshot mengambil list pemain lain untuk digambar di dunia 3D/4D
+func (h *Hub) GetOtherPlayersSnapshot(selfID string) []PlayerState {
+	resp := make(chan []*Player, 1)
+	h.getPlayers <- resp
+	players := <-resp
+
+	states := make([]PlayerState, 0, len(players))
+	for _, p := range players {
+		if p.ID == selfID {
+			continue
+		}
+		p.Mutex.RLock()
+		states = append(states, PlayerState{
+			ID:       p.ID,
+			Position: p.Position,
+			Yaw:      p.Yaw,
+			Pitch:    p.Pitch,
+		})
+		p.Mutex.RUnlock()
+	}
+	return states
 }
 
 // GetPlayerCount membaca total pemain melalui jalur pesan channel
