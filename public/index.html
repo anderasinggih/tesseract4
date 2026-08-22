@@ -211,8 +211,14 @@
 
   <div id="hud">
     <div class="hud-title"><span id="status-indicator" class="status-badge"></span>TESSERACT PARADOX 4D</div>
+    <div style="color: #FFD700; font-weight: bold; margin: 2px 0;">🎯 MISI: Kumpulkan Quantum Core Emas (💎)</div>
+    <div>SKOR KAMU: <span id="score-display" style="color: #FFD700; font-weight: bold;">0</span> PTS</div>
     <div>POS: <span id="pos-display">0.00, 0.00, 0.00, 1.00</span></div>
     <div>DILATION: <span id="dilation-display">1.00x</span> | TICK: <span id="tick-display">16 ms</span></div>
+    <div id="leaderboard-box" style="margin-top: 5px; border-top: 1px dashed rgba(0,255,0,0.3); padding-top: 3px;">
+      <div style="font-weight: bold; color: #00FFFF; font-size: 10px;">🏆 TOP PLAYERS MABAR:</div>
+      <div id="leaderboard-list" style="font-size: 10px; color: #88ff88;">-</div>
+    </div>
   </div>
 
   <div id="desktop-controls">
@@ -338,9 +344,22 @@
     }
     requestAnimationFrame(renderLoop);
 
-    function onServerPayload(payload) {
-      const { lines, playerPos, timeMultiplier, tickMs } = payload;
+    const scoreDisplay = document.getElementById('score-display');
+    const leaderboardList = document.getElementById('leaderboard-list');
 
+    function onServerPayload(payload) {
+      const { lines, playerPos, timeMultiplier, tickMs, score, leaderboard, playerId } = payload;
+
+      if (score !== undefined && scoreDisplay) {
+        scoreDisplay.innerText = score;
+      }
+      if (leaderboard && leaderboardList) {
+        leaderboardList.innerHTML = leaderboard.slice(0, 3).map((p, idx) => {
+          const isMe = p.id === playerId;
+          const name = isMe ? `KAMU (${p.id.slice(0, 5)})` : `P${idx + 1} (${p.id.slice(0, 5)})`;
+          return `<div style="${isMe ? 'color: #FFD700; font-weight: bold;' : ''}">#${idx + 1} ${name}: ${p.score} PTS</div>`;
+        }).join('');
+      }
       if (playerPos) {
         posDisplay.innerText = `${playerPos.x.toFixed(1)}, ${playerPos.y.toFixed(1)}, ${playerPos.z.toFixed(1)}, ${playerPos.w.toFixed(1)}`;
       }

@@ -28,12 +28,20 @@ type Line2D struct {
 	Color string  `json:"color"` // "#00FF00", "#0088FF", "#FF0055", "#444444"
 }
 
+// Orb represents a collectible Quantum Core in 3D/4D space
+type Orb struct {
+	ID       int     `json:"id"`
+	Position Vector4 `json:"position"`
+	Active   bool    `json:"active"`
+}
+
 // PlayerState represents another player's snapshot
 type PlayerState struct {
 	ID       string  `json:"id"`
 	Position Vector4 `json:"position"`
 	Yaw      float64 `json:"yaw"`
 	Pitch    float64 `json:"pitch"`
+	Score    int     `json:"score"`
 }
 
 // FramePayload is sent over WebSocket to the dumb client
@@ -43,6 +51,8 @@ type FramePayload struct {
 	TimeMultiplier float64       `json:"timeMultiplier"`
 	TickMs         float64       `json:"tickMs"`
 	PlayerID       string        `json:"playerId"`
+	Score          int           `json:"score"`
+	Leaderboard    []PlayerState `json:"leaderboard"`
 	OtherPlayers   []PlayerState `json:"otherPlayers"`
 }
 

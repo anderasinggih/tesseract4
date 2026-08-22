@@ -19,6 +19,7 @@ type Player struct {
 	Yaw      float64         // Mouse horizontal angle (Look Left/Right)
 	Pitch    float64         // Mouse vertical angle (Look Up/Down)
 	HyperRot float64         // 4D XW dimension rotation angle
+	Score    int             // Player collected Quantum Core score
 	Conn     *websocket.Conn // Physical WebSocket connection
 	Send     chan []byte     // Outbound message queue (Buffered Channel)
 	Mutex    sync.RWMutex    // Protects Position and Rotation mutability
@@ -57,9 +58,7 @@ func (p *Player) ReadPump(c *websocket.Conn) {
 		p.Mutex.Lock()
 		switch cmd.Type {
 		case "look":
-			// FPS Natural Mouse Look (Standard Minecraft / FPS):
-			// Gerak mouse ke kanan -> Kamera menoleh ke kanan (+Yaw)
-			// Gerak mouse ke atas -> Kamera mendongak ke atas (+Pitch)
+			// FPS Natural Mouse Look (Standard Minecraft / FPS)
 			sensitivity := 0.003
 			p.Yaw += cmd.DX * sensitivity
 			p.Pitch += cmd.DY * sensitivity
@@ -76,55 +75,39 @@ func (p *Player) ReadPump(c *websocket.Conn) {
 				speed = cmd.Delta
 			}
 
-			// Standar Minecraft / FPS Movement Vector:
-			// Arah Pandangan Depan (Forward): sin(Yaw) ke X, cos(Yaw) ke Z
-			// Arah Kanan (Right Strafe): cos(Yaw) ke X, -sin(Yaw) ke Z
+			// Standar Minecraft / FPS Movement Vector
 			sinY := math.Sin(p.Yaw)
 			cosY := math.Cos(p.Yaw)
 
 			switch strings.ToLower(cmd.Key) {
-			// W: MAJU KE DEPAN (Lurus ke arah hadap kursor)
 			case "w":
 				p.Position.X += speed * sinY
 				p.Position.Z += speed * cosY
-
-			// S: MUNDUR KE BELAKANG
 			case "s":
 				p.Position.X -= speed * sinY
 				p.Position.Z -= speed * cosY
-
-			// A: STRAFE KIRI
 			case "a":
 				p.Position.X -= speed * cosY
 				p.Position.Z += speed * sinY
-
-			// D: STRAFE KANAN
 			case "d":
 				p.Position.X += speed * cosY
 				p.Position.Z -= speed * sinY
-
-			// SPACE / PANAH ATAS: NAIK KE ATAS (Sumbu Y)
 			case "arrowup", " ":
 				p.Position.Y += speed
-
-			// C / PANAH BAWAH: TURUN KE BAWAH (Sumbu Y)
 			case "arrowdown", "c":
 				p.Position.Y -= speed
-
-			// SHIFT: Masuk ke dalam Dimensi W (Mendekati Black Hole Singularity)
 			case "shift":
 				p.Position.W -= speed
-
-			// E: Menjauh dari Dimensi W (Menjauhi Singularity)
 			case "e":
 				p.Position.W += speed
-
-			// Q / R: Spin hiperkubus 4D
 			case "q":
 				p.HyperRot -= 0.05
 			case "r":
 				p.HyperRot += 0.05
 			}
+
+			// Check Quantum Orb collision on move
+			GameHub.CheckCollectOrb(p)
 		}
 		p.Mutex.Unlock()
 	}
@@ -146,17 +129,18 @@ func (p *Player) PhysicsLoop(ctx context.Context) {
 			yaw := p.Yaw
 			pitch := p.Pitch
 			hyperRot := p.HyperRot
+			score := p.Score
 			p.Mutex.RUnlock()
 
 			// 1. Calculate Schwarzschild Time Dilation Multiplier
 			timeMultiplier := CalculateTimeMultiplier(currentPos.W)
 			effectiveTickMs := float64(BaseTick) / timeMultiplier
 
-			// 2. Fetch other players snapshot for multiplayer mabar
-			otherPlayers := GameHub.GetOtherPlayersSnapshot(p.ID)
+			// 2. Fetch other players snapshot, leaderboard, and Quantum Orbs
+			otherPlayers, leaderboard, orbs := GameHub.GetGameSnapshot(p.ID)
 
-			// 3. Generate 2D projected lines with true Minecraft-style FPS view matrix
-			lines := GenerateProjectedLines(currentPos, yaw, pitch, hyperRot, otherPlayers)
+			// 3. Generate 2D projected lines with Orbs and Avatars
+			lines := GenerateProjectedLines(currentPos, yaw, pitch, hyperRot, otherPlayers, orbs)
 
 			// 4. Construct payload
 			payload := FramePayload{
@@ -165,10 +149,12 @@ func (p *Player) PhysicsLoop(ctx context.Context) {
 				TimeMultiplier: timeMultiplier,
 				TickMs:         effectiveTickMs,
 				PlayerID:       p.ID,
+				Score:          score,
+				Leaderboard:    leaderboard,
 				OtherPlayers:   otherPlayers,
 			}
 
-			// 4. Deliver to send queue
+			// 5. Deliver to send queue
 			data, err := json.Marshal(payload)
 			if err == nil {
 				select {

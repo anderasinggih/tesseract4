@@ -16,6 +16,7 @@ func TestConcurrentMovementAndPhysics(t *testing.T) {
 		Yaw:      0,
 		Pitch:    0,
 		HyperRot: 0,
+		Score:    0,
 		Send:     make(chan []byte, 256),
 	}
 
@@ -89,7 +90,7 @@ func TestConcurrentMovementAndPhysics(t *testing.T) {
 				player.Mutex.RUnlock()
 
 				_ = CalculateTimeMultiplier(pos.W)
-				_ = GenerateProjectedLines(pos, yaw, pitch, hyperRot, nil)
+				_ = GenerateProjectedLines(pos, yaw, pitch, hyperRot, nil, nil)
 
 				player.Mutex.Lock()
 				player.HyperRot += 0.01
@@ -113,7 +114,8 @@ func TestConcurrentMovementAndPhysics(t *testing.T) {
 			hub.register <- p
 			hub.Broadcast <- []byte(`{"ping": true}`)
 			_ = hub.GetPlayerCount()
-			_ = hub.GetOtherPlayersSnapshot("self")
+			_, _, _ = hub.GetGameSnapshot("self")
+			hub.CheckCollectOrb(p)
 			hub.unregister <- p
 		}
 	}()

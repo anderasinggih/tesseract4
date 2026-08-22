@@ -126,8 +126,8 @@ func TransformWorldPoint(worldPt, cameraPos Vector4, yaw, pitch float64) (float6
 	return Project4Dto2D(rPitch, DistanceD)
 }
 
-// GenerateProjectedLines builds the 4D Tesseract, 3D Cyber-Grid, and Other Player Avatars
-func GenerateProjectedLines(pos Vector4, yaw, pitch, hyperRot float64, otherPlayers []PlayerState) []Line2D {
+// GenerateProjectedLines builds the 4D Tesseract, 3D Cyber-Grid, Orbs, and Other Player Avatars
+func GenerateProjectedLines(pos Vector4, yaw, pitch, hyperRot float64, otherPlayers []PlayerState, orbs []Orb) []Line2D {
 	lines := make([]Line2D, 0, 256)
 
 	// ==========================================
@@ -137,7 +137,6 @@ func GenerateProjectedLines(pos Vector4, yaw, pitch, hyperRot float64, otherPlay
 	gridSize := 16.0
 	gridStep := 2.0
 
-	// Garis grid horizontal
 	for z := -gridSize; z <= gridSize; z += gridStep {
 		p1x, p1y, ok1 := TransformWorldPoint(Vector4{X: -gridSize, Y: floorY, Z: z, W: 0}, pos, yaw, pitch)
 		p2x, p2y, ok2 := TransformWorldPoint(Vector4{X: gridSize, Y: floorY, Z: z, W: 0}, pos, yaw, pitch)
@@ -150,7 +149,6 @@ func GenerateProjectedLines(pos Vector4, yaw, pitch, hyperRot float64, otherPlay
 		}
 	}
 
-	// Garis grid vertikal
 	for x := -gridSize; x <= gridSize; x += gridStep {
 		p1x, p1y, ok1 := TransformWorldPoint(Vector4{X: x, Y: floorY, Z: -gridSize, W: 0}, pos, yaw, pitch)
 		p2x, p2y, ok2 := TransformWorldPoint(Vector4{X: x, Y: floorY, Z: gridSize, W: 0}, pos, yaw, pitch)
@@ -207,13 +205,56 @@ func GenerateProjectedLines(pos Vector4, yaw, pitch, hyperRot float64, otherPlay
 				Y1:    p1[1],
 				X2:    p2[0],
 				Y2:    p2[1],
-				Color: "#00FF00", // Neon Green Hypercube
+				Color: "#00FF00",
 			})
 		}
 	}
 
 	// ==========================================
-	// 4. MULTIPLAYER: AVATAR PEMAIN LAIN (Hologram Cube)
+	// 4. GAMEPLAY OBJECTS: QUANTUM ORBS (Bintang Kuning Emas Berlian)
+	// ==========================================
+	diamondOffsets := [6][3]float64{
+		{0, 0.35, 0}, {0, -0.35, 0},
+		{0.25, 0, 0}, {-0.25, 0, 0},
+		{0, 0, 0.25}, {0, 0, -0.25},
+	}
+	diamondEdges := [12][2]int{
+		{0, 2}, {0, 3}, {0, 4}, {0, 5},
+		{1, 2}, {1, 3}, {1, 4}, {1, 5},
+		{2, 4}, {4, 3}, {3, 5}, {5, 2},
+	}
+
+	for _, orb := range orbs {
+		var orbPts [6][2]float64
+		var orbVis [6]bool
+
+		for i, pt := range diamondOffsets {
+			worldPt := Vector4{
+				X: orb.Position.X + pt[0],
+				Y: orb.Position.Y + pt[1],
+				Z: orb.Position.Z + pt[2],
+				W: orb.Position.W,
+			}
+			px, py, ok := TransformWorldPoint(worldPt, pos, yaw, pitch)
+			orbPts[i] = [2]float64{px, py}
+			orbVis[i] = ok
+		}
+
+		for _, edge := range diamondEdges {
+			if orbVis[edge[0]] && orbVis[edge[1]] {
+				lines = append(lines, Line2D{
+					X1:    orbPts[edge[0]][0],
+					Y1:    orbPts[edge[0]][1],
+					X2:    orbPts[edge[1]][0],
+					Y2:    orbPts[edge[1]][1],
+					Color: "#FFD700", // Gold Diamond Orb
+				})
+			}
+		}
+	}
+
+	// ==========================================
+	// 5. MULTIPLAYER: AVATAR PEMAIN LAIN (Cyan Hologram Cube)
 	// ==========================================
 	avatarBox := [8][3]float64{
 		{-0.4, -0.4, -0.4}, {0.4, -0.4, -0.4}, {0.4, 0.4, -0.4}, {-0.4, 0.4, -0.4},
@@ -221,7 +262,7 @@ func GenerateProjectedLines(pos Vector4, yaw, pitch, hyperRot float64, otherPlay
 	}
 	avatarEdges := [12][2]int{
 		{0, 1}, {1, 2}, {2, 3}, {3, 0},
-		{4, 5}, {5, 6}, {6, 7}, {7, 4},
+		{4, 5}, {5, 6}, {7, 4}, {6, 7},
 		{0, 4}, {1, 5}, {2, 6}, {3, 7},
 	}
 
@@ -248,7 +289,7 @@ func GenerateProjectedLines(pos Vector4, yaw, pitch, hyperRot float64, otherPlay
 					Y1:    box2D[edge[0]][1],
 					X2:    box2D[edge[1]][0],
 					Y2:    box2D[edge[1]][1],
-					Color: "#00FFFF", // Cyan Hologram untuk teman/lawan mabar
+					Color: "#00FFFF", // Cyan Hologram
 				})
 			}
 		}
