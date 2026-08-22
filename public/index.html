@@ -1518,7 +1518,8 @@
 
     // ── WASD Flight Controls (active only in POV mode) ──────────────────────
     // W = Climb +500ft  |  S = Descend -500ft
-    // A = Bank Left -3° |  D = Bank Right +3°  (per 120ms tick)
+    // A = Bank Left -3° |  D = Bank Right +3°  (per 50ms tick, re-based on the
+    //     aircraft's ACTUAL heading server-side — zero lag accumulation)
     // Commands are RELATIVE nudges applied server-side on top of the current
     // target — no local accumulation, so zero stale-lag drift after release.
     const wasdHeld = {};
@@ -1552,7 +1553,7 @@
       wasdHeld[k] = true;
       applyWASD(); // instant first tick
       if (!wasdInterval) {
-        wasdInterval = setInterval(applyWASD, 120); // GTA-style: repeat every 120ms while held
+        wasdInterval = setInterval(applyWASD, 50); // repeat every 50ms while held — snappy stick response
       }
     });
 
@@ -3019,16 +3020,25 @@
 
       // In 3D POV Mode: Skip all 2D canvas overlays (no 2D route lines, no sector borders, no waypoints on sky/ground)
       if (mapCockpitPOVEnabled) {
-        // Ultra-Smooth 60 FPS Camera Follow & Turn Interpolation in POV Mode
+        // Ultra-Smooth Camera Follow & Turn Interpolation in POV Mode
         if (targetCamLng !== null && currentCamLng !== null) {
-          // Continuous smooth damping interpolation (prevents sudden turns or camera snapping)
-          const posLerp = 0.12;
-          const hdgLerp = 0.08;
+          const now = performance.now();
+          if (lastFrameTime === null) lastFrameTime = now;
+          const dt = Math.min((now - lastFrameTime) / 1000, 0.1);
+          lastFrameTime = now;
 
-          currentCamLng += (targetCamLng - currentCamLng) * posLerp;
-          currentCamLat += (targetCamLat - currentCamLat) * posLerp;
+          // Frame-rate independent damping — responsive bearing follow so
+          // WASD steering reads instantly on the rotating map horizon
+          const posAlpha = 1 - Math.exp(-12 * dt);
+          const hdgAlpha = 1 - Math.exp(-10 * dt);
 
-          // Ultra-Smooth 60 FPS Camera Follow & Turn Interpolation in POV Mode
+          currentCamLng += (targetCamLng - currentCamLng) * posAlpha;
+          currentCamLat += (targetCamLat - currentCamLat) * posAlpha;
+
+          // Shortest-path compass heading interpolation
+          let diffHdg = (targetCamHeading - currentCamHeading + 540) % 360 - 180;
+          currentCamHeading += diffHdg * hdgAlpha;
+
           map.jumpTo({
             center: [currentCamLng, currentCamLat],
             zoom: povZoomLevel,
@@ -3322,26 +3332,6 @@
             }
           });
         }
-      }
-
-      // Ultra-Smooth 60 FPS Camera Follow in POV Mode
-      if (mapCockpitPOVEnabled && targetCamLng !== null && currentCamLng !== null) {
-        // High-precision lerp directly tracking 60fps server stream
-        const lerpFactor = 0.25;
-        currentCamLng += (targetCamLng - currentCamLng) * lerpFactor;
-        currentCamLat += (targetCamLat - currentCamLat) * lerpFactor;
-
-        // Smooth shortest-path compass heading interpolation
-        let diffHdg = (targetCamHeading - currentCamHeading + 540) % 360 - 180;
-        currentCamHeading += diffHdg * lerpFactor;
-
-        // Instant low-level camera update
-        map.jumpTo({
-          center: [currentCamLng, currentCamLat],
-          zoom: povZoomLevel,
-          bearing: currentCamHeading,
-          pitch: 75
-        });
       }
 
       // 7. Tactical Analog Airborne Radar Scope (Active in POV Mode)
