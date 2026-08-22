@@ -2337,7 +2337,9 @@
     const rtcConfig = {
       iceServers: [
         { urls: 'stun:stun.l.google.com:19302' },
-        { urls: 'stun:stun1.l.google.com:19302' }
+        { urls: 'stun:stun1.l.google.com:19302' },
+        { urls: 'stun:stun2.l.google.com:19302' },
+        { urls: 'stun:stun.services.mozilla.com' }
       ]
     };
 
@@ -2356,8 +2358,8 @@
       if (!controllers || !selfControllerId) return;
       controllers.forEach(ctrl => {
         if (ctrl.id === selfControllerId) return;
-        // Deterministic offer initiator: lower ID initiates offer
         if (!p2pPeerConnections.has(ctrl.id)) {
+          console.log(`[P2P] Discovering peer CTR-${ctrl.id}. Creating connection...`);
           createPeerConnection(ctrl.id, selfControllerId < ctrl.id);
         }
       });
@@ -2375,6 +2377,10 @@
             signalData: { type: 'candidate', candidate: event.candidate }
           }));
         }
+      };
+
+      pc.onconnectionstatechange = () => {
+        console.log(`[P2P] Peer ${remoteId} connectionState: ${pc.connectionState}`);
       };
 
       if (isInitiator) {
@@ -2404,6 +2410,7 @@
         showTacticalToast(`P2P DIRECT LINK ACTIVE: CTR-${remoteId} (0ms UDP Sync)`, 'SYS');
       };
       dc.onclose = () => {
+        console.log(`[WebRTC P2P] DataChannel CLOSED with Peer ${remoteId}`);
         p2pDataChannels.delete(remoteId);
       };
       dc.onmessage = (event) => {
