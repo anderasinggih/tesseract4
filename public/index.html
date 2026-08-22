@@ -10,10 +10,6 @@
   <meta name="theme-color" content="#000000">
   <title>GLOBAL ATC RADAR // TACTICAL AIRSPACE CONTROL</title>
 
-  <!-- Babylon.js High-Performance 3D WebGL/WebGPU Engine -->
-  <script src="https://cdn.babylonjs.com/babylon.js"></script>
-  <script src="https://cdn.babylonjs.com/loaders/babylonjs.loaders.min.js"></script>
-
   <!-- MapLibre GL JS & CSS -->
   <link href="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css" rel="stylesheet" />
   <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
@@ -641,7 +637,6 @@
 <body>
 
   <div id="map-container"></div>
-  <canvas id="babylon-canvas" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 2; display: none;"></canvas>
   <div id="threejs-overlay"></div>
   <canvas id="canvas-overlay"></canvas>
 
@@ -1486,7 +1481,6 @@
       const overlay3D = document.getElementById('threejs-overlay');
       const analogRadarBox = document.getElementById('view-3d-box');
       const zoomControls = document.getElementById('pov-zoom-controls');
-      const babylonCanvas = document.getElementById('babylon-canvas');
       const mapContainer = document.getElementById('map-container');
 
       if (mapCockpitPOVEnabled) {
@@ -1496,11 +1490,7 @@
         if (overlay3D) overlay3D.style.display = 'block';
         if (analogRadarBox) analogRadarBox.style.display = 'block';
         if (zoomControls) zoomControls.style.display = 'flex';
-
-        // Initialize and reveal Babylon.js 3D Canvas
-        if (!babylonEngine) initBabylonSimulator();
-        if (babylonCanvas) babylonCanvas.style.display = 'block';
-        if (mapContainer) mapContainer.style.display = 'none';
+        if (mapContainer) mapContainer.style.display = 'block';
 
         // Start Realistic Jet Turbofan Sound Engine
         startJetEngineSound();
@@ -1520,7 +1510,18 @@
             targetCamLng = ac.coord.lng;
             targetCamLat = ac.coord.lat;
             targetCamHeading = ac.heading || 0;
+
+            map.jumpTo({
+              center: [currentCamLng, currentCamLat],
+              zoom: povZoomLevel,
+              bearing: currentCamHeading,
+              pitch: 72
+            });
           }
+        }
+
+        if (typeof map !== 'undefined' && map && map.resize) {
+          map.resize();
         }
       } else {
         btn.innerText = 'POV';
@@ -1529,15 +1530,18 @@
         if (overlay3D) overlay3D.style.display = 'none';
         if (analogRadarBox) analogRadarBox.style.display = 'none';
         if (zoomControls) zoomControls.style.display = 'none';
-        if (babylonCanvas) babylonCanvas.style.display = 'none';
         if (mapContainer) mapContainer.style.display = 'block';
 
         // Stop Jet Engine Sound Engine
         stopJetEngineSound();
 
-        if (typeof map !== 'undefined' && map && map.resize) {
-          map.resize();
-        }
+        // Smooth transition back to 2D top-down radar
+        map.easeTo({
+          pitch: 0,
+          bearing: 0,
+          zoom: 4.8,
+          duration: 800
+        });
       }
     }
 
@@ -2765,20 +2769,13 @@
           currentCamLng += (targetCamLng - currentCamLng) * posLerp;
           currentCamLat += (targetCamLat - currentCamLat) * posLerp;
 
-          // Real-Time Babylon.js 3D Flight Simulator Camera & Globe Follow (100% Horizontal View)
-          if (babylonCamera && babylonGlobeMesh && selectedCallsign && currentPayload && currentPayload.aircraft) {
-            const ac = currentPayload.aircraft.find(a => a.callsign === selectedCallsign);
-            if (ac) {
-              // Rotate curved earth globe to simulate real ground speed & course
-              babylonGlobeMesh.rotation.x += 0.0003;
-              
-              // Dynamic Camera follow distance
-              const followZ = 14.0 * Math.pow(2, (10.5 - povZoomLevel) * 0.4);
-              babylonCamera.position.z = followZ;
-              babylonCamera.position.y = 2.2;
-              babylonCamera.setTarget(new BABYLON.Vector3(0, 0, -25)); // 100% Horizontal forward horizon gaze
-            }
-          }
+          // Ultra-Smooth 60 FPS Camera Follow & Turn Interpolation in POV Mode
+          map.jumpTo({
+            center: [currentCamLng, currentCamLat],
+            zoom: povZoomLevel,
+            bearing: currentCamHeading,
+            pitch: 72
+          });
         }
 
         // Render Forward Destination Flight Route in POV Mode (Clean glowing corridor to destination)
