@@ -1037,87 +1037,83 @@
       initAudioEngine();
       if (!audioCtx) return;
       if (audioCtx.state === 'suspended') {
+    // ─── Tactical Aviation Sound Design (Clean, Minimalist, Modern) ────────
+    let audioCtx = null;
+    let jetEngineGain = null;
+    let jetNoiseNode = null;
+    let jetTurbineOsc = null;
+
+    function initAudioEngine() {
+      if (audioCtx) return;
+      try {
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        audioCtx = new AudioContext();
+      } catch (e) {
+        console.warn("Web Audio API not supported", e);
+      }
+    }
+
+    // 1. Studio Cabin Jet Engine Ambient (Deep, Warm, Low Rumble)
+    function startJetEngineSound() {
+      initAudioEngine();
+      if (!audioCtx) return;
+      if (audioCtx.state === 'suspended') {
         audioCtx.resume();
       }
-      if (jetEngineGain) return; // Already playing
+      if (jetEngineGain) return;
 
-      // Master POV audio bus
       jetEngineGain = audioCtx.createGain();
       jetEngineGain.gain.setValueAtTime(0.01, audioCtx.currentTime);
-      jetEngineGain.gain.exponentialRampToValueAtTime(0.35, audioCtx.currentTime + 1.5);
+      jetEngineGain.gain.exponentialRampToValueAtTime(0.28, audioCtx.currentTime + 1.2);
       jetEngineGain.connect(audioCtx.destination);
 
-      // A. Deep Sub-Bass Airflow Noise (Custom Brown Noise / Heavy Sub-Rumble)
+      // Deep Sub-Bass Airflow (Warm Brown Noise)
       const bufferSize = audioCtx.sampleRate * 2;
       const noiseBuffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
       const output = noiseBuffer.getChannelData(0);
       let lastOut = 0.0;
       for (let i = 0; i < bufferSize; i++) {
         const white = Math.random() * 2 - 1;
-        output[i] = (lastOut + (0.02 * white)) / 1.02; // Brown Noise Integration
+        output[i] = (lastOut + (0.02 * white)) / 1.02;
         lastOut = output[i];
-        output[i] *= 2.8; // Warm acoustic boost
+        output[i] *= 2.2;
       }
 
       jetNoiseNode = audioCtx.createBufferSource();
       jetNoiseNode.buffer = noiseBuffer;
       jetNoiseNode.loop = true;
 
-      // Warm acoustic cabin low-pass filter (220 Hz for realistic cockpit isolation)
       const cabinLowpass = audioCtx.createBiquadFilter();
       cabinLowpass.type = 'lowpass';
-      cabinLowpass.frequency.setValueAtTime(220, audioCtx.currentTime);
+      cabinLowpass.frequency.setValueAtTime(180, audioCtx.currentTime); // Deep warm rumble
 
       const noiseGain = audioCtx.createGain();
-      noiseGain.gain.setValueAtTime(0.85, audioCtx.currentTime);
+      noiseGain.gain.setValueAtTime(0.75, audioCtx.currentTime);
 
       jetNoiseNode.connect(cabinLowpass);
       cabinLowpass.connect(noiseGain);
       noiseGain.connect(jetEngineGain);
       jetNoiseNode.start();
-
-      // B. Smooth Twin-Spool Turbofan Harmonics (Low N1 Spool)
-      jetTurbineOsc = audioCtx.createOscillator();
-      jetTurbineOsc.type = 'sine';
-      jetTurbineOsc.frequency.setValueAtTime(92, audioCtx.currentTime); // Realistic CFM56/GE90 N1 idle frequency
-
-      const turbineFilter = audioCtx.createBiquadFilter();
-      turbineFilter.type = 'bandpass';
-      turbineFilter.frequency.setValueAtTime(184, audioCtx.currentTime);
-      turbineFilter.Q.setValueAtTime(2.0, audioCtx.currentTime);
-
-      const turbineGain = audioCtx.createGain();
-      turbineGain.gain.setValueAtTime(0.20, audioCtx.currentTime);
-
-      jetTurbineOsc.connect(turbineFilter);
-      turbineFilter.connect(turbineGain);
-      turbineGain.connect(jetEngineGain);
-      jetTurbineOsc.start();
     }
 
     function stopJetEngineSound() {
       if (jetEngineGain && audioCtx) {
-        jetEngineGain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.9);
+        jetEngineGain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.6);
         setTimeout(() => {
           if (jetNoiseNode) {
             try { jetNoiseNode.stop(); } catch (e) {}
             jetNoiseNode.disconnect();
             jetNoiseNode = null;
           }
-          if (jetTurbineOsc) {
-            try { jetTurbineOsc.stop(); } catch (e) {}
-            jetTurbineOsc.disconnect();
-            jetTurbineOsc = null;
-          }
           if (jetEngineGain) {
             jetEngineGain.disconnect();
             jetEngineGain = null;
           }
-        }, 950);
+        }, 650);
       }
     }
 
-    // 2. High-Tech Tactical Radar Lock / Target Ping SFX (Futuristic Glass Click)
+    // 2. Minimalist Tactile Click (Subtle, Clean 12ms High-Tech Click)
     function playUiClickSound() {
       initAudioEngine();
       if (!audioCtx) return;
@@ -1127,42 +1123,39 @@
       const osc = audioCtx.createOscillator();
       const gain = audioCtx.createGain();
       osc.type = 'sine';
-      osc.frequency.setValueAtTime(2400, now);
-      osc.frequency.exponentialRampToValueAtTime(1200, now + 0.035);
+      osc.frequency.setValueAtTime(1200, now);
+      osc.frequency.exponentialRampToValueAtTime(600, now + 0.015);
 
-      gain.gain.setValueAtTime(0.15, now);
-      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.04);
+      gain.gain.setValueAtTime(0.08, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.018);
 
       osc.connect(gain);
       gain.connect(audioCtx.destination);
       osc.start(now);
-      osc.stop(now + 0.045);
+      osc.stop(now + 0.02);
     }
 
-    // 3. Crisp Radio Squelch & NASA Roger Beep (Authentic Aviation VHF Click)
+    // 3. Crisp Radio Squelch Click (Microsecond Aviation PTT Click)
     function playRadioRogerBeep() {
       initAudioEngine();
       if (!audioCtx) return;
       if (audioCtx.state === 'suspended') audioCtx.resume();
       const now = audioCtx.currentTime;
 
-      // Authentic VHF Radio Mic Click
       const osc = audioCtx.createOscillator();
       const gain = audioCtx.createGain();
       osc.type = 'sine';
-      osc.frequency.setValueAtTime(2475, now);
-      osc.frequency.setValueAtTime(2524, now + 0.04);
-
-      gain.gain.setValueAtTime(0.12, now);
-      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.07);
+      osc.frequency.setValueAtTime(1800, now);
+      gain.gain.setValueAtTime(0.06, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.025);
 
       osc.connect(gain);
       gain.connect(audioCtx.destination);
       osc.start(now);
-      osc.stop(now + 0.075);
+      osc.stop(now + 0.03);
     }
 
-    // 4. Tactical Command Ack SFX (Polished Glass Dual-Tone)
+    // 4. Subtle Command Confirmation (Clean Modern Tone)
     function playCommandAckSound() {
       initAudioEngine();
       if (!audioCtx) return;
@@ -1172,63 +1165,62 @@
       const osc = audioCtx.createOscillator();
       const gain = audioCtx.createGain();
       osc.type = 'sine';
-      osc.frequency.setValueAtTime(1046.5, now); // C6
-      osc.frequency.setValueAtTime(1318.5, now + 0.05); // E6
-      gain.gain.setValueAtTime(0.15, now);
-      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.14);
+      osc.frequency.setValueAtTime(800, now);
+      osc.frequency.setValueAtTime(1000, now + 0.03);
+      gain.gain.setValueAtTime(0.08, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
 
       osc.connect(gain);
       gain.connect(audioCtx.destination);
       osc.start(now);
-      osc.stop(now + 0.15);
+      osc.stop(now + 0.09);
     }
 
-    // 5. Handoff Success Mission Fanfare (Harmonic Chime)
+    // 5. Clean Sector Handoff Confirmation (Airbus Clean Chime)
     function playHandoffSuccessSound() {
       initAudioEngine();
       if (!audioCtx) return;
       if (audioCtx.state === 'suspended') audioCtx.resume();
       const now = audioCtx.currentTime;
 
-      [523.25, 659.25, 783.99, 1046.50].forEach((freq, i) => {
+      [659.25, 880.00].forEach((freq, i) => {
         const osc = audioCtx.createOscillator();
         const gain = audioCtx.createGain();
         osc.type = 'sine';
-        osc.frequency.setValueAtTime(freq, now + i * 0.06);
-        gain.gain.setValueAtTime(0.14, now + i * 0.06);
-        gain.gain.exponentialRampToValueAtTime(0.001, now + i * 0.06 + 0.22);
+        osc.frequency.setValueAtTime(freq, now + i * 0.07);
+        gain.gain.setValueAtTime(0.09, now + i * 0.07);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + i * 0.07 + 0.2);
 
         osc.connect(gain);
         gain.connect(audioCtx.destination);
-        osc.start(now + i * 0.06);
-        osc.stop(now + i * 0.06 + 0.24);
+        osc.start(now + i * 0.07);
+        osc.stop(now + i * 0.07 + 0.22);
       });
     }
 
-    // 6. Authentic Boeing/Airbus Master Caution Emergency Alarm (Dual-Tone Acoustic Chime)
+    // 6. Minimalist Cockpit Master Warning (Clean Airbus Triple Beep)
     function playAlertChime() {
       initAudioEngine();
       if (!audioCtx) return;
       if (audioCtx.state === 'suspended') audioCtx.resume();
 
       const now = audioCtx.currentTime;
-      // Authentic Boeing Single-Stroke Chime harmonics (F#5 & D#5 pure acoustic sine chords)
-      [740, 622].forEach((freq, i) => {
+      [0, 0.12, 0.24].forEach((t) => {
         const osc = audioCtx.createOscillator();
         const gain = audioCtx.createGain();
         osc.type = 'sine';
-        osc.frequency.setValueAtTime(freq, now + i * 0.12);
-        gain.gain.setValueAtTime(0.28, now + i * 0.12);
-        gain.gain.exponentialRampToValueAtTime(0.001, now + i * 0.12 + 0.7);
+        osc.frequency.setValueAtTime(880, now + t);
+        gain.gain.setValueAtTime(0.12, now + t);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + t + 0.08);
 
         osc.connect(gain);
         gain.connect(audioCtx.destination);
-        osc.start(now + i * 0.12);
-        osc.stop(now + i * 0.12 + 0.75);
+        osc.start(now + t);
+        osc.stop(now + t + 0.09);
       });
     }
 
-    // 7. Tactical Task / Sonar Mission Ping
+    // 7. Tactical Task Ping (Simple Soft 1-shot Chime)
     function playTaskPing() {
       initAudioEngine();
       if (!audioCtx) return;
@@ -1239,76 +1231,16 @@
       const gain = audioCtx.createGain();
 
       osc.type = 'sine';
-      osc.frequency.setValueAtTime(1200, now);
-      osc.frequency.exponentialRampToValueAtTime(1600, now + 0.06);
+      osc.frequency.setValueAtTime(950, now);
 
-      gain.gain.setValueAtTime(0.15, now);
-      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
+      gain.gain.setValueAtTime(0.07, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
 
       osc.connect(gain);
       gain.connect(audioCtx.destination);
 
       osc.start(now);
-      osc.stop(now + 0.32);
-    }
-
-    // 8. Realistic Aviation Radio Voice Readback Engine (Web Speech Synthesis + Radio Filter)
-    let atcVoiceQueue = [];
-    let isSpeakingVoice = false;
-
-    function speakAtcRadio(text, isEmergency = false) {
-      if (!('speechSynthesis' in window)) return;
-
-      // Clean ICAO numbers to spoken phonetic format (e.g. 7700 -> seven seven zero zero, FL320 -> flight level three two zero)
-      let spokenText = text
-        .replace(/FL(\d{2,3})/gi, (_, fl) => `flight level ${fl.split('').join(' ')}`)
-        .replace(/(\d{3,4})/g, match => match.split('').join(' '))
-        .replace(/>/g, 'to')
-        .replace(/\[7700\]/g, 'squawk seven seven zero zero');
-
-      atcVoiceQueue.push({ text: spokenText, isEmergency });
-      processVoiceQueue();
-    }
-
-    function processVoiceQueue() {
-      if (isSpeakingVoice || atcVoiceQueue.length === 0) return;
-      if (!window.speechSynthesis) return;
-
-      const item = atcVoiceQueue.shift();
-      isSpeakingVoice = true;
-
-      // Play authentic radio mic click before transmission
-      playRadioRogerBeep();
-
-      setTimeout(() => {
-        const utterance = new SpeechSynthesisUtterance(item.text);
-        utterance.rate = item.isEmergency ? 1.05 : 1.0;
-        utterance.pitch = item.isEmergency ? 1.15 : 0.95;
-        utterance.volume = 0.9;
-
-        // Select English pilot/ATC voice if available
-        const voices = window.speechSynthesis.getVoices();
-        const pilotVoice = voices.find(v => (v.lang.startsWith('en') && (v.name.includes('David') || v.name.includes('Daniel') || v.name.includes('Natural') || v.name.includes('Google') || v.name.includes('Male')))) || voices.find(v => v.lang.startsWith('en'));
-        if (pilotVoice) {
-          utterance.voice = pilotVoice;
-        }
-
-        utterance.onend = () => {
-          // Play roger mic click after transmission
-          playRadioRogerBeep();
-          setTimeout(() => {
-            isSpeakingVoice = false;
-            processVoiceQueue();
-          }, 300);
-        };
-
-        utterance.onerror = () => {
-          isSpeakingVoice = false;
-          processVoiceQueue();
-        };
-
-        window.speechSynthesis.speak(utterance);
-      }, 120);
+      osc.stop(now + 0.13);
     }
 
     // Tactical Toast Notification Handler
@@ -2221,12 +2153,10 @@
         // Check if new incoming logs contain emergency or handoff tasks
         newLogs.forEach(l => {
           if (l.type === 'ALERT' || l.type === 'EMERGENCY' || l.message.includes('MAYDAY')) {
-            playAlertChime(); // Urgent Boeing Master Caution Chime
+            playAlertChime(); // Clean Cockpit Alert Chime
             showTacticalToast(`MAYDAY ALERT: ${l.message}`, 'ALERT');
-            // Brief high-urgency emergency pilot call only
-            speakAtcRadio(`Mayday Mayday, ${l.callsign}, emergency 7700`, true);
           } else if (l.type === 'SYS' || l.type === 'HANDOFF') {
-            playTaskPing(); // Mission Task update ping
+            playTaskPing(); // Clean Task update ping
             showTacticalToast(`ATC MISSION: ${l.message}`, 'HANDOFF');
           }
         });
