@@ -1199,7 +1199,53 @@
       });
     }
 
-    // 7. Tactical Task Ping (Simple Soft 1-shot Chime)
+    // 7. Cockpit Airborne Radar Periodic Sweep Ping (Subtle Sub-Sonar Blip)
+    function playRadarSweepPing() {
+      initAudioEngine();
+      if (!audioCtx) return;
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+      const now = audioCtx.currentTime;
+
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(1450, now);
+      osc.frequency.exponentialRampToValueAtTime(800, now + 0.05);
+
+      gain.gain.setValueAtTime(0.04, now); // Soft ambient cockpit presence
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.08);
+
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.start(now);
+      osc.stop(now + 0.09);
+    }
+
+    // 8. Cockpit Master Warning Emergency Pulsing Beep (Urgent BIP-BIP-BIP Alert)
+    function playEmergencyWarningBeeps() {
+      initAudioEngine();
+      if (!audioCtx) return;
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+      const now = audioCtx.currentTime;
+
+      // 4 rapid, high-visibility emergency warning pulses (BIP-BIP-BIP-BIP)
+      [0, 0.14, 0.28, 0.42].forEach((offset) => {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(1100, now + offset);
+
+        gain.gain.setValueAtTime(0.16, now + offset);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + offset + 0.07);
+
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start(now + offset);
+        osc.stop(now + offset + 0.08);
+      });
+    }
+
+    // 9. Tactical Task Ping (Simple Soft 1-shot Chime)
     function playTaskPing() {
       initAudioEngine();
       if (!audioCtx) return;
@@ -2156,7 +2202,11 @@
         // Check if new incoming logs contain emergency or handoff tasks
         newLogs.forEach(l => {
           if (l.type === 'ALERT' || l.type === 'EMERGENCY' || l.message.includes('MAYDAY')) {
-            playAlertChime(); // Clean Cockpit Alert Chime
+            if (mapCockpitPOVEnabled) {
+              playEmergencyWarningBeeps(); // Urgent Master Warning BIP-BIP-BIP in POV Cockpit Mode
+            } else {
+              playAlertChime(); // Clean Chime in 2D ATC Mode
+            }
             showTacticalToast(`MAYDAY ALERT: ${l.message}`, 'ALERT');
           } else if (l.type === 'SYS' || l.type === 'HANDOFF') {
             playTaskPing(); // Clean Task update ping
@@ -2680,7 +2730,14 @@
       actx.setLineDash([]);
 
       // Tactical Horizontal Radar Scan Bar Sweep (Moving forward)
+      const prevScanX = radarSweepScanX;
       radarSweepScanX = (radarSweepScanX + 1.8) % (maxRadius + 20);
+
+      // Trigger soft rhythmic cockpit radar sweep ping at the start of each sweep cycle
+      if (radarSweepScanX < prevScanX && mapCockpitPOVEnabled) {
+        playRadarSweepPing();
+      }
+
       const scanY = cy - radarSweepScanX;
       if (scanY > 10) {
         const scanGrad = actx.createLinearGradient(0, scanY - 12, 0, scanY);
