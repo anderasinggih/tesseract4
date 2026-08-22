@@ -1039,19 +1039,21 @@
     let threeScene, threeCamera, threeRenderer, plane3DMesh, earthGrid;
     function init3DView() {
       const container = document.getElementById('view-3d-canvas');
-      const width = container.clientWidth || 320;
-      const height = container.clientHeight || 180;
+      if (container) {
+        const width = container.clientWidth || 320;
+        const height = container.clientHeight || 180;
 
-      threeScene = new THREE.Scene();
-      threeScene.background = new THREE.Color(0x050505);
+        threeScene = new THREE.Scene();
+        threeScene.background = new THREE.Color(0x050505);
 
-      threeCamera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
-      threeCamera.position.set(0, 8, 16);
-      threeCamera.lookAt(0, 0, 0);
+        threeCamera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
+        threeCamera.position.set(0, 8, 16);
+        threeCamera.lookAt(0, 0, 0);
 
-      threeRenderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-      threeRenderer.setSize(width, height);
-      container.appendChild(threeRenderer.domElement);
+        threeRenderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        threeRenderer.setSize(width, height);
+        container.appendChild(threeRenderer.domElement);
+      }
 
       // Fullscreen 3D Overlay Renderer for Main Cockpit Map View
       const fullOverlayContainer = document.getElementById('threejs-overlay');
@@ -1310,7 +1312,9 @@
             plane3DMesh.rotation.z = Math.sin(Date.now() * 0.002) * 0.04;
           }
         }
-        threeRenderer.render(threeScene, threeCamera);
+        if (threeRenderer && threeScene && threeCamera) {
+          threeRenderer.render(threeScene, threeCamera);
+        }
 
         // Render Fullscreen 3D Overlay on Map when 3D Cockpit POV is ON
         if (mapCockpitPOVEnabled && fullThreeRenderer && fullThreeScene && fullThreeCamera) {
