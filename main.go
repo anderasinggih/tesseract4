@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"log"
 
 	"github.com/gofiber/fiber/v2"
@@ -78,16 +79,19 @@ type ATCPayload struct {
 	ActiveAlerts  int                   `json:"activeAlerts"`
 }
 
-// ClientATCCommand represents instructions sent from the radar interface
+// ClientATCCommand represents instructions sent from the radar interface or WebRTC signaling
 type ClientATCCommand struct {
-	Type       string  `json:"type"` // "claim_sector", "set_heading", "set_altitude", "set_speed", "handoff_init", "handoff_accept"
-	Callsign   string  `json:"callsign,omitempty"`
-	SectorID   string  `json:"sectorId,omitempty"`
-	Heading    float64 `json:"heading,omitempty"`
-	Altitude   int     `json:"altitude,omitempty"`
-	Speed      float64 `json:"speed,omitempty"`
-	ToSector   string  `json:"toSector,omitempty"`
-	Controller string  `json:"controller,omitempty"`
+	Type       string          `json:"type"` // "claim_sector", "set_heading", "set_altitude", "set_speed", "handoff_init", "handoff_accept", "p2p_signal"
+	Callsign   string          `json:"callsign,omitempty"`
+	SectorID   string          `json:"sectorId,omitempty"`
+	Heading    float64         `json:"heading,omitempty"`
+	Altitude   int             `json:"altitude,omitempty"`
+	Speed      float64         `json:"speed,omitempty"`
+	ToSector   string          `json:"toSector,omitempty"`
+	Controller string          `json:"controller,omitempty"`
+	TargetID   string          `json:"targetId,omitempty"`
+	SenderID   string          `json:"senderId,omitempty"`
+	SignalData json.RawMessage `json:"signalData,omitempty"`
 }
 
 // Global Actor Model ATC Radar Hub

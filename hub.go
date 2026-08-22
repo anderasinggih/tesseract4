@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"math"
@@ -596,6 +597,22 @@ func (h *ATCHub) ExecuteATCCommand(cmd ClientATCCommand, operatorID string) {
 			if ac, ok := h.aircraft[cmd.Callsign]; ok {
 				ac.TargetRoll = 0
 				ac.TargetHeading = ac.Heading
+			}
+
+		case "p2p_signal":
+			// WebRTC Signaling Relay (SDP offer/answer / ICE candidate exchange)
+			cmd.SenderID = operatorID
+			for client := range h.clients {
+				if client.ID == cmd.TargetID {
+					data, err := json.Marshal(cmd)
+					if err == nil {
+						select {
+						case client.Send <- data:
+						default:
+						}
+					}
+					break
+				}
 			}
 
 		case "adjust_altitude":

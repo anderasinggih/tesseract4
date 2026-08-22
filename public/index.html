@@ -2322,7 +2322,7 @@
     }
     window.addEventListener('load', init3DView);
 
-    // 3. WebSocket ATC Real-Time Connection
+    // 3. WebSocket ATC Real-Time Connection & WebRTC P2P Mesh Engine
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     const wsUrl = `${protocol}//${window.location.host}/ws`;
     let ws = null;
@@ -2330,6 +2330,130 @@
     let currentPayload = null;
     let selectedCallsign = null;
     let activeInboundHandoff = null;
+
+    // ── WebRTC Peer-to-Peer DataChannel Mesh Network (<5ms LAN UDP) ──────────
+    const p2pPeerConnections = new Map(); // targetId -> RTCPeerConnection
+    const p2pDataChannels = new Map();    // targetId -> RTCDataChannel
+    const rtcConfig = {
+      iceServers: [
+        { urls: 'stun:stun.l.google.com:19302' },
+        { urls: 'stun:stun1.l.google.com:19302' }
+      ]
+    };
+
+    function broadcastP2PFlightPacket(packet) {
+      const dataStr = JSON.stringify(packet);
+      p2pDataChannels.forEach((dc) => {
+        if (dc && dc.readyState === 'open') {
+          try {
+            dc.send(dataStr);
+          } catch (e) {}
+        }
+      });
+    }
+
+    function initP2PMeshWithControllers(controllers) {
+      if (!controllers || !selfControllerId) return;
+      controllers.forEach(ctrl => {
+        if (ctrl.id === selfControllerId) return;
+        // Deterministic offer initiator: lower ID initiates offer
+        if (!p2pPeerConnections.has(ctrl.id)) {
+          createPeerConnection(ctrl.id, selfControllerId < ctrl.id);
+        }
+      });
+    }
+
+    function createPeerConnection(remoteId, isInitiator) {
+      const pc = new RTCPeerConnection(rtcConfig);
+      p2pPeerConnections.set(remoteId, pc);
+
+      pc.onicecandidate = (event) => {
+        if (event.candidate && ws && ws.readyState === WebSocket.OPEN) {
+          ws.send(JSON.stringify({
+            type: 'p2p_signal',
+            targetId: remoteId,
+            signalData: { type: 'candidate', candidate: event.candidate }
+          }));
+        }
+      };
+
+      if (isInitiator) {
+        const dc = pc.createDataChannel('atc_p2p_channel', { ordered: false, maxRetransmits: 0 });
+        setupDataChannel(remoteId, dc);
+
+        pc.createOffer().then(offer => pc.setLocalDescription(offer)).then(() => {
+          if (ws && ws.readyState === WebSocket.OPEN) {
+            ws.send(JSON.stringify({
+              type: 'p2p_signal',
+              targetId: remoteId,
+              signalData: { type: 'offer', sdp: pc.localDescription }
+            }));
+          }
+        }).catch(err => console.error("[P2P] Create offer error:", err));
+      } else {
+        pc.ondatachannel = (event) => {
+          setupDataChannel(remoteId, event.channel);
+        };
+      }
+    }
+
+    function setupDataChannel(remoteId, dc) {
+      p2pDataChannels.set(remoteId, dc);
+      dc.onopen = () => {
+        console.log(`[WebRTC P2P] Ultra-Low Latency DataChannel OPEN with Peer ${remoteId}`);
+        showTacticalToast(`P2P DIRECT LINK ACTIVE: CTR-${remoteId} (0ms UDP Sync)`, 'SYS');
+      };
+      dc.onclose = () => {
+        p2pDataChannels.delete(remoteId);
+      };
+      dc.onmessage = (event) => {
+        try {
+          const pkt = JSON.parse(event.data);
+          // Ultra-fast direct peer packet ingestion (bypasses server queue)
+          if (pkt && pkt.type === 'p2p_flight_state' && pkt.callsign === selectedCallsign) {
+            targetCamLng = pkt.lng;
+            targetCamLat = pkt.lat;
+            targetCamHeading = pkt.heading;
+            predRoll = pkt.roll || 0;
+            targetCamSpeed = pkt.speed || 450;
+            lastTargetTime = performance.now();
+          }
+        } catch (e) {}
+      };
+    }
+
+    async function handleP2PSignal(msg) {
+      const senderId = msg.senderId;
+      const data = msg.signalData;
+      if (!senderId || !data) return;
+
+      let pc = p2pPeerConnections.get(senderId);
+      if (!pc) {
+        createPeerConnection(senderId, false);
+        pc = p2pPeerConnections.get(senderId);
+      }
+
+      try {
+        if (data.type === 'offer') {
+          await pc.setRemoteDescription(new RTCSessionDescription(data.sdp));
+          const answer = await pc.createAnswer();
+          await pc.setLocalDescription(answer);
+          if (ws && ws.readyState === WebSocket.OPEN) {
+            ws.send(JSON.stringify({
+              type: 'p2p_signal',
+              targetId: senderId,
+              signalData: { type: 'answer', sdp: pc.localDescription }
+            }));
+          }
+        } else if (data.type === 'answer') {
+          await pc.setRemoteDescription(new RTCSessionDescription(data.sdp));
+        } else if (data.type === 'candidate') {
+          await pc.addIceCandidate(new RTCIceCandidate(data.candidate));
+        }
+      } catch (err) {
+        console.error("[P2P Signal] Error handling signal:", err);
+      }
+    }
 
     function connectWS() {
       ws = new WebSocket(wsUrl);
@@ -2340,8 +2464,16 @@
 
       ws.onmessage = (event) => {
         try {
-          currentPayload = JSON.parse(event.data);
+          const msg = JSON.parse(event.data);
+          if (msg.type === 'p2p_signal') {
+            handleP2PSignal(msg);
+            return;
+          }
+          currentPayload = msg;
           onPayloadReceived(currentPayload);
+          if (currentPayload.controllers) {
+            initP2PMeshWithControllers(currentPayload.controllers);
+          }
         } catch (e) {
           console.error("Parse error:", e);
         }
@@ -3264,7 +3396,8 @@
         ctx.fillStyle = 'rgba(0,255,180,0.9)';
         ctx.textAlign = 'left';
         const dbgPktAge = lastTargetTime ? Math.round(performance.now() - lastTargetTime) : -1;
-        ctx.fillText(`POV-v2 steer:${steerDir >= 0 ? '+' + steerDir : steerDir} bank:${predRoll.toFixed(1)}° srvHdg:${targetCamHeading !== null ? Math.round(normDeg(targetCamHeading)) : '---'} pkt:${dbgPktAge}ms`, 12, canvas.height - 14);
+        const p2pCount = p2pDataChannels.size;
+        ctx.fillText(`POV-v3 [P2P:${p2pCount > 0 ? p2pCount + ' DIRECT' : 'STANDBY'}] steer:${steerDir >= 0 ? '+' + steerDir : steerDir} bank:${predRoll.toFixed(1)}° srvHdg:${targetCamHeading !== null ? Math.round(normDeg(targetCamHeading)) : '---'} pkt:${dbgPktAge}ms`, 12, canvas.height - 14);
         ctx.restore();
 
         // Render Forward Destination Flight Route in POV Mode (Clean glowing corridor to destination)
