@@ -1,10 +1,11 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>GLOBAL ATC RADAR // TACTICAL AIRSPACE CONTROL</title>
-  
+
   <!-- MapLibre GL JS & CSS -->
   <link href="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css" rel="stylesheet" />
   <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
@@ -14,11 +15,13 @@
   <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
 
   <!-- High-Tech Radar Favicon -->
-  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='46' fill='%230a0a0a' stroke='%2300ff66' stroke-width='4'/><circle cx='50' cy='50' r='30' fill='none' stroke='%2300ff66' stroke-width='2' stroke-dasharray='4 4'/><line x1='50' y1='50' x2='85' y2='20' stroke='%2300ff66' stroke-width='3'/></svg>">
-  
+  <link rel="icon" type="image/svg+xml"
+    href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='46' fill='%230a0a0a' stroke='%2300ff66' stroke-width='4'/><circle cx='50' cy='50' r='30' fill='none' stroke='%2300ff66' stroke-width='2' stroke-dasharray='4 4'/><line x1='50' y1='50' x2='85' y2='20' stroke='%2300ff66' stroke-width='3'/></svg>">
+
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700;800&display=swap"
+    rel="stylesheet">
 
   <style>
     :root {
@@ -41,7 +44,8 @@
       -webkit-touch-callout: none;
     }
 
-    body, html {
+    body,
+    html {
       width: 100%;
       height: 100%;
       overflow: hidden;
@@ -245,6 +249,7 @@
       border-color: var(--accent-amber);
       color: var(--accent-amber);
     }
+
     .btn-amber:hover {
       background: #2e2208;
     }
@@ -254,6 +259,7 @@
       border-color: var(--accent-green);
       color: var(--accent-green);
     }
+
     .btn-green:hover {
       background: #092e18;
     }
@@ -342,17 +348,44 @@
       line-height: 1.4;
     }
 
-    .log-line { margin-bottom: 3px; word-break: break-all; }
-    .log-RADIO { color: #cccccc; }
-    .log-ALERT { color: var(--accent-red); font-weight: 700; }
-    .log-HANDOFF { color: var(--accent-amber); font-weight: 700; }
-    .log-SYS { color: #555555; }
+    .log-line {
+      margin-bottom: 3px;
+      word-break: break-all;
+    }
+
+    .log-RADIO {
+      color: #cccccc;
+    }
+
+    .log-ALERT {
+      color: var(--accent-red);
+      font-weight: 700;
+    }
+
+    .log-HANDOFF {
+      color: var(--accent-amber);
+      font-weight: 700;
+    }
+
+    .log-SYS {
+      color: #555555;
+    }
 
     /* Mobile Responsive */
     @media (max-width: 900px) {
-      #top-bar { padding: 6px 8px; }
-      .brand-title { font-size: 10px; }
-      .status-items { gap: 10px; font-size: 8px; }
+      #top-bar {
+        padding: 6px 8px;
+      }
+
+      .brand-title {
+        font-size: 10px;
+      }
+
+      .status-items {
+        gap: 10px;
+        font-size: 8px;
+      }
+
       #sector-deck {
         top: 52px;
         left: 6px;
@@ -360,6 +393,7 @@
         width: auto;
         max-height: 42vh;
       }
+
       #telemetry-deck {
         bottom: 6px;
         top: auto;
@@ -371,6 +405,7 @@
     }
   </style>
 </head>
+
 <body>
 
   <div id="map-container"></div>
@@ -382,12 +417,17 @@
     <div class="brand-box">
       <span class="brand-title">GLOBAL ATC RADAR</span>
       <span class="brand-tag">ICAO LIVE 60FPS</span>
-      
+
       <!-- Map Style & View Mode Switcher (Clean, no emojis) -->
       <div style="display: flex; gap: 4px; margin-left: 10px;">
-        <button id="btn-style-satellite" class="btn-action" style="padding: 4px 9px; font-size: 8.5px; background: #222; border-color: #555;" onclick="switchMapStyle('satellite')">SATELLITE HD</button>
-        <button id="btn-style-dark" class="btn-action" style="padding: 4px 9px; font-size: 8.5px; background: #0a0a0a; border-color: #333;" onclick="switchMapStyle('dark')">RADAR DARK</button>
-        <button id="btn-map-pov" class="btn-action btn-amber" style="padding: 4px 9px; font-size: 8.5px;" onclick="toggleMapCockpitPOV()">3D COCKPIT POV</button>
+        <button id="btn-style-satellite" class="btn-action"
+          style="padding: 4px 9px; font-size: 8.5px; background: #222; border-color: #555;"
+          onclick="switchMapStyle('satellite')">SATELLITE HD</button>
+        <button id="btn-style-dark" class="btn-action"
+          style="padding: 4px 9px; font-size: 8.5px; background: #0a0a0a; border-color: #333;"
+          onclick="switchMapStyle('dark')">RADAR DARK</button>
+        <button id="btn-map-pov" class="btn-action btn-amber" style="padding: 4px 9px; font-size: 8.5px;"
+          onclick="toggleMapCockpitPOV()">3D COCKPIT POV</button>
       </div>
     </div>
     <div class="status-items">
@@ -446,8 +486,9 @@
 
     <!-- Active Flight Control Strip -->
     <div id="flight-strip-box">
-      <div id="no-flight-hint" style="font-size: 9.5px; color: var(--text-dim);">Click any aircraft on radar scope to command.</div>
-      
+      <div id="no-flight-hint" style="font-size: 9.5px; color: var(--text-dim);">Click any aircraft on radar scope to
+        command.</div>
+
       <div id="flight-controls" style="display: none;">
         <div style="display: flex; justify-content: space-between; margin-bottom: 8px; font-weight: 700;">
           <span id="strip-callsign" style="color: #ffffff;">GIA880</span>
@@ -455,8 +496,10 @@
         </div>
 
         <div class="form-group">
-          <label>ASSIGN VECTOR HEADING: <span id="hdg-display" style="color: #ffffff; font-weight: 700;">090°</span></label>
-          <input type="range" id="input-heading" min="0" max="359" step="5" value="90" class="form-input" oninput="updateHeadingPreview(this.value)" onchange="sendVectorHeading(this.value)">
+          <label>ASSIGN VECTOR HEADING: <span id="hdg-display"
+              style="color: #ffffff; font-weight: 700;">090°</span></label>
+          <input type="range" id="input-heading" min="0" max="359" step="5" value="90" class="form-input"
+            oninput="updateHeadingPreview(this.value)" onchange="sendVectorHeading(this.value)">
         </div>
 
         <div class="form-group">
@@ -507,12 +550,18 @@
         <span id="cam-callsign">3D FLIGHT TRACKER // STANDBY</span>
         <span id="cam-telemetry">HDG --- / FL---</span>
       </div>
-      
+
       <!-- Camera POV Mode Selector -->
       <div style="position: absolute; bottom: 6px; left: 8px; right: 8px; display: flex; gap: 4px; z-index: 5;">
-        <button id="btn-pov-cockpit" class="btn-action" style="padding: 2px 6px; font-size: 8px; background: #222; border-color: #555;" onclick="setCameraPOV('cockpit')">COCKPIT FWD-DOWN</button>
-        <button id="btn-pov-chase" class="btn-action" style="padding: 2px 6px; font-size: 8px; background: #0a0a0a; border-color: #333;" onclick="setCameraPOV('chase')">TAIL CHASE</button>
-        <button id="btn-pov-orbit" class="btn-action" style="padding: 2px 6px; font-size: 8px; background: #0a0a0a; border-color: #333;" onclick="setCameraPOV('orbit')">3D ORBIT</button>
+        <button id="btn-pov-cockpit" class="btn-action"
+          style="padding: 2px 6px; font-size: 8px; background: #222; border-color: #555;"
+          onclick="setCameraPOV('cockpit')">COCKPIT FWD-DOWN</button>
+        <button id="btn-pov-chase" class="btn-action"
+          style="padding: 2px 6px; font-size: 8px; background: #0a0a0a; border-color: #333;"
+          onclick="setCameraPOV('chase')">TAIL CHASE</button>
+        <button id="btn-pov-orbit" class="btn-action"
+          style="padding: 2px 6px; font-size: 8px; background: #0a0a0a; border-color: #333;"
+          onclick="setCameraPOV('orbit')">3D ORBIT</button>
       </div>
 
       <div id="view-3d-canvas"></div>
@@ -520,9 +569,12 @@
 
     <!-- Inbound Handoff Alert Banner -->
     <div id="handoff-banner">
-      <div style="font-weight: 700; color: var(--accent-amber); font-size: 10px; margin-bottom: 3px;">INBOUND HANDOFF ALERT</div>
-      <div id="handoff-msg" style="font-size: 9.5px; color: #ffffff; margin-bottom: 6px;">GIA880 requesting entry from Jakarta FIR</div>
-      <button class="btn-action btn-green" id="btn-accept-handoff" onclick="acceptInboundHandoff()">ACCEPT HANDOFF & SQUAWK IDENT</button>
+      <div style="font-weight: 700; color: var(--accent-amber); font-size: 10px; margin-bottom: 3px;">INBOUND HANDOFF
+        ALERT</div>
+      <div id="handoff-msg" style="font-size: 9.5px; color: #ffffff; margin-bottom: 6px;">GIA880 requesting entry from
+        Jakarta FIR</div>
+      <button class="btn-action btn-green" id="btn-accept-handoff" onclick="acceptInboundHandoff()">ACCEPT HANDOFF &
+        SQUAWK IDENT</button>
     </div>
 
     <div class="deck-title">
@@ -717,7 +769,7 @@
         fullDir = new THREE.DirectionalLight(0xffffff, 1.8); // Bright crisp keylight
         fullDir.position.set(10, 20, 15);
         fullThreeScene.add(fullDir);
-        
+
         // Add fill light from bottom-left for fuselage clarity
         const fillLight = new THREE.DirectionalLight(0xaaccff, 0.8);
         fillLight.position.set(-10, -5, 10);
@@ -748,14 +800,14 @@
 
       // Ultra-Realistic 3D Jet Airliner Geometry (Boeing / Airbus Standard)
       const planeGroup = new THREE.Group();
-      
+
       // Main Fuselage (Metallic Aerodynamic Body)
       const bodyGeo = new THREE.CylinderGeometry(0.7, 0.45, 12, 32);
       bodyGeo.rotateX(Math.PI / 2);
-      const bodyMat = new THREE.MeshStandardMaterial({ 
-        color: 0xf0f0f0, 
-        metalness: 0.4, 
-        roughness: 0.3 
+      const bodyMat = new THREE.MeshStandardMaterial({
+        color: 0xf0f0f0,
+        metalness: 0.4,
+        roughness: 0.3
       });
       const fuselage = new THREE.Mesh(bodyGeo, bodyMat);
       planeGroup.add(fuselage);
@@ -769,9 +821,9 @@
 
       // Cockpit Glass Canopy
       const glassGeo = new THREE.SphereGeometry(0.65, 16, 16, 0, Math.PI * 2, 0, Math.PI / 2.5);
-      const glassMat = new THREE.MeshStandardMaterial({ 
-        color: 0x00d4ff, 
-        metalness: 0.9, 
+      const glassMat = new THREE.MeshStandardMaterial({
+        color: 0x00d4ff,
+        metalness: 0.9,
         roughness: 0.1,
         transparent: true,
         opacity: 0.85
@@ -869,10 +921,10 @@
                 }
               }
             });
-            
+
             // Clear procedural geometry and add official 3D model
-            while(planeGroup.children.length > 0) { 
-              planeGroup.remove(planeGroup.children[0]); 
+            while (planeGroup.children.length > 0) {
+              planeGroup.remove(planeGroup.children[0]);
             }
             planeGroup.add(loadedModel);
 
@@ -895,13 +947,13 @@
       plane3DMesh = planeGroup;
 
       let currentPOVMode = 'cockpit'; // 'cockpit', 'chase', 'orbit'
-      
-      window.setCameraPOV = function(mode) {
+
+      window.setCameraPOV = function (mode) {
         currentPOVMode = mode;
         const btnCockpit = document.getElementById('btn-pov-cockpit');
         const btnChase = document.getElementById('btn-pov-chase');
         const btnOrbit = document.getElementById('btn-pov-orbit');
-        
+
         btnCockpit.style.background = mode === 'cockpit' ? '#333' : '#0a0a0a';
         btnCockpit.style.borderColor = mode === 'cockpit' ? '#666' : '#333';
         btnChase.style.background = mode === 'chase' ? '#333' : '#0a0a0a';
@@ -957,7 +1009,7 @@
               const now = new Date();
               const utcHours = now.getUTCHours() + now.getUTCMinutes() / 60.0;
               const sunLng = (12.0 - utcHours) * 15.0;
-              
+
               // Angle between plane longitude and sun meridian (-180 to 180)
               let diffLng = Math.abs(ac.coord.lng - sunLng);
               if (diffLng > 180) diffLng = 360 - diffLng;
@@ -1160,16 +1212,16 @@
         const ac = payload.aircraft.find(a => a.callsign === selectedCallsign);
         if (ac) {
           document.getElementById('strip-callsign').innerText = `${ac.callsign} (${ac.aircraftType})`;
-          document.getElementById('strip-route').innerText = `${ac.origin} -> ${ac.destination} | FL${Math.round(ac.altitude/100)} | ${Math.round(ac.speed)}KTS`;
-          
+          document.getElementById('strip-route').innerText = `${ac.origin} -> ${ac.destination} | FL${Math.round(ac.altitude / 100)} | ${Math.round(ac.speed)}KTS`;
+
           document.getElementById('cam-callsign').innerText = `3D TRACK: ${ac.callsign} [${ac.aircraftType}]`;
-          document.getElementById('cam-telemetry').innerText = `HDG ${String(Math.round(ac.heading)).padStart(3,'0')}° / FL${Math.round(ac.altitude/100)} / ${Math.round(ac.speed)}KT`;
+          document.getElementById('cam-telemetry').innerText = `HDG ${String(Math.round(ac.heading)).padStart(3, '0')}° / FL${Math.round(ac.altitude / 100)} / ${Math.round(ac.speed)}KT`;
 
           // If Fullscreen 3D Cockpit Map Follow Mode is ACTIVE: Lock MapLibre Camera to Plane Position & Forward Heading with High-Precision Ease
           if (mapCockpitPOVEnabled) {
             map.easeTo({
               center: [ac.coord.lng, ac.coord.lat],
-              pitch: 32, // Shallow level horizon pitch (natural level cruising flight)
+              pitch: 85, // Shallow level horizon pitch (natural level cruising flight)
               bearing: ac.heading, // Point directly forward along the flight path
               zoom: 10.5, // Optimal crisp pilot zoom where tiles are 100% available everywhere
               duration: 200, // Smooth interpolation (zero jitter)
@@ -1226,7 +1278,7 @@
       document.getElementById('hdg-display').innerText = `${String(Math.round(ac.targetHeading)).padStart(3, '0')}°`;
 
       document.getElementById('cam-callsign').innerText = `3D TRACK: ${ac.callsign} [${ac.aircraftType}]`;
-      document.getElementById('cam-telemetry').innerText = `HDG ${String(Math.round(ac.heading)).padStart(3,'0')}° / FL${Math.round(ac.altitude/100)}`;
+      document.getElementById('cam-telemetry').innerText = `HDG ${String(Math.round(ac.heading)).padStart(3, '0')}° / FL${Math.round(ac.altitude / 100)}`;
     }
 
     // Realistic High-Definition Commercial Airliner Vector Asset
@@ -1476,7 +1528,7 @@
               ctx.fillText(ac.callsign, tagX, tagY);
               ctx.fillStyle = '#cccccc';
               ctx.font = '8px JetBrains Mono';
-              ctx.fillText(`FL${Math.round(ac.altitude/100)} ${Math.round(ac.speed)}K`, tagX, tagY + 9);
+              ctx.fillText(`FL${Math.round(ac.altitude / 100)} ${Math.round(ac.speed)}K`, tagX, tagY + 9);
               ctx.fillText(`${ac.origin}▶${ac.destination}`, tagX, tagY + 17);
               return;
             }
@@ -1501,7 +1553,7 @@
 
               ctx.fillStyle = '#cccccc';
               ctx.font = '8px JetBrains Mono';
-              ctx.fillText(`FL${Math.round(ac.altitude/100)} ${Math.round(ac.speed)}K`, tagX, tagY + 9);
+              ctx.fillText(`FL${Math.round(ac.altitude / 100)} ${Math.round(ac.speed)}K`, tagX, tagY + 9);
               ctx.fillText(`${ac.origin}▶${ac.destination}`, tagX, tagY + 17);
             } else {
               // Minimal Callsign underneath
@@ -1519,4 +1571,5 @@
     requestAnimationFrame(drawRadarScope);
   </script>
 </body>
+
 </html>
