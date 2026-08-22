@@ -640,6 +640,12 @@
         <!-- POV Toggle -->
         <button id="btn-map-pov" class="btn-action btn-amber btn-nav-compact" style="padding: 4px 8px; font-size: 8.5px;"
           onclick="toggleMapCockpitPOV()">POV</button>
+        <!-- POV Interactive Zoom Level Buttons -->
+        <div id="pov-zoom-controls" style="display: none; gap: 3px; align-items: center;">
+          <button class="btn-action btn-nav-compact" style="padding: 4px 6px; font-size: 8.5px; background: rgba(30,30,30,0.8); border-color: #666;" onclick="adjustPOVZoom(-0.5)" title="Zoom Out (Wider View)">-</button>
+          <span id="pov-zoom-display" style="font-size: 8px; font-weight: 800; color: var(--accent-cyan); min-width: 28px; text-align: center;">10.5x</span>
+          <button class="btn-action btn-nav-compact" style="padding: 4px 6px; font-size: 8.5px; background: rgba(30,30,30,0.8); border-color: #666;" onclick="adjustPOVZoom(+0.5)" title="Zoom In (Closer View)">+</button>
+        </div>
       </div>
     </div>
     <div class="status-items" id="flight-telemetry-hud" style="display: flex; gap: 8px; align-items: center;">
@@ -1336,11 +1342,37 @@
       if (toastTimeout) clearTimeout(toastTimeout);
     }
 
+    let povZoomLevel = 10.5; // Default POV Zoom (range: 6.0 to 14.0)
+
+    function adjustPOVZoom(delta) {
+      povZoomLevel = Math.max(6.0, Math.min(14.0, Math.round((povZoomLevel + delta) * 10) / 10));
+      const disp = document.getElementById('pov-zoom-display');
+      if (disp) disp.innerText = `${povZoomLevel.toFixed(1)}x`;
+
+      // Dynamically adjust Three.js 3D plane distance
+      if (fullThreeCamera) {
+        // Wider zoom out pulls 3D camera back
+        const camDistance = 15.0 + (10.5 - povZoomLevel) * 3.5;
+        const camHeight = 3.0 + (10.5 - povZoomLevel) * 1.2;
+        fullThreeCamera.position.set(0, Math.max(1.5, camHeight), Math.max(8.0, camDistance));
+      }
+    }
+
+    // Interactive Mouse Wheel Zoom when in POV Mode
+    window.addEventListener('wheel', (e) => {
+      if (mapCockpitPOVEnabled) {
+        e.preventDefault();
+        const delta = e.deltaY < 0 ? +0.3 : -0.3;
+        adjustPOVZoom(delta);
+      }
+    }, { passive: false });
+
     function toggleMapCockpitPOV() {
       mapCockpitPOVEnabled = !mapCockpitPOVEnabled;
       const btn = document.getElementById('btn-map-pov');
       const overlay3D = document.getElementById('threejs-overlay');
       const analogRadarBox = document.getElementById('view-3d-box');
+      const zoomControls = document.getElementById('pov-zoom-controls');
 
       if (mapCockpitPOVEnabled) {
         btn.innerText = '2D';
@@ -1348,6 +1380,7 @@
         btn.style.borderColor = 'var(--accent-amber)';
         if (overlay3D) overlay3D.style.display = 'block';
         if (analogRadarBox) analogRadarBox.style.display = 'block';
+        if (zoomControls) zoomControls.style.display = 'flex';
 
         // Start Realistic Jet Turbofan Sound Engine
         startJetEngineSound();
@@ -1370,7 +1403,7 @@
 
             map.jumpTo({
               center: [currentCamLng, currentCamLat],
-              zoom: 11.5,
+              zoom: povZoomLevel,
               bearing: currentCamHeading,
               pitch: 75
             });
@@ -1386,6 +1419,7 @@
         btn.style.borderColor = 'rgba(255,255,255,0.15)';
         if (overlay3D) overlay3D.style.display = 'none';
         if (analogRadarBox) analogRadarBox.style.display = 'none';
+        if (zoomControls) zoomControls.style.display = 'none';
 
         // Stop Jet Engine Sound Engine
         stopJetEngineSound();
@@ -2759,7 +2793,7 @@
         // Instant low-level camera update
         map.jumpTo({
           center: [currentCamLng, currentCamLat],
-          zoom: 11.0,
+          zoom: povZoomLevel,
           bearing: currentCamHeading,
           pitch: 75
         });
