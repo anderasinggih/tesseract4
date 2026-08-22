@@ -771,17 +771,18 @@
 
       <div id="flight-controls" style="display: none;">
 
+        <!-- 1. HEADING STEER CONTROL -->
         <div class="form-group">
           <div style="display: flex; justify-content: space-between; align-items: center;">
-            <label style="margin: 0;">VECTOR HDG: <span id="hdg-display"
+            <label style="margin: 0;">VECTOR HEADING: <span id="hdg-display"
                 style="color: var(--accent-cyan); font-weight: 700;">090°</span></label>
             <button type="button" class="btn-turn"
-              style="background: rgba(0, 221, 255, 0.15); border-color: var(--accent-cyan); color: var(--accent-cyan);"
+              style="background: rgba(0, 221, 255, 0.15); border-color: var(--accent-cyan); color: var(--accent-cyan); font-size: 8px; padding: 2px 6px;"
               onclick="steerDirectToDestination()">NAV DIRECT</button>
           </div>
           <input type="range" id="input-heading" min="0" max="359" step="1" value="90"
             oninput="updateHeadingPreview(this.value)" onchange="sendVectorHeading(this.value)">
-          <!-- Quick Turn Steer Buttons -->
+          <!-- Quick Steer Buttons -->
           <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; margin-top: 3px;">
             <button type="button" class="btn-turn" onclick="adjustHeading(-10)">&laquo; -10°</button>
             <button type="button" class="btn-turn" onclick="adjustHeading(-5)">&lsaquo; -5°</button>
@@ -790,41 +791,49 @@
           </div>
         </div>
 
-        <div class="form-group">
-          <label>ASSIGN FLIGHT LEVEL (ALTITUDE)</label>
-          <select id="input-altitude" class="form-input" onchange="sendAltitude(this.value)">
-            <option value="10000">FL100 (10,000 ft - Approach)</option>
-            <option value="18000">FL180 (18,000 ft - Transition)</option>
-            <option value="24000">FL240 (24,000 ft)</option>
-            <option value="28000">FL280 (28,000 ft)</option>
-            <option value="32000">FL320 (32,000 ft - Cruise)</option>
-            <option value="35000">FL350 (35,000 ft - Cruise)</option>
-            <option value="38000">FL380 (38,000 ft - Cruise)</option>
-            <option value="41000">FL410 (41,000 ft - ULR Cruise)</option>
-          </select>
-        </div>
-
-        <div class="form-group">
-          <label>ASSIGN AIRSPEED</label>
-          <select id="input-speed" class="form-input" onchange="sendSpeed(this.value)">
-            <option value="250">250 KTS (Approach Limit)</option>
-            <option value="320">320 KTS (Medium Climb)</option>
-            <option value="450">450 KTS (Normal Cruise)</option>
-            <option value="480">480 KTS (High Speed Cruise)</option>
-          </select>
-        </div>
-
+        <!-- 2. ALTITUDE FLIGHT LEVEL LEVER (FL100 - FL430) -->
         <div class="form-group" style="margin-top: 10px;">
-          <label>SECTOR HANDOFF</label>
-          <select id="handoff-target-select" class="form-input" style="margin-bottom: 5px;">
-            <option value="sec-wsjc">WSJC_ACC (Singapore)</option>
-            <option value="sec-wiii">WIII_FIR (Jakarta)</option>
-            <option value="sec-rjjj">RJJJ_ACC (Tokyo)</option>
-            <option value="sec-egtt">EGTT_ACC (London)</option>
-            <option value="sec-kzny">KZNY_ACC (New York)</option>
-            <option value="sec-ybbb">YBBB_FIR (Sydney)</option>
-          </select>
-          <button class="btn-action btn-amber" onclick="initiateHandoff()">INITIATE SECTOR HANDOFF</button>
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <label style="margin: 0;">ASSIGN ALTITUDE: <span id="alt-display" style="color: var(--accent-green); font-weight: 700;">FL350 (35,000 FT)</span></label>
+          </div>
+          <input type="range" id="input-altitude-slider" min="5000" max="43000" step="1000" value="35000"
+            oninput="updateAltitudePreview(this.value)" onchange="sendAltitude(this.value)">
+          <!-- Quick Altitude Step Buttons -->
+          <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; margin-top: 3px;">
+            <button type="button" class="btn-turn" onclick="adjustAltitude(-2000)">-2,000'</button>
+            <button type="button" class="btn-turn" onclick="adjustAltitude(-1000)">-1,000'</button>
+            <button type="button" class="btn-turn" onclick="adjustAltitude(+1000)">+1,000'</button>
+            <button type="button" class="btn-turn" onclick="adjustAltitude(+2000)">+2,000'</button>
+          </div>
+        </div>
+
+        <!-- 3. AIRSPEED THROTTLE LEVER (200 KTS - 520 KTS) -->
+        <div class="form-group" style="margin-top: 10px;">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <label style="margin: 0;">AIRSPEED THROTTLE: <span id="spd-display" style="color: #ffaa00; font-weight: 700;">450 KTS (M 0.82)</span></label>
+          </div>
+          <input type="range" id="input-speed-slider" min="200" max="520" step="10" value="450"
+            oninput="updateSpeedPreview(this.value)" onchange="sendSpeed(this.value)">
+          <!-- Quick Speed Step Buttons -->
+          <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; margin-top: 3px;">
+            <button type="button" class="btn-turn" onclick="adjustSpeed(-20)">-20 KT</button>
+            <button type="button" class="btn-turn" onclick="adjustSpeed(-10)">-10 KT</button>
+            <button type="button" class="btn-turn" onclick="adjustSpeed(+10)">+10 KT</button>
+            <button type="button" class="btn-turn" onclick="adjustSpeed(+20)">+20 KT</button>
+          </div>
+        </div>
+
+        <!-- 4. SECTOR HANDOFF BUTTONS (Tactical Grid) -->
+        <div class="form-group" style="margin-top: 12px;">
+          <label>TRANSFER SECTOR CONTROL</label>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px; margin-top: 4px;">
+            <button type="button" class="btn-turn" onclick="sendDirectHandoff('sec-wiii')">WIII Jakarta</button>
+            <button type="button" class="btn-turn" onclick="sendDirectHandoff('sec-wsjc')">WSJC Singapore</button>
+            <button type="button" class="btn-turn" onclick="sendDirectHandoff('sec-rjjj')">RJJJ Tokyo</button>
+            <button type="button" class="btn-turn" onclick="sendDirectHandoff('sec-egtt')">EGTT London</button>
+            <button type="button" class="btn-turn" onclick="sendDirectHandoff('sec-kzny')">KZNY New York</button>
+            <button type="button" class="btn-turn" onclick="sendDirectHandoff('sec-ybbb')">YBBB Sydney</button>
+          </div>
         </div>
       </div>
     </div>
@@ -2043,35 +2052,25 @@
                     const relX = Math.sin(relAngleRad) * sceneDist;
                     const relZ = -Math.cos(relAngleRad) * sceneDist;
 
-                    // Real flight altitude delta (1000 ft ≈ 0.5 units) scaled to map zoom
+                    // Authentic 3D flight altitude delta (1000 ft = 1.8 units) so altitude difference is immediately visible
                     const altDeltaFt = (otherAc.altitude - ac.altitude);
-                    const relY = (altDeltaFt / 1000.0) * 0.5 * currentActualScale;
+                    const relY = (altDeltaFt / 1000.0) * 1.8 * currentActualScale;
 
                     // Container positioned in camera coordinate frame
                     const trafficContainer = new THREE.Group();
                     trafficContainer.position.set(relX, relY, relZ);
 
-                    // Pitch: same +0.28 level-cruise attitude as player aircraft (+ climb/descent offsets)
+                    // Pitch: synchronised with flight level
                     const otherIsClimbing = otherAc.targetAltitude > otherAc.altitude + 300;
                     const otherIsDescending = otherAc.targetAltitude < otherAc.altitude - 300;
                     let otherPitchOffset = 0;
                     if (otherIsClimbing) otherPitchOffset = +0.06;
                     if (otherIsDescending) otherPitchOffset = -0.06;
 
-                    // Heading math:
-                    // The GLTF model's baked rotation (Rx(-π/2)*Rz(+π/2)) already makes nose point in -Z
-                    // when trafficContainer.rotation.y = 0 (same as player aircraft looking forward).
-                    // Euler XYZ order matrix = Ry(y) * Rx(x):
-                    //   rotation.x = pitch is applied first (in local X = world X when y=0)
-                    //   rotation.y = heading rotates the already-pitched nose to correct compass direction
-                    // Formula: rotation.y = -relHeadingDeg * π/180  (no offset needed)
-                    //   relHdg=0   → rotation.y=0   → nose in -Z (same dir as player) → we see back    ✓
-                    //   relHdg=90  → rotation.y=-π/2 → nose in +X (East/right)                         ✓
-                    //   relHdg=180 → rotation.y=-π   → nose in +Z (toward camera, head-on)             ✓
-                    //   relHdg=270 → rotation.y=-3π/2→ nose in -X (West/left)                          ✓
+                    // Heading & Attitude math
                     const relHeadingDeg = (otherAc.heading - (currentCamHeading || 0) + 360) % 360;
-                    trafficContainer.rotation.order = 'XYZ'; // default - pitch (X) applied before heading (Y)
-                    trafficContainer.rotation.x = +0.28 + otherPitchOffset;
+                    trafficContainer.rotation.order = 'XYZ';
+                    trafficContainer.rotation.x = otherPitchOffset + (typeof USER_CALIBRATION_PITCH_X !== 'undefined' ? USER_CALIBRATION_PITCH_X : 19.3);
                     trafficContainer.rotation.y = -relHeadingDeg * (Math.PI / 180.0);
                     trafficContainer.rotation.z = 0;
 
@@ -2250,8 +2249,34 @@
       sendVectorHeading(directHdg);
     }
 
-    function updateHeadingPreview(val) {
-      document.getElementById('hdg-display').innerText = `${String(val).padStart(3, '0')}°`;
+    function updateAltitudePreview(val) {
+      const ft = parseInt(val, 10);
+      const fl = Math.round(ft / 100);
+      document.getElementById('alt-display').innerText = `FL${fl} (${ft.toLocaleString()} FT)`;
+    }
+
+    function adjustAltitude(delta) {
+      const slider = document.getElementById('input-altitude-slider');
+      let cur = parseInt(slider.value, 10) || 35000;
+      let nextAlt = Math.max(5000, Math.min(43000, cur + delta));
+      slider.value = nextAlt;
+      updateAltitudePreview(nextAlt);
+      sendAltitude(nextAlt);
+    }
+
+    function updateSpeedPreview(val) {
+      const spd = parseInt(val, 10);
+      const mach = (spd / 550).toFixed(2);
+      document.getElementById('spd-display').innerText = `${spd} KTS (M ${mach})`;
+    }
+
+    function adjustSpeed(delta) {
+      const slider = document.getElementById('input-speed-slider');
+      let cur = parseInt(slider.value, 10) || 450;
+      let nextSpd = Math.max(200, Math.min(520, cur + delta));
+      slider.value = nextSpd;
+      updateSpeedPreview(nextSpd);
+      sendSpeed(nextSpd);
     }
 
     function sendAltitude(val) {
@@ -2274,15 +2299,15 @@
       }));
     }
 
-    function initiateHandoff() {
+    function sendDirectHandoff(targetSec) {
       if (!ws || ws.readyState !== WebSocket.OPEN || !selectedCallsign) return;
       playCommandAckSound();
-      const targetSec = document.getElementById('handoff-target-select').value;
       ws.send(JSON.stringify({
         type: 'handoff_init',
         callsign: selectedCallsign,
         toSector: targetSec
       }));
+      showTacticalToast(`HANDOFF SENT: ${selectedCallsign} transferred to ${targetSec}`, 'HANDOFF');
     }
 
     function acceptSpecificHandoff(callsign) {
@@ -2359,34 +2384,10 @@
         }
       }
 
-      // Inbound Handoff Alert Banner & Task Audio Notification (Queue-based Multi-Request Support)
+      // Inbound Handoff Alert Banner (Disabled as requested to keep UI clean and glitch-free)
       const handoffContainer = document.getElementById('handoff-banner');
-      if (payload.handoffs && payload.handoffs.length > 0) {
-        // Trigger ping only when a new unique flight is added to handoffs
-        const currentKeys = payload.handoffs.map(h => h.callsign).join(',');
-        if (window.lastHandoffKeys !== currentKeys) {
-          playTaskPing();
-          window.lastHandoffKeys = currentKeys;
-        }
-
-        handoffContainer.innerHTML = `
-          <div style="font-weight: 700; color: var(--accent-amber); font-size: 10px; margin-bottom: 4px;">
-            INBOUND HANDOFF REQUESTS (${payload.handoffs.length})
-          </div>
-          ${payload.handoffs.map(h => `
-            <div style="background: #111111; border: 1px solid #333333; padding: 6px 8px; border-radius: 4px; margin-bottom: 5px; display: flex; justify-content: space-between; align-items: center;">
-              <div>
-                <div style="font-weight: 800; font-size: 10px; color: #ffffff;">${h.callsign}</div>
-                <div style="font-size: 7.5px; color: #888888;">From: ${h.fromSector}</div>
-              </div>
-              <button class="btn-action btn-green" style="padding: 4px 8px; font-size: 8px; font-weight: 700;" onclick="acceptSpecificHandoff('${h.callsign}')">ACCEPT IDENT</button>
-            </div>
-          `).join('')}
-        `;
-        handoffContainer.style.display = 'block';
-      } else {
+      if (handoffContainer) {
         handoffContainer.style.display = 'none';
-        window.lastHandoffKeys = '';
       }
 
       // Update Selected Aircraft Strip, Flightradar24 Detailed HUD & 3D Camera Telemetry
@@ -2688,6 +2689,18 @@
 
       document.getElementById('input-heading').value = Math.round(ac.targetHeading);
       document.getElementById('hdg-display').innerText = `${String(Math.round(ac.targetHeading)).padStart(3, '0')}°`;
+
+      const altSlider = document.getElementById('input-altitude-slider');
+      if (altSlider) {
+        altSlider.value = Math.round(ac.targetAltitude || ac.altitude);
+        updateAltitudePreview(altSlider.value);
+      }
+
+      const spdSlider = document.getElementById('input-speed-slider');
+      if (spdSlider) {
+        spdSlider.value = Math.round(ac.targetSpeed || ac.speed);
+        updateSpeedPreview(spdSlider.value);
+      }
 
       const camCallsign = document.getElementById('cam-callsign');
       if (camCallsign) camCallsign.innerText = `3D TRACK: ${ac.callsign} [${ac.aircraftType}]`;
