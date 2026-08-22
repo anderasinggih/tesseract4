@@ -56,7 +56,7 @@
       background: #000000;
     }
 
-    #canvas-overlay {
+    #threejs-overlay {
       position: absolute;
       top: 0;
       left: 0;
@@ -64,6 +64,17 @@
       height: 100vh;
       pointer-events: none;
       z-index: 2;
+      display: none;
+    }
+
+    #canvas-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      pointer-events: none;
+      z-index: 3;
     }
 
     /* Top Navigation Bar */
@@ -360,6 +371,7 @@
 <body>
 
   <div id="map-container"></div>
+  <div id="threejs-overlay"></div>
   <canvas id="canvas-overlay"></canvas>
 
   <!-- Top Bar -->
@@ -608,11 +620,13 @@
     function toggleMapCockpitPOV() {
       mapCockpitPOVEnabled = !mapCockpitPOVEnabled;
       const btn = document.getElementById('btn-map-pov');
+      const overlay3D = document.getElementById('threejs-overlay');
 
       if (mapCockpitPOVEnabled) {
         btn.innerText = '2D ORTHO RADAR';
         btn.style.background = '#382200';
         btn.style.borderColor = 'var(--accent-amber)';
+        if (overlay3D) overlay3D.style.display = 'block';
 
         // Pick first flight if none selected
         if (!selectedCallsign && currentPayload && currentPayload.aircraft && currentPayload.aircraft.length > 0) {
@@ -622,6 +636,7 @@
         btn.innerText = '3D COCKPIT POV';
         btn.style.background = '#161616';
         btn.style.borderColor = '#333333';
+        if (overlay3D) overlay3D.style.display = 'none';
 
         // Reset map to top-down 2D orthographic radar view
         map.easeTo({
@@ -657,9 +672,38 @@
       threeCamera.position.set(0, 8, 16);
       threeCamera.lookAt(0, 0, 0);
 
-      threeRenderer = new THREE.WebGLRenderer({ antialias: true });
+      threeRenderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
       threeRenderer.setSize(width, height);
       container.appendChild(threeRenderer.domElement);
+
+      // Fullscreen 3D Overlay Renderer for Main Cockpit Map View
+      const fullOverlayContainer = document.getElementById('threejs-overlay');
+      let fullThreeRenderer, fullThreeScene, fullThreeCamera, fullPlaneGroup;
+      if (fullOverlayContainer) {
+        fullThreeScene = new THREE.Scene();
+        fullThreeCamera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+        fullThreeCamera.position.set(0, 5, -14); // Positioned right behind and above the cockpit
+        fullThreeCamera.lookAt(0, -0.5, 10);
+
+        fullThreeRenderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        fullThreeRenderer.setSize(window.innerWidth, window.innerHeight);
+        fullOverlayContainer.appendChild(fullThreeRenderer.domElement);
+
+        const fullAmbient = new THREE.AmbientLight(0xffffff, 1.2);
+        fullThreeScene.add(fullAmbient);
+        const fullDir = new THREE.DirectionalLight(0xffffff, 1.5);
+        fullDir.position.set(5, 15, 10);
+        fullThreeScene.add(fullDir);
+
+        fullPlaneGroup = new THREE.Group();
+        fullThreeScene.add(fullPlaneGroup);
+
+        window.addEventListener('resize', () => {
+          fullThreeCamera.aspect = window.innerWidth / window.innerHeight;
+          fullThreeCamera.updateProjectionMatrix();
+          fullThreeRenderer.setSize(window.innerWidth, window.innerHeight);
+        });
+      }
 
       // Wireframe Flight Horizon Ground Grid
       const gridHelper = new THREE.GridHelper(60, 30, 0x333333, 0x181818);
@@ -767,15 +811,22 @@
           '/models/airplane/11803_Airplane_v1_l1.gltf',
           function (gltf) {
             const loadedModel = gltf.scene;
-            // Center & scale model to fit view
             loadedModel.scale.set(0.015, 0.015, 0.015);
             loadedModel.rotation.y = Math.PI; // Face forward
             
-            // Clear default procedural geometry and add official 3D model
+            // Clear procedural geometry and add official 3D model
             while(planeGroup.children.length > 0) { 
               planeGroup.remove(planeGroup.children[0]); 
             }
             planeGroup.add(loadedModel);
+
+            // Clone to Fullscreen 3D Map Overlay
+            if (fullPlaneGroup) {
+              const fullModel = loadedModel.clone();
+              fullModel.scale.set(0.022, 0.022, 0.022);
+              fullModel.position.set(0, -1.8, 0); // Positioned nicely right in front of camera
+              fullPlaneGroup.add(fullModel);
+            }
           },
           undefined,
           function (error) {
@@ -835,6 +886,15 @@
           }
         }
         threeRenderer.render(threeScene, threeCamera);
+
+        // Render Fullscreen 3D Overlay on Map when 3D Cockpit POV is ON
+        if (mapCockpitPOVEnabled && fullThreeRenderer && fullThreeScene && fullThreeCamera) {
+          if (fullPlaneGroup) {
+            // Subtle aerodynamic bank roll
+            fullPlaneGroup.rotation.z = Math.sin(Date.now() * 0.0018) * 0.03;
+          }
+          fullThreeRenderer.render(fullThreeScene, fullThreeCamera);
+        }
       }
       render3D();
     }
@@ -1308,14 +1368,28 @@
             else if (isSelected) acColor = '#ffffff';
             else acColor = '#cccccc';
 
-            // Scale up aircraft size when in 3D Cockpit POV mode so you can see the airplane structure right in front of the camera
-            let planeSize = isSelected ? 10 : 7.5;
+            // In 3D Cockpit POV Mode, the authentic 3D GLTF airliner mesh is rendered directly by Three.js
             if (mapCockpitPOVEnabled && isSelected) {
-              planeSize = 38; // Super large 3D airplane silhouette right in front of cockpit camera
+              // Only draw minimal telemetry HUD tag, real 3D GLTF airplane is rendered in full 3D overlay
+              const tagX = canvas.width / 2 + 60;
+              const tagY = canvas.height * 0.65 - 40;
+              ctx.fillStyle = 'rgba(10, 10, 10, 0.85)';
+              ctx.fillRect(tagX - 2, tagY - 9, 84, 28);
+              ctx.strokeStyle = '#ffffff';
+              ctx.strokeRect(tagX - 2, tagY - 9, 84, 28);
+              ctx.fillStyle = '#ffffff';
+              ctx.font = '700 9px JetBrains Mono';
+              ctx.fillText(ac.callsign, tagX, tagY);
+              ctx.fillStyle = '#cccccc';
+              ctx.font = '8px JetBrains Mono';
+              ctx.fillText(`FL${Math.round(ac.altitude/100)} ${Math.round(ac.speed)}K`, tagX, tagY + 9);
+              ctx.fillText(`${ac.origin}▶${ac.destination}`, tagX, tagY + 17);
+              return;
             }
 
-            // Draw Clean Airplane Silhouette Icon (With Screen Center Lock in 3D Cockpit Mode)
-            drawAirplaneIcon(pt.x, pt.y, ac.heading, acColor, planeSize, isSelected, mapCockpitPOVEnabled && isSelected);
+            let planeSize = isSelected ? 10 : 7.5;
+            // Draw Clean Airplane Silhouette Icon
+            drawAirplaneIcon(pt.x, pt.y, ac.heading, acColor, planeSize, isSelected, false);
 
             // Detailed Box Tag ONLY shows when Selected OR when Conflict Alert
             if (isSelected || isConflict) {
