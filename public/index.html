@@ -678,6 +678,15 @@
     </div>
   </div>
 
+  <!-- Tactical Master Warning & Mission Alert Toast Banner (Top Center) -->
+  <div id="tactical-toast" style="display: none; position: fixed; top: 62px; left: 50%; transform: translateX(-50%); z-index: 9999; padding: 8px 16px; border-radius: 4px; font-family: 'JetBrains Mono', monospace; font-size: 10.5px; font-weight: 700; letter-spacing: 0.5px; box-shadow: 0 4px 20px rgba(0,0,0,0.8); transition: all 0.25s ease; cursor: pointer;" onclick="dismissTacticalToast()">
+    <div style="display: flex; align-items: center; gap: 10px;">
+      <span id="toast-icon" style="font-size: 12px;">!</span>
+      <span id="toast-text">MAYDAY 7700 ALERT</span>
+      <span style="font-size: 8px; opacity: 0.6; margin-left: 8px;">[CLICK TO DISMISS]</span>
+    </div>
+  </div>
+
   <!-- Left Tactical Controller Deck -->
   <div id="sector-deck" class="glass-deck">
     <div class="deck-title">
@@ -1113,6 +1122,45 @@
 
       osc.start(now);
       osc.stop(now + 0.38);
+    }
+
+    // Tactical Toast Notification Handler
+    let toastTimeout = null;
+    function showTacticalToast(text, type = 'ALERT') {
+      const toast = document.getElementById('tactical-toast');
+      const toastTxt = document.getElementById('toast-text');
+      const toastIcon = document.getElementById('toast-icon');
+      if (!toast || !toastTxt) return;
+
+      toastTxt.innerText = text;
+      if (type === 'ALERT' || type === 'EMERGENCY' || text.includes('MAYDAY') || text.includes('7700')) {
+        toast.style.background = 'rgba(255, 34, 68, 0.95)';
+        toast.style.border = '1px solid #ffffff';
+        toast.style.color = '#ffffff';
+        if (toastIcon) toastIcon.innerText = '!';
+      } else if (type === 'HANDOFF') {
+        toast.style.background = 'rgba(255, 170, 0, 0.95)';
+        toast.style.border = '1px solid #ffffff';
+        toast.style.color = '#000000';
+        if (toastIcon) toastIcon.innerText = '>';
+      } else {
+        toast.style.background = 'rgba(0, 221, 255, 0.95)';
+        toast.style.border = '1px solid #ffffff';
+        toast.style.color = '#000000';
+        if (toastIcon) toastIcon.innerText = '*';
+      }
+
+      toast.style.display = 'block';
+      if (toastTimeout) clearTimeout(toastTimeout);
+      toastTimeout = setTimeout(() => {
+        toast.style.display = 'none';
+      }, 7500);
+    }
+
+    function dismissTacticalToast() {
+      const toast = document.getElementById('tactical-toast');
+      if (toast) toast.style.display = 'none';
+      if (toastTimeout) clearTimeout(toastTimeout);
     }
 
     function toggleMapCockpitPOV() {
@@ -1848,8 +1896,10 @@
         newLogs.forEach(l => {
           if (l.type === 'ALERT' || l.type === 'EMERGENCY' || l.message.includes('MAYDAY')) {
             playAlertChime(); // Urgent 2-tone ATC Master Warning Chime
+            showTacticalToast(`MAYDAY ALERT: ${l.message}`, 'ALERT');
           } else if (l.type === 'SYS' || l.type === 'HANDOFF') {
             playTaskPing(); // Mission Task update ping
+            showTacticalToast(`ATC MISSION: ${l.message}`, 'HANDOFF');
           }
         });
 
