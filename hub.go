@@ -289,6 +289,18 @@ func (h *ATCHub) Run() {
 	}
 }
 
+// headingDiff returns shortest signed angular difference a-b in (-180, +180]
+func headingDiff(a, b float64) float64 {
+	d := a - b
+	for d > 180 {
+		d -= 360
+	}
+	for d < -180 {
+		d += 360
+	}
+	return d
+}
+
 // updateKinematics moves all aircraft, applies heading/altitude steering, and runs STCA collision checks
 func (h *ATCHub) updateKinematics(dt float64) {
 	h.mu.Lock()
@@ -296,8 +308,9 @@ func (h *ATCHub) updateKinematics(dt float64) {
 
 	// 1. Move and steer each aircraft
 	for callsign, ac := range h.aircraft {
-		// Flight Management System (FMS) Auto-Nav: If heading not manually assigned by ATC, continuously track destination
-		if ac.TargetHeading == ac.Heading {
+		// Flight Management System (FMS) Auto-Nav: when wings level and on assigned
+		// track, continuously re-track the destination airport
+		if math.Abs(headingDiff(ac.TargetHeading, ac.Heading)) < 0.05 && math.Abs(ac.Roll) < 0.5 {
 			for _, apt := range GlobalMajorAirports {
 				if apt.ICAO == ac.Destination {
 					ac.TargetHeading = CalculateTrueBearing(ac.Coord, apt.Coord)
@@ -306,26 +319,26 @@ func (h *ATCHub) updateKinematics(dt float64) {
 			}
 		}
 
-		// Adaptive turn rate: responsive on small pilot-stick inputs (diff 3 deg
-		// -> ~11.5 deg/sec bank) while large AI vector changes bank up to 14
-		// deg/sec and taper smoothly as the aircraft settles on target.
-		diffHeading := ac.TargetHeading - ac.Heading
-		for diffHeading > 180 {
-			diffHeading -= 360
-		}
-		for diffHeading < -180 {
-			diffHeading += 360
+		// ── Coordinated turn dynamics (FAA Pilot's Handbook of Aeronautical Knowledge) ──
+		// Bank command: pilot stick overrides directly; otherwise bank-angle pursuit
+		// of the assigned heading (3x gain, saturated at airliner limit 25 deg).
+		bankCmd := ac.TargetRoll
+		if ac.TargetRoll == 0 {
+			bankCmd = math.Max(-25.0, math.Min(25.0, 3.0*headingDiff(ac.TargetHeading, ac.Heading)))
 		}
 
-		turnRate := (4.0 + math.Min(math.Abs(diffHeading)*2.5, 10.0)) * dt
-
-		if math.Abs(diffHeading) <= turnRate {
-			ac.Heading = ac.TargetHeading
-		} else if diffHeading > 0 {
-			ac.Heading += turnRate
-		} else {
-			ac.Heading -= turnRate
+		// Airliner roll rate ~7 deg/s (typical transport category: 5-10 deg/s)
+		if ac.Roll < bankCmd {
+			ac.Roll = math.Min(ac.Roll+7.0*dt, bankCmd)
+		} else if ac.Roll > bankCmd {
+			ac.Roll = math.Max(ac.Roll-7.0*dt, bankCmd)
 		}
+
+		// Rate of turn: ROT = 1091 * tan(bank) / TAS(knots)  [deg/sec]
+		// At 450 kts & 25 deg bank -> ~1.13 deg/s with a ~6 NM radius. Heavy.
+		tas := math.Max(ac.Speed, 120.0)
+		rot := 1091.0 * math.Tan(ac.Roll*math.Pi/180.0) / tas
+		ac.Heading += rot * dt
 		if ac.Heading < 0 {
 			ac.Heading += 360
 		} else if ac.Heading >= 360 {
@@ -528,12 +541,23 @@ func (h *ATCHub) ExecuteATCCommand(cmd ClientATCCommand, operatorID string) {
 				h.addLog("RADIO", ac.Callsign, fmt.Sprintf("%s, fly heading %03.0f", ac.Callsign, cmd.Heading))
 			}
 
-		case "adjust_heading":
-			// Pilot-stick relative nudge: applied on top of the ACTUAL current heading,
-			// so the commanded gap stays <= one tick's delta — zero stale-lag drift.
+		case "steer_start":
+			// Pilot stick: hold a coordinated bank. cmd.Heading = -1 (left) / +1 (right)
 			if ac, ok := h.aircraft[cmd.Callsign]; ok {
-				nh := math.Mod(ac.Heading+cmd.Heading+360.0, 360.0)
-				ac.TargetHeading = nh
+				dir := cmd.Heading
+				if dir > 0 {
+					ac.TargetRoll = 25
+				} else if dir < 0 {
+					ac.TargetRoll = -25
+				}
+			}
+
+		case "steer_stop":
+			// Release: roll back to wings level and hold the CURRENT track —
+			// no snap-back to stale targets. FMS auto-nav resumes naturally.
+			if ac, ok := h.aircraft[cmd.Callsign]; ok {
+				ac.TargetRoll = 0
+				ac.TargetHeading = ac.Heading
 			}
 
 		case "adjust_altitude":

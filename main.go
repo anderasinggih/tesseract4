@@ -24,6 +24,8 @@ type Aircraft struct {
 	TargetAltitude int      `json:"targetAltitude"` // Assigned flight level in feet
 	Heading        float64  `json:"heading"`        // Current heading (0-360 deg)
 	TargetHeading  float64  `json:"targetHeading"`  // Assigned vector heading
+	Roll           float64  `json:"roll"`           // Current bank angle in degrees (-left / +right)
+	TargetRoll     float64  `json:"-"`              // Commanded bank angle while pilot stick is held (internal)
 	Speed          float64  `json:"speed"`          // Current ground speed in knots
 	TargetSpeed    float64  `json:"targetSpeed"`    // Assigned speed in knots
 	SectorID       string   `json:"sectorId"`       // Current controlling sector ID

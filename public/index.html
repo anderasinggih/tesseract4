@@ -1517,25 +1517,28 @@
     let babylonTrafficMeshes = new Map();
 
     // ── WASD Flight Controls (active only in POV mode) ──────────────────────
-    // W = Climb +500ft  |  S = Descend -500ft
-    // A = Bank Left -3° |  D = Bank Right +3°  (per 50ms tick, re-based on the
-    //     aircraft's ACTUAL heading server-side — zero lag accumulation)
-    // Commands are RELATIVE nudges applied server-side on top of the current
-    // target — no local accumulation, so zero stale-lag drift after release.
+    // A = Bank Left 25° (hold) | D = Bank Right 25° (hold) — state-based
+    //     coordinated turn: release = roll-out & hold current track
+    // W = Climb +500ft | S = Descend -500ft (50ms repeat nudges)
     const wasdHeld = {};
     let wasdInterval = null;
+    let steerDir = 0;   // -1 left / +1 right while stick held (drives local prediction)
+    let predRoll = 0;   // locally predicted bank angle, reconciled with server roll
+    let lastKnownRoll = 0;
+
+    function sendSteer(dir) {
+      steerDir = dir;
+      if (!ws || ws.readyState !== WebSocket.OPEN || !selectedCallsign) return;
+      if (dir === 0) {
+        ws.send(JSON.stringify({ type: 'steer_stop', callsign: selectedCallsign }));
+      } else {
+        ws.send(JSON.stringify({ type: 'steer_start', callsign: selectedCallsign, heading: dir }));
+      }
+    }
 
     function applyWASD() {
       if (!mapCockpitPOVEnabled || !selectedCallsign || !ws || ws.readyState !== WebSocket.OPEN) return;
-
-      // Turn left / right — relative nudge per tick
-      if (wasdHeld['a'] || wasdHeld['A']) {
-        ws.send(JSON.stringify({ type: 'adjust_heading', callsign: selectedCallsign, heading: -3 }));
-      }
-      if (wasdHeld['d'] || wasdHeld['D']) {
-        ws.send(JSON.stringify({ type: 'adjust_heading', callsign: selectedCallsign, heading: 3 }));
-      }
-      // Climb / descend
+      // Climb / descend nudges (steering is state-based, no repeats needed)
       if (wasdHeld['w'] || wasdHeld['W']) {
         ws.send(JSON.stringify({ type: 'adjust_altitude', callsign: selectedCallsign, altitude: 500 }));
       }
@@ -1551,15 +1554,26 @@
       e.preventDefault();
       if (wasdHeld[k]) return; // already held
       wasdHeld[k] = true;
+      const lower = k.toLowerCase();
+      if (lower === 'a') sendSteer(-1);
+      else if (lower === 'd') sendSteer(+1);
       applyWASD(); // instant first tick
       if (!wasdInterval) {
-        wasdInterval = setInterval(applyWASD, 50); // repeat every 50ms while held — snappy stick response
+        wasdInterval = setInterval(applyWASD, 50); // altitude nudge cadence only
       }
     });
 
     document.addEventListener('keyup', (e) => {
       const k = e.key;
       delete wasdHeld[k];
+      const lower = k.toLowerCase();
+      if (lower === 'a' || lower === 'd') {
+        // Last-stick-wins: if the opposite key is still held, bank the other way,
+        // otherwise roll out and hold current track
+        if (wasdHeld['a'] || wasdHeld['A']) sendSteer(-1);
+        else if (wasdHeld['d'] || wasdHeld['D']) sendSteer(+1);
+        else sendSteer(0);
+      }
       if (!Object.keys(wasdHeld).length && wasdInterval) {
         clearInterval(wasdInterval);
         wasdInterval = null;
@@ -2767,10 +2781,19 @@
           if (spdEl) spdEl.innerText = `${Math.round(ac.speed)}KT`;
           if (hdgEl) hdgEl.innerText = `${String(Math.round(ac.heading)).padStart(3, '0')}°`;
 
-          // Target coordinates for smooth 60fps lerp interpolation
+          // Target coordinates for smooth 60fps lerp interpolation.
+          // Heading uses SOFT reconciliation toward server authority so the local
+          // prediction feed-forward (see POV camera block) is never hard-wiped.
           targetCamLng = ac.coord.lng;
           targetCamLat = ac.coord.lat;
-          targetCamHeading = ac.heading;
+          lastKnownRoll = ac.roll || 0;
+          if (currentCamLng === null || targetCamHeading === null) {
+            targetCamHeading = ac.heading;
+            predRoll = lastKnownRoll;
+          } else {
+            const hdgErr = ((ac.heading - targetCamHeading + 540) % 360) - 180;
+            targetCamHeading += hdgErr * 0.25;
+          }
           targetCamSpeed = ac.speed || 450;
           lastTargetTime = performance.now();
           if (currentCamLng === null) {
@@ -3211,6 +3234,17 @@
           const dt = Math.min((now - lastFrameTime) / 1000, 0.1);
           lastFrameTime = now;
 
+          // ── Local prediction feed-forward (zero perceived input latency) ──
+          // Mirror of the server coordinated-turn model: bank ramps at 7°/s,
+          // ROT = 1091·tan(bank)/TAS. Server packets reconcile softly every
+          // ~16ms, so rotation starts the SAME frame the stick goes down.
+          if (targetCamHeading === null) targetCamHeading = currentCamHeading;
+          const rollCmd = steerDir !== 0 ? steerDir * 25 : 0;
+          predRoll += Math.max(-7 * dt, Math.min(7 * dt, rollCmd - predRoll));
+          predRoll += (lastKnownRoll - predRoll) * (1 - Math.exp(-3 * dt)); // authority blend
+          const spdKts = Math.max(targetCamSpeed || 450, 120);
+          targetCamHeading = normDeg(targetCamHeading + (1091 * Math.tan(predRoll * Math.PI / 180) / spdKts) * dt);
+
           // Frame-rate independent damping — responsive bearing follow so
           // WASD steering reads instantly on the rotating map horizon
           const posAlpha = 1 - Math.exp(-12 * dt);
@@ -3223,8 +3257,17 @@
           let diffHdg = (targetCamHeading - currentCamHeading + 540) % 360 - 180;
           currentCamHeading += diffHdg * hdgAlpha;
 
+          // Chase-cam trail anchor: center the map slightly BEHIND the tail so the
+          // wide realistic turn arc reads as lateral world motion across the screen
+          // instead of a pivot-in-place. Offset trails the current track direction.
+          const trailNM = 2.4;
+          const hRad = currentCamHeading * Math.PI / 180;
+          const latR = currentCamLat * Math.PI / 180;
+          const offLat = -Math.cos(hRad) * trailNM / 60;
+          const offLng = -Math.sin(hRad) * trailNM / 60 / Math.max(Math.cos(latR), 0.1);
+
           map.jumpTo({
-            center: [currentCamLng, currentCamLat],
+            center: [currentCamLng + offLng, currentCamLat + offLat],
             zoom: povZoomLevel,
             bearing: currentCamHeading,
             pitch: 85
