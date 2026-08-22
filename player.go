@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"log"
+	"math"
 	"strings"
 	"sync"
 	"time"
@@ -15,21 +16,21 @@ import (
 type Player struct {
 	ID       string
 	Position Vector4
-	Rotation float64         // Angle theta for XW rotation
+	Yaw      float64         // Mouse horizontal angle (Look Left/Right)
+	Pitch    float64         // Mouse vertical angle (Look Up/Down)
+	HyperRot float64         // 4D XW dimension rotation angle
 	Conn     *websocket.Conn // Physical WebSocket connection
 	Send     chan []byte     // Outbound message queue (Buffered Channel)
 	Mutex    sync.RWMutex    // Protects Position and Rotation mutability
 }
 
 // WritePump acts as the dedicated "Kurir" per player.
-// It delivers messages from the in-memory Send channel to the physical network.
 func (p *Player) WritePump() {
 	defer p.Conn.Close()
 
 	for {
 		message, ok := <-p.Send
 		if !ok {
-			// Hub closed the channel (player kicked / disconnected)
 			_ = p.Conn.WriteMessage(websocket.CloseMessage, []byte{})
 			return
 		}
@@ -41,7 +42,7 @@ func (p *Player) WritePump() {
 	}
 }
 
-// ReadPump listens for raw input commands from the dumb client
+// ReadPump listens for FPS WASD movements and Mouse Look angles
 func (p *Player) ReadPump(c *websocket.Conn) {
 	for {
 		var cmd InputCommand
@@ -53,105 +54,129 @@ func (p *Player) ReadPump(c *websocket.Conn) {
 			break
 		}
 
-		speed := 0.05
-		if cmd.Delta != 0 {
-			speed = cmd.Delta
-		}
-
 		p.Mutex.Lock()
-		switch strings.ToLower(cmd.Key) {
-		// X-axis movement
-		case "a":
-			p.Position.X -= speed
-		case "d":
-			p.Position.X += speed
+		switch cmd.Type {
+		case "look":
+			// FPS Mouse Look: DX -> Yaw, DY -> Pitch
+			sensitivity := 0.003
+			p.Yaw += cmd.DX * sensitivity
+			p.Pitch += cmd.DY * sensitivity
 
-		// Y-axis movement
-		case "w":
-			p.Position.Y += speed
-		case "s":
-			p.Position.Y -= speed
+			// Clamp pitch so camera doesn't flip upside down
+			if p.Pitch > 1.5 {
+				p.Pitch = 1.5
+			} else if p.Pitch < -1.5 {
+				p.Pitch = -1.5
+			}
 
-		// Z-axis movement
-		case "q":
-			p.Position.Z -= speed
-		case "e":
-			p.Position.Z += speed
+		case "move":
+			speed := 0.08
+			if cmd.Delta != 0 {
+				speed = cmd.Delta
+			}
 
-		// W-axis movement (Proximity to Black Hole)
-		case "shift":
-			p.Position.W -= speed
-		case " ": // Space
-			p.Position.W += speed
+			// FPS Direction Vectors based on camera Yaw
+			cosY := math.Cos(p.Yaw)
+			sinY := math.Sin(p.Yaw)
 
-		// XW 4D Rotation
-		case "arrowleft":
-			p.Rotation -= 0.04
-		case "arrowright":
-			p.Rotation += 0.04
+			switch strings.ToLower(cmd.Key) {
+			// W: Maju ke Depan (arah hadap kamera di sumbu Z/X)
+			case "w":
+				p.Position.Z += speed * cosY
+				p.Position.X += speed * sinY
+
+			// S: Mundur ke Belakang
+			case "s":
+				p.Position.Z -= speed * cosY
+				p.Position.X -= speed * sinY
+
+			// A: Strafe ke Kiri
+			case "a":
+				p.Position.X -= speed * cosY
+				p.Position.Z += speed * sinY
+
+			// D: Strafe ke Kanan
+			case "d":
+				p.Position.X += speed * cosY
+				p.Position.Z -= speed * sinY
+
+			// Panah Atas / Space: Terbang Naik (Sumbu Y)
+			case "arrowup", " ":
+				p.Position.Y += speed
+
+			// Panah Bawah / C: Turun ke Bawah (Sumbu Y)
+			case "arrowdown", "c":
+				p.Position.Y -= speed
+
+			// Shift: Mendekati Singularity Black Hole (Sumbu W)
+			case "shift":
+				p.Position.W -= speed
+
+			// E: Menjauhi Singularity Black Hole (Sumbu W)
+			case "e":
+				p.Position.W += speed
+
+			// Q / R: Manual 4D Hypercube Spin
+			case "q":
+				p.HyperRot -= 0.05
+			case "r":
+				p.HyperRot += 0.05
+			}
 		}
 		p.Mutex.Unlock()
 	}
 }
 
-// PhysicsLoop computes 4D projection, time dilation, and enqueues 2D lines to the Send channel
+// PhysicsLoop computes 4D projection with full FPS camera, streaming smoothly at 60 FPS
 func (p *Player) PhysicsLoop(ctx context.Context) {
+	// 60 FPS ticker (16ms)
+	ticker := time.NewTicker(16 * time.Millisecond)
+	defer ticker.Stop()
+
 	for {
 		select {
 		case <-ctx.Done():
 			return
 
-		default:
+		case <-ticker.C:
 			p.Mutex.RLock()
 			currentPos := p.Position
-			currentRotation := p.Rotation
+			yaw := p.Yaw
+			pitch := p.Pitch
+			hyperRot := p.HyperRot
 			p.Mutex.RUnlock()
 
 			// 1. Calculate Schwarzschild Time Dilation Multiplier
 			timeMultiplier := CalculateTimeMultiplier(currentPos.W)
 
-			// 2. Dynamic Tick Rate (BaseTick = 16ms / Multiplier)
-			actualSleepDuration := time.Duration(float64(BaseTick)/timeMultiplier) * time.Millisecond
+			// 2. Compute dynamic tick latency display
+			effectiveTickMs := float64(BaseTick) / timeMultiplier
 
-			if actualSleepDuration < 1*time.Millisecond {
-				actualSleepDuration = 1 * time.Millisecond
-			} else if actualSleepDuration > 1000*time.Millisecond {
-				actualSleepDuration = 1000 * time.Millisecond
-			}
+			// 3. Generate 2D projected lines with FPS camera transform
+			lines := GenerateProjectedLines(currentPos, yaw, pitch, hyperRot)
 
-			// 3. Generate 2D projected lines from 4D Tesseract
-			lines := GenerateProjectedLines(currentPos, currentRotation)
-
-			// 4. Construct frame payload
+			// 4. Construct payload
 			payload := FramePayload{
 				Lines:          lines,
 				PlayerPos:      currentPos,
 				TimeMultiplier: timeMultiplier,
-				TickMs:         float64(actualSleepDuration.Milliseconds()),
+				TickMs:         effectiveTickMs,
 				PlayerID:       p.ID,
 			}
 
-			// 5. Serialize and deliver to Kurir's Send channel
+			// 5. Deliver to send queue
 			data, err := json.Marshal(payload)
 			if err == nil {
 				select {
 				case p.Send <- data:
 				default:
-					// Drop frame if buffer is congested
 				}
 			}
 
-			// Auto ambient rotation
+			// Ambient 4D dimensional rotation
 			p.Mutex.Lock()
-			p.Rotation += 0.01
+			p.HyperRot += 0.008 * timeMultiplier
 			p.Mutex.Unlock()
-
-			// 6. Non-blocking sleep with context cancellation check
-			select {
-			case <-ctx.Done():
-				return
-			case <-time.After(actualSleepDuration):
-			}
 		}
 	}
 }

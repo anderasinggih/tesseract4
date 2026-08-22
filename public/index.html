@@ -17,12 +17,41 @@
       background: #000000;
       font-family: 'Courier New', Courier, monospace;
       color: #00FF00;
+      user-select: none;
     }
     #canvas {
       display: block;
       width: 100vw;
       height: 100vh;
       background: #000000;
+      cursor: crosshair;
+    }
+    #crosshair {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 10px;
+      height: 10px;
+      transform: translate(-50%, -50%);
+      pointer-events: none;
+      z-index: 5;
+    }
+    #crosshair::before, #crosshair::after {
+      content: '';
+      position: absolute;
+      background: rgba(0, 255, 0, 0.7);
+    }
+    #crosshair::before {
+      top: 4px;
+      left: -8px;
+      width: 26px;
+      height: 2px;
+    }
+    #crosshair::after {
+      top: -8px;
+      left: 4px;
+      width: 2px;
+      height: 26px;
     }
     #hud {
       position: absolute;
@@ -52,6 +81,22 @@
       line-height: 1.5;
       z-index: 10;
     }
+    #pointer-lock-prompt {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      padding: 18px 24px;
+      background: rgba(0, 0, 0, 0.9);
+      border: 2px solid #00FF00;
+      border-radius: 8px;
+      text-align: center;
+      font-size: 14px;
+      letter-spacing: 1px;
+      box-shadow: 0 0 25px rgba(0, 255, 0, 0.3);
+      z-index: 20;
+      cursor: pointer;
+    }
     .hud-title {
       font-weight: bold;
       letter-spacing: 2px;
@@ -75,7 +120,13 @@
   </style>
 </head>
 <body>
+  <div id="crosshair"></div>
   <canvas id="canvas"></canvas>
+
+  <div id="pointer-lock-prompt">
+    <div style="font-weight: bold; font-size: 16px; margin-bottom: 6px;">[ CLICK TO PLAY (FPS MODE) ]</div>
+    <div style="color: #88ff88; font-size: 12px;">Mouse untuk Melihat / Arah Kamera</div>
+  </div>
 
   <div id="hud">
     <div class="hud-title"><span id="status-indicator" class="status-badge"></span>TESSERACT PARADOX 4D</div>
@@ -87,12 +138,14 @@
   </div>
 
   <div id="controls">
-    <div style="font-weight: bold; color: #00ff00; margin-bottom: 4px;">CONTROLS:</div>
-    <div>[W / S] Move Y Axis (Up / Down)</div>
-    <div>[A / D] Move X Axis (Left / Right)</div>
-    <div>[Q / E] Move Z Axis (Depth)</div>
-    <div>[SHIFT / SPACE] Move W Axis (Near / Far Black Hole Singularity)</div>
-    <div>[← / →] Rotate 4D Hypercube (XW Plane)</div>
+    <div style="font-weight: bold; color: #00ff00; margin-bottom: 4px;">🎮 KONTROL FPS 4D:</div>
+    <div>[MOUSE] Putar Kamera (Yaw & Pitch)</div>
+    <div>[W / S] Maju ke Depan / Mundur</div>
+    <div>[A / D] Geser Kiri / Kanan (Strafe)</div>
+    <div>[SPACE / ↑] Terbang Naik (Sumbu Y)</div>
+    <div>[C / ↓] Turun ke Bawah (Sumbu Y)</div>
+    <div>[SHIFT / E] Sumbu W (Mendekati / Menjauhi Black Hole)</div>
+    <div>[Q / R] Putar Dimensi 4D Hypercube</div>
   </div>
 
   <script>
@@ -104,6 +157,7 @@
     const posDisplay = document.getElementById('pos-display');
     const dilationDisplay = document.getElementById('dilation-display');
     const tickDisplay = document.getElementById('tick-display');
+    const lockPrompt = document.getElementById('pointer-lock-prompt');
 
     function resizeCanvas() {
       canvas.width = window.innerWidth;
@@ -111,6 +165,19 @@
     }
     window.addEventListener('resize', resizeCanvas);
     resizeCanvas();
+
+    // Pointer Lock for FPS Mouse Look
+    lockPrompt.addEventListener('click', () => {
+      canvas.requestPointerLock();
+    });
+
+    document.addEventListener('pointerlockchange', () => {
+      if (document.pointerLockElement === canvas) {
+        lockPrompt.style.display = 'none';
+      } else {
+        lockPrompt.style.display = 'block';
+      }
+    });
 
     // WebSocket connection to Golang Backend
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
@@ -137,7 +204,6 @@
         console.error('WebSocket Error:', err);
       };
 
-      // Dumb Client: Receive 2D array of lines and feed into LERP renderer
       ws.onmessage = (event) => {
         try {
           const payload = JSON.parse(event.data);
@@ -153,15 +219,13 @@
     // Smooth frame interpolation (LERP) for 60+ FPS butter-smooth rendering
     let currentLines = null;
     let targetLines = null;
-    let lerpFactor = 0.35;
-    let animFrameId = null;
+    let lerpFactor = 0.45;
 
     function renderLoop() {
       if (targetLines && targetLines.length > 0) {
         if (!currentLines || currentLines.length !== targetLines.length) {
           currentLines = JSON.parse(JSON.stringify(targetLines));
         } else {
-          // Smoothly interpolate current towards target
           for (let i = 0; i < targetLines.length; i++) {
             currentLines[i].x1 += (targetLines[i].x1 - currentLines[i].x1) * lerpFactor;
             currentLines[i].y1 += (targetLines[i].y1 - currentLines[i].y1) * lerpFactor;
@@ -170,22 +234,20 @@
           }
         }
 
-        // Clear Canvas
         ctx.fillStyle = '#000000';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
 
         const centerX = canvas.width / 2;
         const centerY = canvas.height / 2;
-        const scale = Math.min(canvas.width, canvas.height) * 0.45;
+        const scale = Math.min(canvas.width, canvas.height) * 0.55;
 
         ctx.save();
         ctx.translate(centerX, centerY);
 
-        // Draw projected 2D wireframe edges
         ctx.strokeStyle = '#00FF00';
-        ctx.lineWidth = 1.6;
+        ctx.lineWidth = 1.8;
         ctx.shadowColor = '#00FF00';
-        ctx.shadowBlur = 10;
+        ctx.shadowBlur = 12;
 
         ctx.beginPath();
         for (let i = 0; i < currentLines.length; i++) {
@@ -201,7 +263,6 @@
     }
     requestAnimationFrame(renderLoop);
 
-    // Update telemetry & targets on WebSocket message
     function onServerPayload(payload) {
       const { lines, playerPos, timeMultiplier, tickMs, playerId } = payload;
 
@@ -213,7 +274,7 @@
         dilationDisplay.innerText = `${timeMultiplier.toFixed(2)}x`;
       }
       if (tickMs !== undefined) {
-        tickDisplay.innerText = `${tickMs} ms`;
+        tickDisplay.innerText = `${tickMs.toFixed(0)} ms`;
       }
 
       if (lines && lines.length > 0) {
@@ -221,12 +282,24 @@
       }
     }
 
-    // Capture user inputs with smooth continuous key polling
+    // Mouse Look (Yaw & Pitch)
+    window.addEventListener('mousemove', (e) => {
+      if (document.pointerLockElement === canvas && ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({
+          type: 'look',
+          dx: e.movementX,
+          dy: e.movementY
+        }));
+      }
+    });
+
+    // Continuous Keyboard Polling (WASD + Arrows + Flight)
     const activeKeys = new Set();
 
     window.addEventListener('keydown', (e) => {
       const key = e.key.toLowerCase();
-      if (['w', 'a', 's', 'd', 'q', 'e', 'shift', ' ', 'arrowleft', 'arrowright'].includes(key)) {
+      const validKeys = ['w', 'a', 's', 'd', 'arrowup', 'arrowdown', ' ', 'shift', 'e', 'c', 'q', 'r'];
+      if (validKeys.includes(key)) {
         e.preventDefault();
         activeKeys.add(key);
       }
@@ -237,18 +310,17 @@
       activeKeys.delete(key);
     });
 
-    // Send active movement commands at steady 60Hz rate
     setInterval(() => {
       if (ws && ws.readyState === WebSocket.OPEN && activeKeys.size > 0) {
         activeKeys.forEach((key) => {
           ws.send(JSON.stringify({
             type: 'move',
             key: key,
-            delta: 0.05
+            delta: 0.08
           }));
         });
       }
-    }, 20);
+    }, 16);
   </script>
 </body>
 </html>

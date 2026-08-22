@@ -36,11 +36,13 @@ type FramePayload struct {
 	PlayerID       string   `json:"playerId"`
 }
 
-// InputCommand represents raw movement input from the frontend
+// InputCommand represents raw movement or mouse look from the frontend
 type InputCommand struct {
-	Type  string  `json:"type"`  // "move", "rotate"
-	Key   string  `json:"key"`   // "w", "s", "a", "d", "q", "e", "shift", "space", "arrowleft", etc.
+	Type  string  `json:"type"`  // "move", "look"
+	Key   string  `json:"key"`   // "w", "s", "a", "d", "arrowup", "arrowdown", "shift", "space", "q", "e"
 	Delta float64 `json:"delta"` // magnitude
+	DX    float64 `json:"dx"`    // Mouse delta X (Yaw)
+	DY    float64 `json:"dy"`    // Mouse delta Y (Pitch)
 }
 
 
@@ -84,7 +86,9 @@ func main() {
 				Z: 0,
 				W: 1.0, // Initial distance from singularity
 			},
-			Rotation: 0,
+			Yaw:      0,
+			Pitch:    0,
+			HyperRot: 0,
 			Conn:     c,
 			Send:     make(chan []byte, 256), // Buffer antrean pengiriman keluar
 		}

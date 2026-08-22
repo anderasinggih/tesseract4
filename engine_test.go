@@ -13,7 +13,9 @@ func TestConcurrentMovementAndPhysics(t *testing.T) {
 		Position: Vector4{
 			X: 0, Y: 0, Z: 0, W: 1.0,
 		},
-		Rotation: 0,
+		Yaw:      0,
+		Pitch:    0,
+		HyperRot: 0,
 		Send:     make(chan []byte, 256),
 	}
 
@@ -35,7 +37,7 @@ func TestConcurrentMovementAndPhysics(t *testing.T) {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		keys := []string{"w", "a", "s", "d", "q", "e", "shift", " ", "arrowleft", "arrowright"}
+		keys := []string{"w", "a", "s", "d", "arrowup", "arrowdown", "shift", " ", "e", "q", "r"}
 		for i := 0; i < 5000; i++ {
 			select {
 			case <-done:
@@ -49,17 +51,21 @@ func TestConcurrentMovementAndPhysics(t *testing.T) {
 				case "d":
 					player.Position.X += 0.05
 				case "w":
-					player.Position.Y += 0.05
+					player.Position.Z += 0.05
 				case "s":
+					player.Position.Z -= 0.05
+				case "arrowup":
+					player.Position.Y += 0.05
+				case "arrowdown":
 					player.Position.Y -= 0.05
 				case "shift":
 					player.Position.W -= 0.05
-				case " ":
+				case "e":
 					player.Position.W += 0.05
-				case "arrowleft":
-					player.Rotation -= 0.04
-				case "arrowright":
-					player.Rotation += 0.04
+				case "q":
+					player.Yaw -= 0.02
+				case "r":
+					player.Pitch += 0.02
 				}
 				player.Mutex.Unlock()
 			}
@@ -77,14 +83,16 @@ func TestConcurrentMovementAndPhysics(t *testing.T) {
 			default:
 				player.Mutex.RLock()
 				pos := player.Position
-				rot := player.Rotation
+				yaw := player.Yaw
+				pitch := player.Pitch
+				hyperRot := player.HyperRot
 				player.Mutex.RUnlock()
 
 				_ = CalculateTimeMultiplier(pos.W)
-				_ = GenerateProjectedLines(pos, rot)
+				_ = GenerateProjectedLines(pos, yaw, pitch, hyperRot)
 
 				player.Mutex.Lock()
-				player.Rotation += 0.01
+				player.HyperRot += 0.01
 				player.Mutex.Unlock()
 			}
 		}

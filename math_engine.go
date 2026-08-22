@@ -49,15 +49,34 @@ var TesseractEdges = [32][2]int{
 	{4, 12}, {5, 13}, {6, 14}, {7, 15},
 }
 
-// RotateXW applies 4D rotation along the X-W plane
-// R_xw(theta) = [ cos(t)  0  0 -sin(t) ]
-//               [   0     1  0    0    ]
-//               [   0     0  1    0    ]
-//               [ sin(t)  0  0  cos(t) ]
+// RotateXZ applies 3D Yaw rotation (Mouse horizontal look)
+func RotateXZ(v Vector4, theta float64) Vector4 {
+	cosT := math.Cos(theta)
+	sinT := math.Sin(theta)
+	return Vector4{
+		X: v.X*cosT - v.Z*sinT,
+		Y: v.Y,
+		Z: v.X*sinT + v.Z*cosT,
+		W: v.W,
+	}
+}
+
+// RotateYZ applies 3D Pitch rotation (Mouse vertical look)
+func RotateYZ(v Vector4, theta float64) Vector4 {
+	cosT := math.Cos(theta)
+	sinT := math.Sin(theta)
+	return Vector4{
+		X: v.X,
+		Y: v.Y*cosT - v.Z*sinT,
+		Z: v.Y*sinT + v.Z*cosT,
+		W: v.W,
+	}
+}
+
+// RotateXW applies 4D rotation along the X-W hyper-plane
 func RotateXW(v Vector4, theta float64) Vector4 {
 	cosT := math.Cos(theta)
 	sinT := math.Sin(theta)
-
 	return Vector4{
 		X: v.X*cosT - v.W*sinT,
 		Y: v.Y,
@@ -67,8 +86,6 @@ func RotateXW(v Vector4, theta float64) Vector4 {
 }
 
 // Project4Dto2D projects a 4D coordinate down to 3D and then to 2D
-// 4D -> 3D: x_3d = x / (d - w), y_3d = y / (d - w), z_3d = z / (d - w)
-// 3D -> 2D: x_2d = x_3d / (d - z_3d), y_2d = y_3d / (d - z_3d)
 func Project4Dto2D(v Vector4, d float64) (float64, float64, bool) {
 	denomW := d - v.W
 	if math.Abs(denomW) < 0.0001 {
@@ -99,7 +116,7 @@ func Project4Dto2D(v Vector4, d float64) (float64, float64, bool) {
 }
 
 // GenerateProjectedLines computes the transformed and projected 2D wireframe edges
-func GenerateProjectedLines(pos Vector4, theta float64) []Line2D {
+func GenerateProjectedLines(pos Vector4, yaw, pitch, hyperRot float64) []Line2D {
 	var projectedPoints [16][2]float64
 
 	for i, v := range BaseTesseractVertices {
@@ -110,8 +127,16 @@ func GenerateProjectedLines(pos Vector4, theta float64) []Line2D {
 			W: v.W + pos.W,
 		}
 
-		rotated := RotateXW(translated, theta)
-		x2d, y2d, _ := Project4Dto2D(rotated, DistanceD)
+		// 1. 4D XW Hyper-rotation
+		r4d := RotateXW(translated, hyperRot)
+
+		// 2. Camera FPS Yaw (XZ)
+		rYaw := RotateXZ(r4d, yaw)
+
+		// 3. Camera FPS Pitch (YZ)
+		rPitch := RotateYZ(rYaw, pitch)
+
+		x2d, y2d, _ := Project4Dto2D(rPitch, DistanceD)
 		projectedPoints[i] = [2]float64{x2d, y2d}
 	}
 
