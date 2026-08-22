@@ -418,26 +418,31 @@
 
     /* Mobile Responsive Overhaul */
     @media (max-width: 768px) {
+      /* Sleek Translucent Frosted Glass Top Bar */
       #top-bar {
-        padding: 6px 8px;
+        padding: 5px 8px;
         top: 6px;
         left: 6px;
         right: 6px;
         display: flex;
         align-items: center;
         justify-content: space-between;
-        gap: 6px;
-        border-radius: 6px;
+        gap: 4px;
+        border-radius: 8px;
+        background: rgba(10, 10, 10, 0.45) !important;
+        backdrop-filter: blur(16px) saturate(180%) !important;
+        -webkit-backdrop-filter: blur(16px) saturate(180%) !important;
+        border: 1px solid rgba(255, 255, 255, 0.1) !important;
       }
 
       .brand-box {
         display: flex;
         align-items: center;
-        gap: 6px;
+        gap: 4px;
       }
 
       .brand-title {
-        font-size: 9px;
+        font-size: 8.5px;
         letter-spacing: 0.5px;
       }
 
@@ -452,71 +457,86 @@
       /* Compact mobile action buttons */
       .brand-box > div {
         display: flex;
-        gap: 3px;
-        margin-left: 4px !important;
+        gap: 2px;
+        margin-left: 2px !important;
       }
 
       #btn-style-satellite, #btn-style-dark, #btn-map-pov {
-        padding: 4px 6px !important;
-        font-size: 7.5px !important;
+        padding: 3px 5px !important;
+        font-size: 7px !important;
+        background: rgba(20, 20, 20, 0.6) !important;
       }
 
-      #btn-hud-toggle {
-        padding: 4px 8px;
-        font-size: 8px;
+      #btn-fullscreen, #btn-hud-toggle {
+        padding: 3px 6px !important;
+        font-size: 7px !important;
+        background: rgba(20, 20, 20, 0.6) !important;
       }
 
-      /* Left panel: Compact Drawer at bottom */
+      /* Left panel: Ultra-Compact Frosted Glass Bottom Sheet */
       #sector-deck {
         top: auto;
         bottom: 0;
-        left: 0;
-        right: 0;
-        width: 100%;
-        max-height: 48vh;
+        left: 6px;
+        right: 6px;
+        width: auto;
+        max-height: 40vh;
         border-radius: 14px 14px 0 0;
         overflow-y: auto;
         -webkit-overflow-scrolling: touch;
-        padding: 12px 14px 24px;
-        border-left: none;
-        border-right: none;
-        border-bottom: none;
-        box-shadow: 0 -8px 24px rgba(0,0,0,0.8);
+        padding: 8px 12px 16px;
+        background: rgba(10, 10, 10, 0.55) !important;
+        backdrop-filter: blur(20px) saturate(180%) !important;
+        -webkit-backdrop-filter: blur(20px) saturate(180%) !important;
+        border: 1px solid rgba(255, 255, 255, 0.12) !important;
+        border-bottom: none !important;
+        box-shadow: 0 -8px 30px rgba(0, 0, 0, 0.6);
         z-index: 20;
       }
 
-      /* Hide verbose mission box on mobile to save space */
+      /* Hide verbose mission box on mobile */
       .mission-box {
-        display: none;
+        display: none !important;
       }
 
-      /* Telemetry deck hidden on mobile by default */
+      /* Right panel: hidden on mobile */
       #telemetry-deck {
         display: none !important;
       }
 
-      .form-group {
+      .deck-title {
+        font-size: 8.5px;
         margin-bottom: 6px;
+        padding-bottom: 4px;
+      }
+
+      .form-group {
+        margin-bottom: 4px;
       }
 
       .form-group label {
-        font-size: 8px;
-        margin-bottom: 2px;
+        font-size: 7px;
+        margin-bottom: 1px;
       }
 
       .form-input {
-        font-size: 11px;
-        padding: 6px 8px;
+        font-size: 9px;
+        padding: 4px 6px;
+        background: rgba(0, 0, 0, 0.6) !important;
+        border: 1px solid rgba(255, 255, 255, 0.12) !important;
       }
 
       .btn-action {
-        padding: 8px 6px;
-        font-size: 9.5px;
+        padding: 5px 6px;
+        font-size: 8px;
+        background: rgba(25, 25, 25, 0.65);
       }
 
       #flight-strip-box {
-        margin-top: 6px;
-        padding: 6px 8px;
+        margin-top: 4px;
+        padding: 5px 6px;
+        background: rgba(0, 0, 0, 0.5) !important;
+        border: 1px solid rgba(255, 255, 255, 0.08) !important;
       }
     }
   </style>
@@ -571,54 +591,53 @@
   <!-- Left Tactical Controller Deck -->
   <div id="sector-deck" class="glass-deck">
     <div class="deck-title">
-      <span>ATC CONTROLLER STATION</span>
+      <span>ATC CONTROL</span>
       <span id="controller-id-badge" style="color: var(--text-dim);">CTR-INIT</span>
     </div>
 
     <!-- Clean Tactical Mission Briefing Box -->
     <div class="mission-box">
-      <div style="font-weight: 700; color: #ffffff; margin-bottom: 4px;">OPERATIONAL MISSION BRIEF:</div>
-      <div class="mission-step">[1] CLAIM AIRSPACE FIR TO MONITOR</div>
-      <div class="mission-step">[2] SELECT AIRCRAFT ON RADAR SCOPE</div>
-      <div class="mission-step">[3] VECTOR HEADING / FL TO PREVENT COLLISION</div>
-      <div class="mission-step">[4] TRANSFER HANDOFF AT SECTOR BOUNDARY</div>
+      <div style="font-weight: 700; color: #ffffff; margin-bottom: 4px;">MISSION BRIEF:</div>
+      <div class="mission-step">[1] CLAIM FIR SECTOR</div>
+      <div class="mission-step">[2] SELECT AIRCRAFT ON RADAR</div>
+      <div class="mission-step">[3] VECTOR HEADING / FL</div>
+      <div class="mission-step">[4] TRANSFER HANDOFF</div>
     </div>
 
     <div class="form-group">
-      <label>CONTROLLER CALLSIGN</label>
+      <label>CALLSIGN</label>
       <input type="text" id="controller-callsign" class="form-input" value="JAKARTA_CTR" onchange="claimSector()">
     </div>
 
     <div class="form-group">
-      <label>AIRSPACE SECTOR (FIR)</label>
+      <label>AIRSPACE (FIR)</label>
       <select id="sector-select" class="form-input" onchange="claimSector()">
-        <option value="sec-wiii">WIII_FIR - Jakarta FIR (Indonesia)</option>
-        <option value="sec-wsjc">WSJC_ACC - Singapore ACC (Southeast Asia)</option>
-        <option value="sec-rjjj">RJJJ_ACC - Tokyo ACC (East Asia / Pacific)</option>
-        <option value="sec-egtt">EGTT_ACC - London / Eurocontrol (Europe)</option>
-        <option value="sec-kzny">KZNY_ACC - New York ARTCC (North America)</option>
-        <option value="sec-ybbb">YBBB_FIR - Sydney / Brisbane (Oceania)</option>
+        <option value="sec-wiii">WIII - Jakarta FIR</option>
+        <option value="sec-wsjc">WSJC - Singapore ACC</option>
+        <option value="sec-rjjj">RJJJ - Tokyo ACC</option>
+        <option value="sec-egtt">EGTT - London ACC</option>
+        <option value="sec-kzny">KZNY - New York ACC</option>
+        <option value="sec-ybbb">YBBB - Sydney FIR</option>
       </select>
     </div>
 
-    <div class="deck-title" style="margin-top: 14px;">
-      <span>FLIGHT VECTOR CONTROLS</span>
-      <span id="selected-callsign-header" style="color: var(--accent-amber);">NO AIRCRAFT</span>
+    <div class="deck-title" style="margin-top: 8px;">
+      <span>VECTOR CONTROL</span>
+      <span id="selected-callsign-header" style="color: var(--accent-amber);">STANDBY</span>
     </div>
 
     <!-- Active Flight Control Strip -->
     <div id="flight-strip-box">
-      <div id="no-flight-hint" style="font-size: 9.5px; color: var(--text-dim);">Click any aircraft on radar scope to
-        command.</div>
+      <div id="no-flight-hint" style="font-size: 8.5px; color: var(--text-dim);">Select aircraft on radar.</div>
 
       <div id="flight-controls" style="display: none;">
-        <div style="display: flex; justify-content: space-between; margin-bottom: 8px; font-weight: 700;">
+        <div style="display: flex; justify-content: space-between; margin-bottom: 6px; font-weight: 700; font-size: 9.5px;">
           <span id="strip-callsign" style="color: #ffffff;">GIA880</span>
           <span id="strip-route" style="color: #aaaaaa;">WIII -> RJAA</span>
         </div>
 
         <div class="form-group">
-          <label>ASSIGN VECTOR HEADING: <span id="hdg-display"
+          <label>VECTOR HDG: <span id="hdg-display"
               style="color: #ffffff; font-weight: 700;">090°</span></label>
           <input type="range" id="input-heading" min="0" max="359" step="5" value="90" class="form-input"
             oninput="updateHeadingPreview(this.value)" onchange="sendVectorHeading(this.value)">
