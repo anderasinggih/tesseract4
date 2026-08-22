@@ -3278,6 +3278,15 @@
         drawCompassTape();
         drawRoundCompass();
 
+        // Debug strip: proves fresh JS is loaded and telemetry/prediction state flows
+        ctx.save();
+        ctx.font = '600 11px "JetBrains Mono", monospace';
+        ctx.fillStyle = 'rgba(0,255,180,0.9)';
+        ctx.textAlign = 'left';
+        const dbgPktAge = lastTargetTime ? Math.round(performance.now() - lastTargetTime) : -1;
+        ctx.fillText(`POV-v2 steer:${steerDir >= 0 ? '+' + steerDir : steerDir} bank:${predRoll.toFixed(1)}° srvHdg:${targetCamHeading !== null ? Math.round(normDeg(targetCamHeading)) : '---'} pkt:${dbgPktAge}ms`, 12, canvas.height - 14);
+        ctx.restore();
+
         // Render Forward Destination Flight Route in POV Mode (Clean glowing corridor to destination)
         if (currentPayload && currentPayload.aircraft && selectedCallsign && currentPayload.airports) {
           const selectedAc = currentPayload.aircraft.find(a => a.callsign === selectedCallsign);

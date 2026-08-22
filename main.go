@@ -102,6 +102,11 @@ func main() {
 
 	app.Use(cors.New())
 	app.Use(pprof.New())
+	// Never let browsers cache the UI — stale JS has caused phantom bugs before
+	app.Use(func(c *fiber.Ctx) error {
+		c.Set("Cache-Control", "no-store, must-revalidate")
+		return c.Next()
+	})
 	app.Static("/", "./public")
 
 	app.Use("/ws", func(c *fiber.Ctx) error {

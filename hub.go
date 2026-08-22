@@ -203,6 +203,11 @@ func (h *ATCHub) Run() {
 	defer emergencyTicker.Stop()
 
 	lastTick := time.Now()
+	// ── TEMP diagnostics: verify live tick cadence matches wall clock ──
+	diagWindow := 300 // ~5s of ticks
+	tickCount := 0
+	wallStart := time.Now()
+	simAdvance := 0.0
 
 	for {
 		select {
@@ -285,8 +290,26 @@ func (h *ATCHub) Run() {
 				dt = 0.1
 			}
 			h.updateKinematics(dt)
+			tickCount++
+			simAdvance += dt
+			if tickCount >= diagWindow {
+				wallElapsed := time.Since(wallStart).Seconds()
+				log.Printf("[DIAG] %d ticks | wall=%.3fs sim=%.3fs ratio=%.2fx | aircraft=%d",
+					diagWindow, wallElapsed, simAdvance,
+					simAdvance/wallElapsed, h.aircraftCount())
+				tickCount = 0
+				simAdvance = 0
+				wallStart = time.Now()
+			}
 		}
 	}
+}
+
+// aircraftCount returns the current number of simulated flights (diagnostics).
+func (h *ATCHub) aircraftCount() int {
+	h.mu.RLock()
+	defer h.mu.RUnlock()
+	return len(h.aircraft)
 }
 
 // headingDiff returns shortest signed angular difference a-b in (-180, +180]
