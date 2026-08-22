@@ -855,12 +855,9 @@
             const scaleFactor = 9.0 / (maxDim || 1.0);
             loadedModel.scale.set(scaleFactor, scaleFactor, scaleFactor);
 
-            // Mathematically derived from GLTF vertex data:
-            // Model native: Z-up, nose=+X, tail=-X, wings=±Y, dorsal=+Z
-            // Target Three.js: Y-up, nose=-Z (forward into horizon), dorsal=+Y
-            // Step 1: X=-PI/2  →  converts Z-up to Y-up (Z→Y, Y→-Z)
-            // Step 2: Y=-PI/2  →  rotates nose: +X → -Z (straight forward)
-            loadedModel.rotation.set(-Math.PI / 2, -Math.PI, 0);
+            // Mathematically verified: nose+X → -Z (fwd), dorsal+Z → +Y (up), wings±Y → ±X (level)
+            // R = Rx(-π/2) * Rz(+π/2) is the ONLY correct combination for this Z-up model
+            loadedModel.rotation.set(-Math.PI / 2, 0, Math.PI / 2);
 
             // Ensure materials are visible and double-sided with realistic metalness
             loadedModel.traverse((child) => {
