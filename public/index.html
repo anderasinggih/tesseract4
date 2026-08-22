@@ -1857,13 +1857,13 @@
                     const altDeltaFt = (otherAc.altitude - ac.altitude);
                     const relY = -1.2 + (altDeltaFt / 1000.0) * 0.5;
 
-                    // Create wrapper for the traffic aircraft to maintain level cruise attitude (+0.55 pitch)
+                    // Create container for traffic aircraft at correct relative offset
                     const trafficContainer = new THREE.Group();
                     trafficContainer.position.set(relX, relY, relZ);
 
-                    // Relative heading orientation in camera coordinate space
-                    const relHeadingRad = ((otherAc.heading - ac.heading) * Math.PI) / 180.0;
-                    trafficContainer.rotation.y = -relHeadingRad;
+                    // True heading rotation in 3D scene (relative to own aircraft forward axis)
+                    const relHdgDeg = (otherAc.heading - ac.heading + 360) % 360;
+                    trafficContainer.rotation.y = (relHdgDeg * Math.PI) / 180.0;
 
                     // Clone 3D plane mesh
                     const otherModel = window.trafficPlaneModelTemplate.clone();
@@ -1871,7 +1871,7 @@
                     otherModel.scale.set(trafficScale, trafficScale, trafficScale);
                     otherModel.position.set(0, 0, 0);
 
-                    // Apply same level cruise pitch (+0.55) to counteract perspective dive
+                    // Apply same level cruise pitch (+0.55)
                     const modelWrapper = new THREE.Group();
                     modelWrapper.rotation.x = +0.55;
                     modelWrapper.add(otherModel);
