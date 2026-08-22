@@ -10,9 +10,9 @@
   <meta name="theme-color" content="#000000">
   <title>GLOBAL ATC RADAR // TACTICAL AIRSPACE CONTROL</title>
 
-  <!-- MapLibre GL JS v4 with 3D Globe Projection Support (Apple Maps / Google Earth Globe) -->
-  <link href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet" />
-  <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+  <!-- MapLibre GL JS & CSS (Stable Fast Engine) -->
+  <link href="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css" rel="stylesheet" />
+  <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
 
   <!-- Stable Three.js & GLTFLoader -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -795,17 +795,6 @@
       zoom: 4.8,
       maxPitch: 85,
       attributionControl: false
-    });
-
-    // Enable authentic 3D Globe Projection (Apple Maps / Google Earth Spherical Globe)
-    map.on('style.load', () => {
-      try {
-        if (map.setProjection) {
-          map.setProjection({ type: 'globe' });
-        }
-      } catch (e) {
-        console.warn('Globe projection init:', e);
-      }
     });
 
     function toggleMapStyle() {
