@@ -705,8 +705,8 @@
       if (fullOverlayContainer) {
         fullThreeScene = new THREE.Scene();
         fullThreeCamera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
-        fullThreeCamera.position.set(0, 1.6, 15.0); // Low, shallow trailing angle right behind the vertical stabilizer
-        fullThreeCamera.lookAt(0, 0.4, -25); // Shallow, level forward sightline into the distant horizon
+        fullThreeCamera.position.set(0, 3.0, 15.0); // Raised up behind tail stabilizer for level cruise view
+        fullThreeCamera.lookAt(0, 2.8, -30);          // Aim toward horizon (Y≈camera Y = level sightline)
 
         fullThreeRenderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
         fullThreeRenderer.setSize(window.innerWidth, window.innerHeight);
