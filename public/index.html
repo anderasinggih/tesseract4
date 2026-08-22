@@ -1515,7 +1515,7 @@
               center: [currentCamLng, currentCamLat],
               zoom: povZoomLevel,
               bearing: currentCamHeading,
-              pitch: 75
+              pitch: 85
             });
           }
         }
@@ -1593,9 +1593,9 @@
       if (fullOverlayContainer) {
         fullThreeScene = new THREE.Scene();
         fullThreeCamera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 5000);
-        // MapLibre pitch is 75° (15° from horizontal).
-        // For 100% optical sync with ground terrain: camera placed along 15° sightline (Y = 14*sin(15°) ≈ 3.62, Z = 14*cos(15°) ≈ 13.52)
-        fullThreeCamera.position.set(0, 3.62, 13.52);
+        // MapLibre pitch is 85° (5° down from horizontal horizon).
+        // Optical sync: Three.js camera placed behind fuselage looking forward at origin
+        fullThreeCamera.position.set(0, 1.22, 13.95);
         fullThreeCamera.lookAt(0, 0, 0); // 100% Dead-Center on aircraft origin
 
         fullThreeRenderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
@@ -1626,13 +1626,15 @@
 
         const fallbackNoseGeo = new THREE.ConeGeometry(0.7, 2.5, 32);
         fallbackNoseGeo.rotateX(-Math.PI / 2);
-        const fallbackNose = new THREE.Mesh(fallbackNoseGeo, fallbackBodyMat);
-        fallbackNose.position.set(0, 0, 7.2);
+        const fallbackNoseMat = new THREE.MeshStandardMaterial({ color: 0x333333, metalness: 0.2, roughness: 0.5 });
+        const fallbackNose = new THREE.Mesh(fallbackNoseGeo, fallbackNoseMat);
+        fallbackNose.position.set(0, 0, -6.5);
         fallbackPlaneGroup.add(fallbackNose);
 
-        const fallbackWingGeo = new THREE.BoxGeometry(14, 0.12, 3.2);
-        const fallbackWings = new THREE.Mesh(fallbackWingGeo, fallbackBodyMat);
-        fallbackWings.position.set(0, 0, 0.5);
+        const fallbackWingGeo = new THREE.BoxGeometry(16, 0.12, 3.2);
+        const fallbackWingMat = new THREE.MeshStandardMaterial({ color: 0xe0e0e0, metalness: 0.5, roughness: 0.2 });
+        const fallbackWings = new THREE.Mesh(fallbackWingGeo, fallbackWingMat);
+        fallbackWings.position.set(0, 0, -0.5);
         fallbackPlaneGroup.add(fallbackWings);
 
         fallbackPlaneGroup.scale.set(0.6, 0.6, 0.6);
@@ -1646,9 +1648,9 @@
         window.trafficPlaneScaleFactor = 1.0;
 
         // Tactical 3D HUD Flight Level Floor Grid (Visual Diagnostic Reference Plane)
-        // Green tactical grid aligned with flight plane (Y = -2.5 units below fuselage)
-        const flightFloorGrid = new THREE.GridHelper(300, 60, 0x00ff88, 0x004422);
-        flightFloorGrid.position.set(0, -2.5, -20);
+        // Perfectly parallel with ground terrain at 85° pitch
+        const flightFloorGrid = new THREE.GridHelper(400, 80, 0x00ff88, 0x004422);
+        flightFloorGrid.position.set(0, -1.8, -10);
         fullThreeScene.add(flightFloorGrid);
         window.flightFloorGrid = flightFloorGrid;
 
@@ -1659,7 +1661,7 @@
           const points = [];
           for (let a = 0; a <= 64; a++) {
             const theta = (a / 64) * Math.PI * 2;
-            points.push(new THREE.Vector3(Math.sin(theta) * radius, -2.5, Math.cos(theta) * radius - 20));
+            points.push(new THREE.Vector3(Math.sin(theta) * radius, -1.8, Math.cos(theta) * radius - 10));
           }
           ringGeo.setFromPoints(points);
           const ringLine = new THREE.Line(ringGeo, ringMat);
@@ -2798,7 +2800,7 @@
             center: [currentCamLng, currentCamLat],
             zoom: povZoomLevel,
             bearing: currentCamHeading,
-            pitch: 75
+            pitch: 85
           });
         }
 
