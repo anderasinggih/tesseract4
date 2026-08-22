@@ -51,7 +51,7 @@ func (c *ATCClientConnection) ReadPump(conn *websocket.Conn) {
 }
 
 func (c *ATCClientConnection) TelemetryLoop(ctx context.Context) {
-	ticker := time.NewTicker(16 * time.Millisecond) // 60 FPS ultra-smooth real-time stream
+	ticker := time.NewTicker(33 * time.Millisecond) // 30 FPS high-efficiency real-time telemetry stream
 	defer ticker.Stop()
 
 	for {
