@@ -1539,7 +1539,7 @@
       wasdHeld[k] = true;
       applyWASD(); // instant first tick
       if (!wasdInterval) {
-        wasdInterval = setInterval(applyWASD, 300); // repeat every 300ms while held
+        wasdInterval = setInterval(applyWASD, 120); // GTA-style: repeat every 120ms while held
       }
     });
 
@@ -2118,9 +2118,21 @@
               const USER_CALIBRATION_ROLL_Z = 0.0; // Rotasi Z: Roll / Miring Sayap
               const USER_PLANE_SCALE_MULTIPLIER = 0.85; // Skala ukuran seimbang & proporsional
 
-              fullPlaneGroup.rotation.x = pitchOffset + USER_CALIBRATION_PITCH_X;
+              // ── WASD Visual Animation (GTA-style pitch & bank lerp) ────────
+              // Target pitch/roll from WASD state, smoothly interpolated each frame
+              const WASD_LERP = 0.08;
+              let wasdPitchTarget = 0, wasdRollTarget = 0;
+              if (wasdHeld['w'] || wasdHeld['W']) wasdPitchTarget = +0.22;  // nose up
+              if (wasdHeld['s'] || wasdHeld['S']) wasdPitchTarget = -0.22;  // nose down
+              if (wasdHeld['a'] || wasdHeld['A']) wasdRollTarget  = +0.30;  // bank left
+              if (wasdHeld['d'] || wasdHeld['D']) wasdRollTarget  = -0.30;  // bank right
+              window.wasdVisPitch = ((window.wasdVisPitch || 0) + (wasdPitchTarget - (window.wasdVisPitch || 0)) * WASD_LERP);
+              window.wasdVisRoll  = ((window.wasdVisRoll  || 0) + (wasdRollTarget  - (window.wasdVisRoll  || 0)) * WASD_LERP);
+              // ───────────────────────────────────────────────────────────────
+
+              fullPlaneGroup.rotation.x = pitchOffset + USER_CALIBRATION_PITCH_X + window.wasdVisPitch;
               fullPlaneGroup.rotation.y = USER_CALIBRATION_YAW_Y;
-              fullPlaneGroup.rotation.z = window.currentPlaneBankRoll + USER_CALIBRATION_ROLL_Z + Math.sin(Date.now() * 0.001) * 0.008;
+              fullPlaneGroup.rotation.z = window.currentPlaneBankRoll + USER_CALIBRATION_ROLL_Z + Math.sin(Date.now() * 0.001) * 0.008 + window.wasdVisRoll;
               fullPlaneGroup.position.set(0, 0, 0); // 100% Dead Center on screen
 
               // Perspective scale tied 1:1 proportionally to real map zoom level
