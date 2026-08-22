@@ -831,6 +831,12 @@
     }
 
     let mapCockpitPOVEnabled = false;
+    let currentCamLng = null;
+    let currentCamLat = null;
+    let currentCamHeading = null;
+    let targetCamLng = null;
+    let targetCamLat = null;
+    let targetCamHeading = null;
 
     // ─── HUD Minimize Toggle ───────────────────────────────────────────────
     let hudVisible = window.innerWidth > 768; // Default open on desktop, clean minimized on mobile
@@ -1437,14 +1443,14 @@
           document.getElementById('cam-callsign').innerText = `3D TRACK: ${ac.callsign} [${ac.aircraftType}]`;
           document.getElementById('cam-telemetry').innerText = `HDG ${String(Math.round(ac.heading)).padStart(3, '0')}° / FL${Math.round(ac.altitude / 100)} / ${Math.round(ac.speed)}KT`;
 
-          // If Fullscreen 3D Cockpit Map Follow Mode is ACTIVE: Lock MapLibre Camera to Plane Position & Forward Heading with High-Precision 60fps Lock
-          if (mapCockpitPOVEnabled) {
-            map.jumpTo({
-              center: [ac.coord.lng, ac.coord.lat],
-              pitch: 85, // Level horizon pitch
-              bearing: ac.heading, // Direct nose-forward flight path heading
-              zoom: 11.0
-            });
+          // Target coordinates for smooth 60fps lerp interpolation
+          targetCamLng = ac.coord.lng;
+          targetCamLat = ac.coord.lat;
+          targetCamHeading = ac.heading;
+          if (currentCamLng === null) {
+            currentCamLng = targetCamLng;
+            currentCamLat = targetCamLat;
+            currentCamHeading = targetCamHeading;
           }
         }
       }
@@ -1781,6 +1787,26 @@
             }
           });
         }
+      }
+
+      // Smooth 60 FPS Camera Lerp Interpolation in POV Mode
+      if (mapCockpitPOVEnabled && targetCamLng !== null && currentCamLng !== null) {
+        // High-precision linear interpolation factor
+        const lerpFactor = 0.12;
+        currentCamLng += (targetCamLng - currentCamLng) * lerpFactor;
+        currentCamLat += (targetCamLat - currentCamLat) * lerpFactor;
+
+        // Smooth shortest-path angle interpolation
+        let diffHdg = (targetCamHeading - currentCamHeading + 180) % 360 - 180;
+        if (diffHdg < -180) diffHdg += 360;
+        currentCamHeading += diffHdg * lerpFactor;
+
+        map.jumpTo({
+          center: [currentCamLng, currentCamLat],
+          pitch: 85,
+          bearing: currentCamHeading,
+          zoom: 11.0
+        });
       }
 
       requestAnimationFrame(drawRadarScope);
