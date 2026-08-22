@@ -2560,8 +2560,8 @@
           });
         }
 
-        // 3. Draw Authentic Great-Circle Geodesic Flight Route (Flightradar24 Past Origin & Future Destination Track)
-        if (currentPayload.aircraft && selectedCallsign && currentPayload.airports) {
+        // 3. Draw Authentic Great-Circle Geodesic Flight Route (Flightradar24 Past Origin & Future Destination Track) - In 2D Radar Mode
+        if (currentPayload.aircraft && selectedCallsign && currentPayload.airports && !mapCockpitPOVEnabled) {
           const selectedAc = currentPayload.aircraft.find(a => a.callsign === selectedCallsign);
           if (selectedAc) {
             const origApt = currentPayload.airports.find(a => a.icao === selectedAc.origin);
