@@ -937,9 +937,9 @@
           if (mapCockpitPOVEnabled) {
             map.jumpTo({
               center: [ac.coord.lng, ac.coord.lat],
-              pitch: 68, // 3D Forward-Down tilt angle
-              bearing: ac.heading, // Face towards where the plane is flying
-              zoom: 7.2 // Close chase zoom
+              pitch: 72, // Immersive low cockpit forward tilt angle
+              bearing: ac.heading, // Always face forward toward flight route
+              zoom: 11.5 // Close cockpit chase zoom (real pilot flight view)
             });
           }
         }
@@ -995,40 +995,61 @@
       document.getElementById('cam-telemetry').innerText = `HDG ${String(Math.round(ac.heading)).padStart(3,'0')}° / FL${Math.round(ac.altitude/100)}`;
     }
 
-    // Function to draw an airplane icon rotated by heading
+    // Function to draw an airplane icon rotated relative to map view
     function drawAirplaneIcon(x, y, headingDeg, color, size, isSelected) {
       ctx.save();
       ctx.translate(x, y);
-      ctx.rotate((headingDeg) * Math.PI / 180.0);
+
+      // In MapLibre 3D tilted/rotated view, aircraft canvas rotation must account for current map bearing
+      const currentMapBearing = map.getBearing() || 0;
+      const visualHeading = headingDeg - currentMapBearing;
+
+      ctx.rotate((visualHeading) * Math.PI / 180.0);
 
       ctx.fillStyle = color;
       ctx.strokeStyle = color;
       ctx.lineWidth = 1.5;
 
-      // Clean Low-Poly Jet Silhouette
+      // High-Detail Jet Silhouette with Cockpit & Wing Engines
       ctx.beginPath();
-      ctx.moveTo(0, -size);
-      ctx.lineTo(size * 0.25, -size * 0.3);
-      ctx.lineTo(size * 1.1, size * 0.2);
-      ctx.lineTo(size * 1.1, size * 0.4);
-      ctx.lineTo(size * 0.25, size * 0.3);
-      ctx.lineTo(size * 0.2, size * 0.85);
-      ctx.lineTo(size * 0.55, size * 1.05);
-      ctx.lineTo(size * 0.55, size * 1.2);
-      ctx.lineTo(0, size * 0.95);
-      ctx.lineTo(-size * 0.55, size * 1.2);
-      ctx.lineTo(-size * 0.55, size * 1.05);
-      ctx.lineTo(-size * 0.2, size * 0.85);
-      ctx.lineTo(-size * 0.25, size * 0.3);
-      ctx.lineTo(-size * 1.1, size * 0.4);
-      ctx.lineTo(-size * 1.1, size * 0.2);
-      ctx.lineTo(-size * 0.25, -size * 0.3);
+      // Nose
+      ctx.moveTo(0, -size * 1.3);
+      // Right fuselage
+      ctx.lineTo(size * 0.28, -size * 0.3);
+      // Right wing
+      ctx.lineTo(size * 1.4, size * 0.3);
+      ctx.lineTo(size * 1.4, size * 0.55);
+      ctx.lineTo(size * 0.28, size * 0.38);
+      // Right tail
+      ctx.lineTo(size * 0.2, size * 0.95);
+      ctx.lineTo(size * 0.65, size * 1.15);
+      ctx.lineTo(size * 0.65, size * 1.35);
+      ctx.lineTo(0, size * 1.05);
+      // Left tail
+      ctx.lineTo(-size * 0.65, size * 1.35);
+      ctx.lineTo(-size * 0.65, size * 1.15);
+      ctx.lineTo(-size * 0.2, size * 0.95);
+      // Left wing
+      ctx.lineTo(-size * 0.28, size * 0.38);
+      ctx.lineTo(-size * 1.4, size * 0.55);
+      ctx.lineTo(-size * 1.4, size * 0.3);
+      ctx.lineTo(-size * 0.28, -size * 0.3);
       ctx.closePath();
+      ctx.fill();
+
+      // Wingtip Navigation Strobe Lights
+      ctx.beginPath();
+      ctx.arc(size * 1.4, size * 0.45, 1.8, 0, Math.PI * 2);
+      ctx.fillStyle = '#00ff66'; // Green right nav light
+      ctx.fill();
+      ctx.beginPath();
+      ctx.arc(-size * 1.4, size * 0.45, 1.8, 0, Math.PI * 2);
+      ctx.fillStyle = '#ff2244'; // Red left nav light
       ctx.fill();
 
       if (isSelected) {
         ctx.beginPath();
-        ctx.arc(0, 0, size * 1.7, 0, Math.PI * 2);
+        ctx.arc(0, 0, size * 2.0, 0, Math.PI * 2);
         ctx.strokeStyle = '#ffffff';
         ctx.lineWidth = 1.5;
         ctx.setLineDash([3, 3]);
