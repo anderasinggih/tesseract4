@@ -2599,19 +2599,43 @@
       if (selectedCallsign) {
         const ac = payload.aircraft ? payload.aircraft.find(a => a.callsign === selectedCallsign) : null;
         if (ac) {
-          const stripCallsignEl = document.getElementById('strip-callsign');
-          if (stripCallsignEl) stripCallsignEl.innerText = `${ac.callsign} (${ac.aircraftType})`;
-          const stripRouteEl = document.getElementById('strip-route');
-          if (stripRouteEl) stripRouteEl.innerText = `${ac.origin} -> ${ac.destination} | FL${Math.round(ac.altitude / 100)} | ${Math.round(ac.speed)}KTS`;
+          // Instant camera & telemetry updates (zero delay every frame)
+          targetCamLng = ac.coord.lng;
+          targetCamLat = ac.coord.lat;
+          lastKnownRoll = ac.roll || 0;
+          targetCamHeading = ac.heading;
+          predRoll = lastKnownRoll;
+          targetCamSpeed = ac.speed || 450;
+          lastTargetTime = performance.now();
+          if (currentCamLng === null) {
+            currentCamLng = targetCamLng;
+            currentCamLat = targetCamLat;
+            currentCamHeading = targetCamHeading;
+          }
 
-          // Dynamic Flightradar24 Data Computation
-          const origApt = payload.airports ? payload.airports.find(a => a.icao === ac.origin) : null;
-          const destApt = payload.airports ? payload.airports.find(a => a.icao === ac.destination) : null;
+          // Top Bar HUD
+          const altEl = document.getElementById('hud-alt-val');
+          const spdEl = document.getElementById('hud-spd-val');
+          const hdgEl = document.getElementById('hud-hdg-val');
+          if (altEl) altEl.innerText = `FL${Math.round(ac.altitude / 100)}`;
+          if (spdEl) spdEl.innerText = `${Math.round(ac.speed)}KT`;
+          if (hdgEl) hdgEl.innerText = `${String(Math.round(ac.heading)).padStart(3, '0')}°`;
 
-          const origIATA = origApt ? origApt.iata : ac.origin;
-          const destIATA = destApt ? destApt.iata : ac.destination;
-          const origCity = origApt ? `${origApt.city}, ${origApt.country}` : ac.origin;
-          const destCity = destApt ? `${destApt.city}, ${destApt.country}` : ac.destination;
+          // Heavy Text HUD formatting throttled to 1 second to save CPU
+          const nowMs = performance.now();
+          if (!window.lastHudUpdate || (nowMs - window.lastHudUpdate > 1000)) {
+            window.lastHudUpdate = nowMs;
+            const stripCallsignEl = document.getElementById('strip-callsign');
+            if (stripCallsignEl) stripCallsignEl.innerText = `${ac.callsign} (${ac.aircraftType})`;
+            const stripRouteEl = document.getElementById('strip-route');
+            if (stripRouteEl) stripRouteEl.innerText = `${ac.origin} -> ${ac.destination} | FL${Math.round(ac.altitude / 100)} | ${Math.round(ac.speed)}KTS`;
+
+            const origApt = payload.airports ? payload.airports.find(a => a.icao === ac.origin) : null;
+            const destApt = payload.airports ? payload.airports.find(a => a.icao === ac.destination) : null;
+            const origIATA = origApt ? origApt.iata : ac.origin;
+            const destIATA = destApt ? destApt.iata : ac.destination;
+            const origCity = origApt ? `${origApt.city}, ${origApt.country}` : ac.origin;
+            const destCity = destApt ? `${destApt.city}, ${destApt.country}` : ac.destination;
 
           // Aircraft Model Full Name Lookup
           const AIRCRAFT_NAMES = {
@@ -2799,29 +2823,8 @@
           const frDist = document.getElementById('fr24-dist');
           if (frDist) frDist.innerText = `${flownDistNM.toLocaleString()} / ${totalDistNM.toLocaleString()} NM (${progressPct}%)`;
 
-          document.getElementById('cam-callsign').innerText = `3D TRACK: ${ac.callsign} [${ac.aircraftType}]`;
-          document.getElementById('cam-telemetry').innerText = `HDG ${String(Math.round(ac.heading)).padStart(3, '0')}° / FL${Math.round(ac.altitude / 100)} / ${Math.round(ac.speed)}KT`;
-
-          // Update Top Bar HUD Live Flight Telemetry Indicators
-          const altEl = document.getElementById('hud-alt-val');
-          const spdEl = document.getElementById('hud-spd-val');
-          const hdgEl = document.getElementById('hud-hdg-val');
-          if (altEl) altEl.innerText = `FL${Math.round(ac.altitude / 100)}`;
-          if (spdEl) spdEl.innerText = `${Math.round(ac.speed)}KT`;
-          if (hdgEl) hdgEl.innerText = `${String(Math.round(ac.heading)).padStart(3, '0')}°`;
-
-          // Target coordinates for smooth 60fps real-time multiplayer sync
-          targetCamLng = ac.coord.lng;
-          targetCamLat = ac.coord.lat;
-          lastKnownRoll = ac.roll || 0;
-          targetCamHeading = ac.heading;
-          predRoll = lastKnownRoll;
-          targetCamSpeed = ac.speed || 450;
-          lastTargetTime = performance.now();
-          if (currentCamLng === null) {
-            currentCamLng = targetCamLng;
-            currentCamLat = targetCamLat;
-            currentCamHeading = targetCamHeading;
+            document.getElementById('cam-callsign').innerText = `3D TRACK: ${ac.callsign} [${ac.aircraftType}]`;
+            document.getElementById('cam-telemetry').innerText = `HDG ${String(Math.round(ac.heading)).padStart(3, '0')}° / FL${Math.round(ac.altitude / 100)} / ${Math.round(ac.speed)}KT`;
           }
         }
       }
