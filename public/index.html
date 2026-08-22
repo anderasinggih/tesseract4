@@ -2,29 +2,31 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>The Tesseract Paradox - 4D Real-Time Engine</title>
   <style>
     * {
       margin: 0;
       padding: 0;
       box-sizing: border-box;
+      -webkit-touch-callout: none;
+      -webkit-user-select: none;
+      user-select: none;
+      touch-action: none;
     }
     body, html {
       width: 100%;
       height: 100%;
       overflow: hidden;
       background: #000000;
-      font-family: 'Courier New', Courier, monospace;
+      font-family: -apple-system, BlinkMacSystemFont, 'Courier New', Courier, monospace;
       color: #00FF00;
-      user-select: none;
     }
     #canvas {
       display: block;
       width: 100vw;
       height: 100vh;
       background: #000000;
-      cursor: crosshair;
     }
     #crosshair {
       position: absolute;
@@ -55,67 +57,146 @@
     }
     #hud {
       position: absolute;
-      top: 16px;
-      left: 16px;
-      padding: 12px 18px;
-      background: rgba(0, 0, 0, 0.85);
+      top: 12px;
+      left: 12px;
+      padding: 8px 12px;
+      background: rgba(0, 0, 0, 0.8);
       border: 1px solid rgba(0, 255, 0, 0.3);
       border-radius: 6px;
-      font-size: 13px;
-      line-height: 1.5;
+      font-size: 11px;
+      line-height: 1.4;
       pointer-events: none;
-      box-shadow: 0 0 15px rgba(0, 255, 0, 0.15);
+      box-shadow: 0 0 10px rgba(0, 255, 0, 0.15);
       z-index: 10;
+      max-width: 90vw;
     }
-    #controls {
+    .hud-title {
+      font-weight: bold;
+      letter-spacing: 1.5px;
+      color: #00FF00;
+      margin-bottom: 3px;
+      text-transform: uppercase;
+      font-size: 11px;
+    }
+    .status-badge {
+      display: inline-block;
+      width: 7px;
+      height: 7px;
+      background-color: #00FF00;
+      border-radius: 50%;
+      margin-right: 5px;
+      box-shadow: 0 0 6px #00FF00;
+    }
+    .status-disconnected {
+      background-color: #FF0000;
+      box-shadow: 0 0 6px #FF0000;
+    }
+
+    /* Desktop Controls Help */
+    #desktop-controls {
       position: absolute;
       bottom: 16px;
       left: 16px;
-      padding: 12px 18px;
+      padding: 10px 14px;
       background: rgba(0, 0, 0, 0.85);
       border: 1px solid rgba(0, 255, 0, 0.3);
       border-radius: 6px;
-      font-size: 12px;
+      font-size: 11px;
       color: #77ff77;
       pointer-events: none;
-      line-height: 1.5;
+      line-height: 1.4;
       z-index: 10;
     }
+
     #pointer-lock-prompt {
       position: absolute;
       top: 50%;
       left: 50%;
       transform: translate(-50%, -50%);
-      padding: 18px 24px;
+      padding: 14px 20px;
       background: rgba(0, 0, 0, 0.9);
       border: 2px solid #00FF00;
       border-radius: 8px;
       text-align: center;
-      font-size: 14px;
+      font-size: 13px;
       letter-spacing: 1px;
-      box-shadow: 0 0 25px rgba(0, 255, 0, 0.3);
+      box-shadow: 0 0 20px rgba(0, 255, 0, 0.3);
       z-index: 20;
       cursor: pointer;
     }
-    .hud-title {
-      font-weight: bold;
-      letter-spacing: 2px;
-      color: #00FF00;
-      margin-bottom: 6px;
-      text-transform: uppercase;
+
+    /* Mobile Touch Controls */
+    #mobile-controls {
+      display: none;
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      pointer-events: none;
+      z-index: 15;
     }
-    .status-badge {
-      display: inline-block;
-      width: 8px;
-      height: 8px;
-      background-color: #00FF00;
+
+    /* Touch Joystick Zone (Left side) */
+    #joystick-zone {
+      position: absolute;
+      bottom: 24px;
+      left: 20px;
+      width: 130px;
+      height: 130px;
+      background: rgba(0, 255, 0, 0.08);
+      border: 2px solid rgba(0, 255, 0, 0.35);
       border-radius: 50%;
-      margin-right: 6px;
-      box-shadow: 0 0 8px #00FF00;
+      pointer-events: auto;
     }
-    .status-disconnected {
-      background-color: #FF0000;
-      box-shadow: 0 0 8px #FF0000;
+    #joystick-thumb {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 50px;
+      height: 50px;
+      background: rgba(0, 255, 0, 0.4);
+      border: 2px solid #00FF00;
+      border-radius: 50%;
+      transform: translate(-50%, -50%);
+      box-shadow: 0 0 10px rgba(0, 255, 0, 0.5);
+    }
+
+    /* Touch Action Buttons (Right side) */
+    #action-pad {
+      position: absolute;
+      bottom: 24px;
+      right: 20px;
+      display: grid;
+      grid-template-columns: repeat(2, 54px);
+      gap: 10px;
+      pointer-events: auto;
+    }
+    .touch-btn {
+      width: 54px;
+      height: 54px;
+      background: rgba(0, 0, 0, 0.7);
+      border: 1.5px solid rgba(0, 255, 0, 0.6);
+      border-radius: 12px;
+      color: #00FF00;
+      font-weight: bold;
+      font-size: 11px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 0 8px rgba(0, 255, 0, 0.2);
+    }
+    .touch-btn:active, .touch-btn.active {
+      background: rgba(0, 255, 0, 0.35);
+      border-color: #00FF00;
+    }
+
+    /* Mobile media query detection */
+    @media (hover: none) and (pointer: coarse) {
+      #desktop-controls { display: none !important; }
+      #pointer-lock-prompt { display: none !important; }
+      #mobile-controls { display: block; }
     }
   </style>
 </head>
@@ -124,36 +205,45 @@
   <canvas id="canvas"></canvas>
 
   <div id="pointer-lock-prompt">
-    <div style="font-weight: bold; font-size: 16px; margin-bottom: 6px;">[ CLICK TO PLAY (FPS MODE) ]</div>
-    <div style="color: #88ff88; font-size: 12px;">Mouse untuk Melihat / Arah Kamera</div>
+    <div style="font-weight: bold; font-size: 15px; margin-bottom: 4px;">[ CLICK TO PLAY (FPS MODE) ]</div>
+    <div style="color: #88ff88; font-size: 11px;">Mouse untuk Mengarahkan Kamera</div>
   </div>
 
   <div id="hud">
     <div class="hud-title"><span id="status-indicator" class="status-badge"></span>TESSERACT PARADOX 4D</div>
-    <div>CONNECTION: <span id="conn-status">CONNECTING...</span></div>
-    <div>PLAYER ID: <span id="player-id">---</span></div>
-    <div>POSITION (X,Y,Z,W): <span id="pos-display">0.00, 0.00, 0.00, 1.00</span></div>
-    <div>TIME DILATION: <span id="dilation-display">1.00x</span></div>
-    <div>SERVER TICK: <span id="tick-display">16 ms</span></div>
+    <div>POS: <span id="pos-display">0.00, 0.00, 0.00, 1.00</span></div>
+    <div>DILATION: <span id="dilation-display">1.00x</span> | TICK: <span id="tick-display">16 ms</span></div>
   </div>
 
-  <div id="controls">
-    <div style="font-weight: bold; color: #00ff00; margin-bottom: 4px;">🎮 KONTROL FPS 4D:</div>
-    <div>[MOUSE] Putar Kamera (Yaw & Pitch)</div>
-    <div>[W / S] Maju ke Depan / Mundur</div>
-    <div>[A / D] Geser Kiri / Kanan (Strafe)</div>
-    <div>[SPACE / ↑] Terbang Naik (Sumbu Y)</div>
-    <div>[C / ↓] Turun ke Bawah (Sumbu Y)</div>
-    <div>[SHIFT / E] Sumbu W (Mendekati / Menjauhi Black Hole)</div>
-    <div>[Q / R] Putar Dimensi 4D Hypercube</div>
+  <div id="desktop-controls">
+    <div style="font-weight: bold; color: #00ff00; margin-bottom: 2px;">🎮 DESKTOP CONTROLS:</div>
+    <div>[MOUSE] Look / Arah Pandang</div>
+    <div>[W / S] Maju / Mundur</div>
+    <div>[A / D] Strafe Kiri / Kanan</div>
+    <div>[SPACE / C] Naik / Turun (Y)</div>
+    <div>[SHIFT / E] W-Axis (Black Hole)</div>
+  </div>
+
+  <!-- Mobile Touch Controls Overlay -->
+  <div id="mobile-controls">
+    <!-- Virtual Joystick for WASD Movement -->
+    <div id="joystick-zone">
+      <div id="joystick-thumb"></div>
+    </div>
+
+    <!-- Action Buttons for Height (Y) and Hyper-dimension (W) -->
+    <div id="action-pad">
+      <button class="touch-btn" id="btn-up">▲<span style="font-size: 9px;">NAIK</span></button>
+      <button class="touch-btn" id="btn-shift">W-<span style="font-size: 9px;">HOLE</span></button>
+      <button class="touch-btn" id="btn-down">▼<span style="font-size: 9px;">TURUN</span></button>
+      <button class="touch-btn" id="btn-e">W+<span style="font-size: 9px;">FAR</span></button>
+    </div>
   </div>
 
   <script>
     const canvas = document.getElementById('canvas');
     const ctx = canvas.getContext('2d');
-    const connStatus = document.getElementById('conn-status');
     const statusIndicator = document.getElementById('status-indicator');
-    const playerIdEl = document.getElementById('player-id');
     const posDisplay = document.getElementById('pos-display');
     const dilationDisplay = document.getElementById('dilation-display');
     const tickDisplay = document.getElementById('tick-display');
@@ -166,7 +256,7 @@
     window.addEventListener('resize', resizeCanvas);
     resizeCanvas();
 
-    // Pointer Lock for FPS Mouse Look
+    // Desktop Pointer Lock
     lockPrompt.addEventListener('click', () => {
       canvas.requestPointerLock();
     });
@@ -179,7 +269,7 @@
       }
     });
 
-    // WebSocket connection to Golang Backend
+    // WebSocket connection
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     const wsUrl = `${protocol}//${window.location.host}/ws`;
     let ws = null;
@@ -188,14 +278,10 @@
       ws = new WebSocket(wsUrl);
 
       ws.onopen = () => {
-        connStatus.innerText = 'CONNECTED';
-        connStatus.style.color = '#00FF00';
         statusIndicator.className = 'status-badge';
       };
 
       ws.onclose = () => {
-        connStatus.innerText = 'DISCONNECTED (RECONNECTING...)';
-        connStatus.style.color = '#FF4444';
         statusIndicator.className = 'status-badge status-disconnected';
         setTimeout(connect, 2000);
       };
@@ -216,7 +302,7 @@
 
     connect();
 
-    // Smooth frame interpolation (LERP) for 60+ FPS butter-smooth rendering
+    // 60FPS LERP Renderer
     let currentLines = null;
     let targetLines = null;
     let lerpFactor = 0.45;
@@ -239,15 +325,15 @@
 
         const centerX = canvas.width / 2;
         const centerY = canvas.height / 2;
-        const scale = Math.min(canvas.width, canvas.height) * 0.55;
+        const scale = Math.min(canvas.width, canvas.height) * (window.innerWidth < 768 ? 0.65 : 0.55);
 
         ctx.save();
         ctx.translate(centerX, centerY);
 
         ctx.strokeStyle = '#00FF00';
-        ctx.lineWidth = 1.8;
+        ctx.lineWidth = window.innerWidth < 768 ? 2.2 : 1.8;
         ctx.shadowColor = '#00FF00';
-        ctx.shadowBlur = 12;
+        ctx.shadowBlur = 10;
 
         ctx.beginPath();
         for (let i = 0; i < currentLines.length; i++) {
@@ -264,17 +350,16 @@
     requestAnimationFrame(renderLoop);
 
     function onServerPayload(payload) {
-      const { lines, playerPos, timeMultiplier, tickMs, playerId } = payload;
+      const { lines, playerPos, timeMultiplier, tickMs } = payload;
 
-      if (playerId) playerIdEl.innerText = playerId.substring(0, 8);
       if (playerPos) {
-        posDisplay.innerText = `${playerPos.x.toFixed(2)}, ${playerPos.y.toFixed(2)}, ${playerPos.z.toFixed(2)}, ${playerPos.w.toFixed(2)}`;
+        posDisplay.innerText = `${playerPos.x.toFixed(1)}, ${playerPos.y.toFixed(1)}, ${playerPos.z.toFixed(1)}, ${playerPos.w.toFixed(1)}`;
       }
       if (timeMultiplier !== undefined) {
         dilationDisplay.innerText = `${timeMultiplier.toFixed(2)}x`;
       }
       if (tickMs !== undefined) {
-        tickDisplay.innerText = `${tickMs.toFixed(0)} ms`;
+        tickDisplay.innerText = `${tickMs.toFixed(0)}ms`;
       }
 
       if (lines && lines.length > 0) {
@@ -282,10 +367,12 @@
       }
     }
 
-    // Mouse Look (Yaw & Pitch) with Throttled Batching
+    // Input States
     let accumulatedDX = 0;
     let accumulatedDY = 0;
+    const activeKeys = new Set();
 
+    // Desktop Mouse Look
     window.addEventListener('mousemove', (e) => {
       if (document.pointerLockElement === canvas) {
         accumulatedDX += e.movementX;
@@ -293,9 +380,7 @@
       }
     });
 
-    // Continuous Keyboard Polling (WASD + Arrows + Flight)
-    const activeKeys = new Set();
-
+    // Desktop Keyboard
     window.addEventListener('keydown', (e) => {
       const key = e.key.toLowerCase();
       const validKeys = ['w', 'a', 's', 'd', 'arrowup', 'arrowdown', ' ', 'shift', 'e', 'c', 'q', 'r'];
@@ -306,15 +391,124 @@
     });
 
     window.addEventListener('keyup', (e) => {
-      const key = e.key.toLowerCase();
-      activeKeys.delete(key);
+      activeKeys.delete(e.key.toLowerCase());
     });
 
-    // Unified 60Hz Input Sender (Mencegah TCP Congestion / Flooding)
+    // --- MOBILE TOUCH CONTROLS ---
+    // 1. Touch Camera Swipe (Right half of screen)
+    let touchLookId = null;
+    let lastTouchX = 0;
+    let lastTouchY = 0;
+
+    canvas.addEventListener('touchstart', (e) => {
+      for (let i = 0; i < e.changedTouches.length; i++) {
+        const t = e.changedTouches[i];
+        if (t.clientX > window.innerWidth * 0.35 && touchLookId === null) {
+          touchLookId = t.identifier;
+          lastTouchX = t.clientX;
+          lastTouchY = t.clientY;
+        }
+      }
+    }, { passive: false });
+
+    canvas.addEventListener('touchmove', (e) => {
+      for (let i = 0; i < e.changedTouches.length; i++) {
+        const t = e.changedTouches[i];
+        if (t.identifier === touchLookId) {
+          const dx = t.clientX - lastTouchX;
+          const dy = t.clientY - lastTouchY;
+          accumulatedDX += dx * 2.0;
+          accumulatedDY += dy * 2.0;
+          lastTouchX = t.clientX;
+          lastTouchY = t.clientY;
+        }
+      }
+    }, { passive: false });
+
+    const endTouchLook = (e) => {
+      for (let i = 0; i < e.changedTouches.length; i++) {
+        if (e.changedTouches[i].identifier === touchLookId) {
+          touchLookId = null;
+        }
+      }
+    };
+    canvas.addEventListener('touchend', endTouchLook);
+    canvas.addEventListener('touchcancel', endTouchLook);
+
+    // 2. Touch Joystick for Movement (Left half)
+    const joyZone = document.getElementById('joystick-zone');
+    const joyThumb = document.getElementById('joystick-thumb');
+    let joyTouchId = null;
+    let joyCenterX = 0;
+    let joyCenterY = 0;
+
+    joyZone.addEventListener('touchstart', (e) => {
+      const touch = e.changedTouches[0];
+      joyTouchId = touch.identifier;
+      const rect = joyZone.getBoundingClientRect();
+      joyCenterX = rect.left + rect.width / 2;
+      joyCenterY = rect.top + rect.height / 2;
+      handleJoystickMove(touch.clientX, touch.clientY);
+    }, { passive: false });
+
+    joyZone.addEventListener('touchmove', (e) => {
+      for (let i = 0; i < e.changedTouches.length; i++) {
+        if (e.changedTouches[i].identifier === joyTouchId) {
+          handleJoystickMove(e.changedTouches[i].clientX, e.changedTouches[i].clientY);
+        }
+      }
+    }, { passive: false });
+
+    const endJoystick = (e) => {
+      for (let i = 0; i < e.changedTouches.length; i++) {
+        if (e.changedTouches[i].identifier === joyTouchId) {
+          joyTouchId = null;
+          joyThumb.style.transform = 'translate(-50%, -50%)';
+          activeKeys.delete('w');
+          activeKeys.delete('s');
+          activeKeys.delete('a');
+          activeKeys.delete('d');
+        }
+      }
+    };
+    joyZone.addEventListener('touchend', endJoystick);
+    joyZone.addEventListener('touchcancel', endJoystick);
+
+    function handleJoystickMove(clientX, clientY) {
+      const deltaX = clientX - joyCenterX;
+      const deltaY = clientY - joyCenterY;
+      const dist = Math.min(45, Math.hypot(deltaX, deltaY));
+      const angle = Math.atan2(deltaY, deltaX);
+
+      const thumbX = Math.cos(angle) * dist;
+      const thumbY = Math.sin(angle) * dist;
+      joyThumb.style.transform = `translate(calc(-50% + ${thumbX}px), calc(-50% + ${thumbY}px))`;
+
+      // Map to WASD keys based on joystick position
+      if (deltaY < -15) activeKeys.add('w'); else activeKeys.delete('w');
+      if (deltaY > 15) activeKeys.add('s'); else activeKeys.delete('s');
+      if (deltaX < -15) activeKeys.add('a'); else activeKeys.delete('a');
+      if (deltaX > 15) activeKeys.add('d'); else activeKeys.delete('d');
+    }
+
+    // 3. Touch Action Buttons (Up, Down, Shift, E)
+    function setupTouchBtn(id, key) {
+      const el = document.getElementById(id);
+      const start = (e) => { e.preventDefault(); activeKeys.add(key); el.classList.add('active'); };
+      const end = (e) => { e.preventDefault(); activeKeys.delete(key); el.classList.remove('active'); };
+      el.addEventListener('touchstart', start, { passive: false });
+      el.addEventListener('touchend', end);
+      el.addEventListener('touchcancel', end);
+    }
+    setupTouchBtn('btn-up', 'arrowup');
+    setupTouchBtn('btn-down', 'arrowdown');
+    setupTouchBtn('btn-shift', 'shift');
+    setupTouchBtn('btn-e', 'e');
+
+    // 60Hz Unified Network Emitter
     setInterval(() => {
       if (!ws || ws.readyState !== WebSocket.OPEN) return;
 
-      // 1. Kirim akumulasi rotasi mouse jika ada gerakan
       if (accumulatedDX !== 0 || accumulatedDY !== 0) {
         ws.send(JSON.stringify({
           type: 'look',
@@ -325,7 +519,6 @@
         accumulatedDY = 0;
       }
 
-      // 2. Kirim input pergerakan keyboard
       if (activeKeys.size > 0) {
         activeKeys.forEach((key) => {
           ws.send(JSON.stringify({
