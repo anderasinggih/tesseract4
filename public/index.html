@@ -839,6 +839,7 @@
     let targetCamHeading = null;
     let targetCamSpeed = 0;
     let lastFrameTime = null;
+    let lastTargetTime = null;
 
     // ─── HUD Minimize Toggle ───────────────────────────────────────────────
     let hudVisible = window.innerWidth > 768; // Default open on desktop, clean minimized on mobile
@@ -1450,6 +1451,7 @@
           targetCamLat = ac.coord.lat;
           targetCamHeading = ac.heading;
           targetCamSpeed = ac.speed || 450;
+          lastTargetTime = performance.now();
           if (currentCamLng === null) {
             currentCamLng = targetCamLng;
             currentCamLat = targetCamLat;
@@ -1815,21 +1817,41 @@
 
       // Ultra-Smooth 60 FPS Camera Follow in POV Mode
       if (mapCockpitPOVEnabled && targetCamLng !== null && currentCamLng !== null) {
-        // High-precision smooth damping for cinematic trailing glide
-        const lerpRate = 0.09;
-        currentCamLng += (targetCamLng - currentCamLng) * lerpRate;
-        currentCamLat += (targetCamLat - currentCamLat) * lerpRate;
+        const now = performance.now();
+        if (lastFrameTime === null || lastTargetTime === null) {
+          lastFrameTime = now;
+          lastTargetTime = now;
+        }
+        const dt = Math.min((now - lastFrameTime) / 1000, 0.1);
+        lastFrameTime = now;
+
+        // Dead reckoning: extrapolate aircraft motion from heading & groundspeed so the
+        // target glides continuously between 10Hz physics packets instead of stepping.
+        const ageS = Math.min((now - lastTargetTime) / 1000, 5);
+        const hdgRad = targetCamHeading * Math.PI / 180;
+        const latRad = targetCamLat * Math.PI / 180;
+        const distDeg = (targetCamSpeed * ageS / 3600) / 60; // knots -> deg of latitude
+        const predLng = targetCamLng + Math.sin(hdgRad) * distDeg / Math.max(Math.cos(latRad), 0.1);
+        const predLat = targetCamLat + Math.cos(hdgRad) * distDeg;
+
+        // Frame-rate independent smoothing (equivalent to ~0.09 lerp at 60fps)
+        const alpha = 1 - Math.exp(-6 * dt);
+        currentCamLng += (predLng - currentCamLng) * alpha;
+        currentCamLat += (predLat - currentCamLat) * alpha;
 
         // Smooth shortest-path compass heading interpolation
-        let diffHdg = (targetCamHeading - currentCamHeading + 180) % 360 - 180;
-        if (diffHdg < -180) diffHdg += 360;
-        currentCamHeading += diffHdg * 0.09;
+        let diffHdg = (targetCamHeading - currentCamHeading + 540) % 360 - 180;
+        currentCamHeading += diffHdg * alpha;
 
-        // Direct low-level transform (bypasses heavy map transition pipeline for zero jitter)
-        map.setCenter([currentCamLng, currentCamLat]);
-        map.setBearing(currentCamHeading);
-        map.setPitch(75);
-        if (map.getZoom() !== 11.0) map.setZoom(11.0);
+        // Single low-level transform (bypasses heavy map transition pipeline for zero jitter)
+        map.jumpTo({
+          center: [currentCamLng, currentCamLat],
+          zoom: 11.0,
+          bearing: currentCamHeading,
+          pitch: 75
+        });
+      } else {
+        lastFrameTime = null;
       }
 
       requestAnimationFrame(drawRadarScope);
