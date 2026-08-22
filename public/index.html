@@ -784,27 +784,13 @@
 
   <!-- Right Telemetry Deck -->
   <div id="telemetry-deck" class="glass-deck">
-    <!-- 3D Flight Viewport with Multiple POV Modes -->
-    <div id="view-3d-box">
-      <div id="view-3d-overlay">
-        <span id="cam-callsign">3D FLIGHT TRACKER // STANDBY</span>
-        <span id="cam-telemetry">HDG --- / FL---</span>
+    <!-- Tactical Analog Airborne Radar Scope (Active in POV Mode) -->
+    <div id="view-3d-box" style="display: none;">
+      <div id="view-3d-overlay" style="display: flex; justify-content: space-between; align-items: center; padding: 4px 8px; background: rgba(5, 15, 10, 0.85); border-bottom: 1px solid rgba(0, 230, 118, 0.2);">
+        <span id="cam-callsign" style="color: var(--accent-green); font-weight: 700; font-size: 8.5px;">ANALOG AIRBORNE RADAR // 40NM</span>
+        <span id="cam-telemetry" style="color: #88ff88; font-size: 8px;">SWEEP 60RPM</span>
       </div>
-
-      <!-- Camera POV Mode Selector -->
-      <div style="position: absolute; bottom: 6px; left: 8px; right: 8px; display: flex; gap: 4px; z-index: 5;">
-        <button id="btn-pov-cockpit" class="btn-action"
-          style="padding: 2px 6px; font-size: 8px; background: #222; border-color: #555;"
-          onclick="setCameraPOV('cockpit')">COCKPIT FWD-DOWN</button>
-        <button id="btn-pov-chase" class="btn-action"
-          style="padding: 2px 6px; font-size: 8px; background: #0a0a0a; border-color: #333;"
-          onclick="setCameraPOV('chase')">TAIL CHASE</button>
-        <button id="btn-pov-orbit" class="btn-action"
-          style="padding: 2px 6px; font-size: 8px; background: #0a0a0a; border-color: #333;"
-          onclick="setCameraPOV('orbit')">3D ORBIT</button>
-      </div>
-
-      <div id="view-3d-canvas"></div>
+      <canvas id="analog-radar-canvas" width="348" height="180" style="display: block; width: 100%; height: 180px; background: #030a06;"></canvas>
     </div>
 
     <!-- Inbound Handoff Alert Banner -->
@@ -1001,12 +987,14 @@
       mapCockpitPOVEnabled = !mapCockpitPOVEnabled;
       const btn = document.getElementById('btn-map-pov');
       const overlay3D = document.getElementById('threejs-overlay');
+      const analogRadarBox = document.getElementById('view-3d-box');
 
       if (mapCockpitPOVEnabled) {
         btn.innerText = '2D';
         btn.style.background = 'rgba(45,30,0,0.85)';
         btn.style.borderColor = 'var(--accent-amber)';
         if (overlay3D) overlay3D.style.display = 'block';
+        if (analogRadarBox) analogRadarBox.style.display = 'block';
 
         // Pick first flight if none selected
         if (!selectedCallsign && currentPayload && currentPayload.aircraft && currentPayload.aircraft.length > 0) {
@@ -1017,6 +1005,7 @@
         btn.style.background = 'rgba(25,25,25,0.7)';
         btn.style.borderColor = 'rgba(255,255,255,0.15)';
         if (overlay3D) overlay3D.style.display = 'none';
+        if (analogRadarBox) analogRadarBox.style.display = 'none';
 
         // Reset map to top-down 2D orthographic radar view
         map.easeTo({
@@ -2047,7 +2036,140 @@
         });
       }
 
+      // 7. Tactical Analog Airborne Radar Scope (Active in POV Mode)
+      if (mapCockpitPOVEnabled) {
+        drawAnalogRadarScope();
+      }
+
       requestAnimationFrame(drawRadarScope);
+    }
+
+    // Authentic Green Phosphor Airborne PPI Radar Sweep Canvas Loop
+    let radarSweepAngle = 0;
+    function drawAnalogRadarScope() {
+      const aCanvas = document.getElementById('analog-radar-canvas');
+      if (!aCanvas) return;
+      const actx = aCanvas.getContext('2d');
+      const w = aCanvas.width;
+      const h = aCanvas.height;
+      const cx = w / 2;
+      const cy = h / 2;
+      const maxR = Math.min(cx, cy) - 10;
+
+      // Dark tactical green phosphor background with slight trail decay
+      actx.fillStyle = 'rgba(3, 10, 6, 0.2)';
+      actx.fillRect(0, 0, w, h);
+
+      // Radar Concentric Range Rings (10NM, 20NM, 30NM, 40NM)
+      actx.strokeStyle = 'rgba(0, 230, 118, 0.25)';
+      actx.lineWidth = 1;
+      for (let r = 1; r <= 4; r++) {
+        actx.beginPath();
+        actx.arc(cx, cy, (maxR / 4) * r, 0, Math.PI * 2);
+        actx.stroke();
+      }
+
+      // Crosshair & Azimuth Marks
+      actx.beginPath();
+      actx.moveTo(cx - maxR, cy);
+      actx.lineTo(cx + maxR, cy);
+      actx.moveTo(cx, cy - maxR);
+      actx.lineTo(cx, cy + maxR);
+      actx.stroke();
+
+      // Heading Cardinal Ticks
+      actx.fillStyle = 'rgba(0, 230, 118, 0.6)';
+      actx.font = '700 7.5px JetBrains Mono';
+      actx.fillText('N', cx - 3, cy - maxR + 8);
+      actx.fillText('S', cx - 3, cy + maxR - 3);
+      actx.fillText('W', cx - maxR + 3, cy + 3);
+      actx.fillText('E', cx + maxR - 8, cy + 3);
+
+      // Rotating Phosphor Radar Sweep Beam
+      radarSweepAngle = (radarSweepAngle + 0.04) % (Math.PI * 2);
+      const sweepX = cx + Math.cos(radarSweepAngle) * maxR;
+      const sweepY = cy + Math.sin(radarSweepAngle) * maxR;
+
+      // Gradient Sweep Line with Phosphor Glow
+      const grad = actx.createRadialGradient(cx, cy, 2, cx, cy, maxR);
+      grad.addColorStop(0, 'rgba(0, 255, 136, 0.8)');
+      grad.addColorStop(1, 'rgba(0, 255, 136, 0.05)');
+
+      actx.beginPath();
+      actx.moveTo(cx, cy);
+      actx.arc(cx, cy, maxR, radarSweepAngle - 0.35, radarSweepAngle);
+      actx.lineTo(cx, cy);
+      actx.fillStyle = 'rgba(0, 230, 118, 0.12)';
+      actx.fill();
+
+      actx.beginPath();
+      actx.moveTo(cx, cy);
+      actx.lineTo(sweepX, sweepY);
+      actx.strokeStyle = '#00ff88';
+      actx.lineWidth = 1.5;
+      actx.shadowColor = '#00ff88';
+      actx.shadowBlur = 6;
+      actx.stroke();
+      actx.shadowBlur = 0;
+
+      // Center Player Aircraft Symbol
+      actx.fillStyle = '#00ff88';
+      actx.beginPath();
+      actx.arc(cx, cy, 3, 0, Math.PI * 2);
+      actx.fill();
+
+      // Render Nearby Surrounding Aircraft Blips (< 40 NM)
+      if (selectedCallsign && currentPayload && currentPayload.aircraft) {
+        const myAc = currentPayload.aircraft.find(a => a.callsign === selectedCallsign);
+        if (myAc) {
+          currentPayload.aircraft.forEach(otherAc => {
+            if (otherAc.callsign === selectedCallsign) return;
+
+            const lat1 = myAc.coord.lat * (Math.PI / 180.0);
+            const lon1 = myAc.coord.lng * (Math.PI / 180.0);
+            const lat2 = otherAc.coord.lat * (Math.PI / 180.0);
+            const lon2 = otherAc.coord.lng * (Math.PI / 180.0);
+            const dLon = lon2 - lon1;
+
+            const dLat = lat2 - lat1;
+            const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLon / 2) ** 2;
+            const distNM = 3440.065 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+            if (distNM <= 40.0) {
+              const y = Math.sin(dLon) * Math.cos(lat2);
+              const x = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLon);
+              let bearingToOther = Math.atan2(y, x) * (180.0 / Math.PI);
+              if (bearingToOther < 0) bearingToOther += 360;
+
+              // Convert polar to cartesian
+              const rPx = (distNM / 40.0) * maxR;
+              const angleRad = (bearingToOther - 90) * (Math.PI / 180.0);
+              const bx = cx + Math.cos(angleRad) * rPx;
+              const by = cy + Math.sin(angleRad) * rPx;
+
+              // Blip Color based on conflict or emergency
+              const isAlert = otherAc.conflictAlert || otherAc.emergencyState;
+              actx.fillStyle = isAlert ? '#ff2244' : '#00ff88';
+              actx.shadowColor = isAlert ? '#ff2244' : '#00ff88';
+              actx.shadowBlur = 8;
+              actx.beginPath();
+              actx.arc(bx, by, 3, 0, Math.PI * 2);
+              actx.fill();
+              actx.shadowBlur = 0;
+
+              // Callsign & Altitude tag
+              actx.fillStyle = '#ffffff';
+              actx.font = '600 7px JetBrains Mono';
+              actx.fillText(otherAc.callsign, bx + 5, by - 2);
+              actx.fillStyle = '#aaaaaa';
+              actx.font = '6px JetBrains Mono';
+              const altDelta = Math.round((otherAc.altitude - myAc.altitude) / 100);
+              const altStr = altDelta >= 0 ? `+${altDelta}` : `${altDelta}`;
+              actx.fillText(`FL${Math.round(otherAc.altitude / 100)} (${altStr})`, bx + 5, by + 6);
+            }
+          });
+        }
+      }
     }
 
     requestAnimationFrame(drawRadarScope);
