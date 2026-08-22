@@ -374,21 +374,21 @@
     /* HUD Minimize Transition */
     #sector-deck,
     #telemetry-deck {
-      transition: opacity 0.25s ease, transform 0.25s ease;
+      transition: opacity 0.3s cubic-bezier(0.2, 0.8, 0.2, 1), transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
     }
 
     #sector-deck.hud-hidden,
     #telemetry-deck.hud-hidden {
-      opacity: 0;
-      pointer-events: none;
-      transform: scale(0.96);
+      opacity: 0 !important;
+      pointer-events: none !important;
+      transform: translateY(20px) scale(0.96) !important;
     }
 
     /* HUD Toggle Button */
     #btn-hud-toggle {
-      padding: 4px 10px;
-      font-size: 8.5px;
-      font-weight: 700;
+      padding: 5px 12px;
+      font-size: 9px;
+      font-weight: 800;
       letter-spacing: 0.5px;
       border-radius: 3px;
       cursor: pointer;
@@ -412,25 +412,29 @@
       background: #1c1505;
     }
 
-    /* Mobile Responsive */
+    /* Mobile Responsive Overhaul */
     @media (max-width: 768px) {
       #top-bar {
         padding: 6px 8px;
-        flex-wrap: wrap;
-        gap: 4px;
         top: 6px;
         left: 6px;
         right: 6px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 6px;
         border-radius: 6px;
       }
 
       .brand-box {
-        flex-wrap: wrap;
+        display: flex;
+        align-items: center;
         gap: 6px;
       }
 
       .brand-title {
-        font-size: 10px;
+        font-size: 9px;
+        letter-spacing: 0.5px;
       }
 
       .brand-tag {
@@ -438,95 +442,77 @@
       }
 
       .status-items {
-        gap: 10px;
+        display: none !important;
+      }
+
+      /* Compact mobile action buttons */
+      .brand-box > div {
+        display: flex;
+        gap: 3px;
+        margin-left: 4px !important;
+      }
+
+      #btn-style-satellite, #btn-style-dark, #btn-map-pov {
+        padding: 4px 6px !important;
+        font-size: 7.5px !important;
+      }
+
+      #btn-hud-toggle {
+        padding: 4px 8px;
         font-size: 8px;
-        flex-wrap: wrap;
       }
 
-      .stat-lbl {
-        font-size: 7px;
-      }
-
-      .stat-val {
-        font-size: 10px;
-      }
-
-      /* Left panel: slide-up bottom sheet */
+      /* Left panel: Compact Drawer at bottom */
       #sector-deck {
         top: auto;
         bottom: 0;
         left: 0;
         right: 0;
         width: 100%;
-        max-height: 52vh;
-        border-radius: 12px 12px 0 0;
+        max-height: 48vh;
+        border-radius: 14px 14px 0 0;
         overflow-y: auto;
         -webkit-overflow-scrolling: touch;
-        padding: 16px 14px 20px;
+        padding: 12px 14px 24px;
         border-left: none;
         border-right: none;
         border-bottom: none;
+        box-shadow: 0 -8px 24px rgba(0,0,0,0.8);
         z-index: 20;
       }
 
-      /* Right panel: hidden on mobile by default, toggled via HUD */
+      /* Hide verbose mission box on mobile to save space */
+      .mission-box {
+        display: none;
+      }
+
+      /* Telemetry deck hidden on mobile by default */
       #telemetry-deck {
         display: none !important;
       }
 
-      /* Bigger touch targets */
-      .btn-action {
-        padding: 11px 8px;
-        font-size: 11px;
-      }
-
-      .form-input {
-        font-size: 13px;
-        padding: 10px 9px;
+      .form-group {
+        margin-bottom: 6px;
       }
 
       .form-group label {
-        font-size: 10px;
+        font-size: 8px;
+        margin-bottom: 2px;
       }
 
-      .deck-title {
+      .form-input {
         font-size: 11px;
+        padding: 6px 8px;
       }
 
-      /* Mission brief smaller */
-      .mission-box {
-        font-size: 9px;
+      .btn-action {
+        padding: 8px 6px;
+        font-size: 9.5px;
       }
 
-      /* Radio stream shorter */
-      #radio-stream {
-        height: 80px;
-        font-size: 8.5px;
-      }
-
-      /* 3D viewport smaller */
-      #view-3d-box {
-        height: 120px;
-      }
-
-      /* Map style buttons wrap */
-      .brand-box>div {
-        flex-wrap: wrap;
-      }
-    }
-
-    @media (max-width: 480px) {
-      .brand-title {
-        font-size: 9px;
-        letter-spacing: 1px;
-      }
-
-      #sector-deck {
-        max-height: 60vh;
-      }
-
-      .status-items {
-        display: none;
+      #flight-strip-box {
+        margin-top: 6px;
+        padding: 6px 8px;
       }
     }
   </style>
@@ -821,9 +807,8 @@
     let mapCockpitPOVEnabled = false;
 
     // ─── HUD Minimize Toggle ───────────────────────────────────────────────
-    let hudVisible = true;
-    function toggleHUD() {
-      hudVisible = !hudVisible;
+    let hudVisible = window.innerWidth > 768; // Default open on desktop, clean minimized on mobile
+    function applyHUDState() {
       const btn = document.getElementById('btn-hud-toggle');
       const panels = [
         document.getElementById('sector-deck'),
@@ -837,9 +822,19 @@
           p.classList.add('hud-hidden');
         }
       });
-      btn.textContent = hudVisible ? 'HUD ON' : 'HUD OFF';
-      btn.classList.toggle('hud-off', !hudVisible);
+      if (btn) {
+        btn.textContent = hudVisible ? 'HUD ON' : 'HUD OFF';
+        btn.classList.toggle('hud-off', !hudVisible);
+      }
     }
+
+    function toggleHUD() {
+      hudVisible = !hudVisible;
+      applyHUDState();
+    }
+
+    // Initialize HUD state on start
+    setTimeout(applyHUDState, 100);
 
     // Double-tap map to toggle HUD on mobile
     let lastTapTime = 0;
