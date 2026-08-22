@@ -1811,9 +1811,10 @@
               fullPlaneGroup.rotation.z = bankRoll + Math.sin(Date.now() * 0.001) * 0.008; // Natural air turbulence roll
               fullPlaneGroup.position.set(0, 0, 0); // 100% Dead Center on screen
 
-              // Perspective scale tied to zoom level
-              const zoomScale = Math.pow(2, (povZoomLevel - 10.5) * 0.35);
-              fullPlaneGroup.scale.set(zoomScale, zoomScale, zoomScale);
+              // Perspective scale tied 1:1 proportionally to real map zoom level
+              // At zoom 10.5 = 1.0x (standard visual size). When zooming out to 6.5x, plane shrinks realistically with the landscape
+              const actualScale = Math.pow(2, (povZoomLevel - 10.5));
+              fullPlaneGroup.scale.set(actualScale, actualScale, actualScale);
             }
           }
 
@@ -1873,7 +1874,7 @@
 
                     // Clone 3D plane mesh
                     const otherModel = window.trafficPlaneModelTemplate.clone();
-                    const trafficScale = window.trafficPlaneScaleFactor || 1.0;
+                    const trafficScale = (window.trafficPlaneScaleFactor || 1.0) * actualScale;
                     otherModel.scale.set(trafficScale, trafficScale, trafficScale);
                     otherModel.position.set(0, 0, 0);
 
