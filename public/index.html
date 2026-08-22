@@ -664,14 +664,6 @@
           style="padding: 4px 8px; font-size: 8.5px;" onclick="toggleMapCockpitPOV()">POV</button>
         <!-- POV Interactive Zoom Level & Outline Toggle -->
         <div id="pov-zoom-controls" style="display: none; gap: 4px; align-items: center;">
-          <button class="btn-action btn-nav-compact"
-            style="padding: 4px 6px; font-size: 8.5px; background: rgba(30,30,30,0.8); border-color: #666;"
-            onclick="adjustPOVZoom(-0.5)" title="Zoom Out (Wider View)">-</button>
-          <span id="pov-zoom-display"
-            style="font-size: 8px; font-weight: 800; color: var(--accent-cyan); min-width: 28px; text-align: center;">10.5x</span>
-          <button class="btn-action btn-nav-compact"
-            style="padding: 4px 6px; font-size: 8.5px; background: rgba(30,30,30,0.8); border-color: #666;"
-            onclick="adjustPOVZoom(+0.5)" title="Zoom In (Closer View)">+</button>
           <button id="btn-traffic-outline" class="btn-action btn-nav-compact"
             style="padding: 4px 7px; font-size: 8.5px; background: rgba(30,30,30,0.8); border-color: #555; color: #888;"
             onclick="toggleTrafficOutline()" title="Toggle Traffic Aircraft High-Visibility Outline">OUTLINE</button>
@@ -1708,7 +1700,7 @@
         window.trafficAircraftGroup = new THREE.Group();
         fullThreeScene.add(window.trafficAircraftGroup);
         window.trafficPlaneModelTemplate = fallbackPlaneGroup.clone();
-        window.trafficPlaneScaleFactor = 1.0;
+        window.trafficPlaneScaleFactor = 12.0;
 
         // Tactical 3D HUD Flight Level Floor Grid (Visual Diagnostic Reference Plane)
         // High-contrast bright green tactical floor grid
@@ -1955,7 +1947,7 @@
               const USER_CALIBRATION_PITCH_X = 19.3; // Rotasi X: Pitch (Dongak + / Nunduk -)
               const USER_CALIBRATION_YAW_Y = 0.0; // Rotasi Y: Yaw / Heading (Putar Kiri - / Kanan +)
               const USER_CALIBRATION_ROLL_Z = 0.0; // Rotasi Z: Roll / Miring Sayap
-              const USER_PLANE_SCALE_MULTIPLIER = 0.85; // Skala ukuran seimbang & proporsional
+              const USER_PLANE_SCALE_MULTIPLIER = 12.0; // Skala ukuran seimbang & proporsional
 
               fullPlaneGroup.rotation.x = pitchOffset + USER_CALIBRATION_PITCH_X;
               fullPlaneGroup.rotation.y = USER_CALIBRATION_YAW_Y;
