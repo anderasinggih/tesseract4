@@ -562,16 +562,15 @@
       <span class="brand-title">GLOBAL ATC RADAR</span>
       <span class="brand-tag">ICAO LIVE 60FPS</span>
 
-      <!-- Map Style & View Mode Switcher (Concise, Clean) -->
+      <!-- Map Style & View Mode Switcher (Concise Single Toggles) -->
       <div style="display: flex; gap: 4px; margin-left: 6px;">
-        <button id="btn-style-satellite" class="btn-action btn-nav-compact"
+        <!-- Single Map Style Toggle: SAT <-> DARK -->
+        <button id="btn-map-style-toggle" class="btn-action btn-nav-compact"
           style="padding: 4px 8px; font-size: 8.5px; background: rgba(30,30,30,0.7); border-color: #555;"
-          onclick="switchMapStyle('satellite')">SAT HD</button>
-        <button id="btn-style-dark" class="btn-action btn-nav-compact"
-          style="padding: 4px 8px; font-size: 8.5px; background: rgba(10,10,10,0.7); border-color: #333;"
-          onclick="switchMapStyle('dark')">DARK</button>
+          onclick="toggleMapStyle()">SAT</button>
+        <!-- POV Toggle -->
         <button id="btn-map-pov" class="btn-action btn-amber btn-nav-compact" style="padding: 4px 8px; font-size: 8.5px;"
-          onclick="toggleMapCockpitPOV()">3D POV</button>
+          onclick="toggleMapCockpitPOV()">POV</button>
       </div>
     </div>
     <div class="status-items">
@@ -819,23 +818,15 @@
       attributionControl: false
     });
 
-    function switchMapStyle(styleKey) {
-      if (styleKey === currentMapStyle) return;
-      currentMapStyle = styleKey;
-      map.setStyle(MAP_STYLES[styleKey]);
+    function toggleMapStyle() {
+      const nextStyle = currentMapStyle === 'satellite' ? 'dark' : 'satellite';
+      currentMapStyle = nextStyle;
+      map.setStyle(MAP_STYLES[nextStyle]);
 
-      const btnDark = document.getElementById('btn-style-dark');
-      const btnSat = document.getElementById('btn-style-satellite');
-      if (styleKey === 'dark') {
-        btnDark.style.background = '#222';
-        btnDark.style.borderColor = '#555';
-        btnSat.style.background = '#0a0a0a';
-        btnSat.style.borderColor = '#333';
-      } else {
-        btnSat.style.background = '#222';
-        btnSat.style.borderColor = '#555';
-        btnDark.style.background = '#0a0a0a';
-        btnDark.style.borderColor = '#333';
+      const btn = document.getElementById('btn-map-style-toggle');
+      if (btn) {
+        btn.textContent = nextStyle === 'satellite' ? 'SAT' : 'DARK';
+        btn.style.background = nextStyle === 'satellite' ? 'rgba(30,30,30,0.7)' : 'rgba(10,10,10,0.7)';
       }
     }
 
@@ -896,13 +887,13 @@
         } else if (document.msExitFullscreen) {
           document.msExitFullscreen();
         }
-        if (btn) btn.textContent = 'FULLSCREEN';
+        if (btn) btn.textContent = 'FS';
       }
     }
 
     document.addEventListener('fullscreenchange', () => {
       const btn = document.getElementById('btn-fullscreen');
-      if (btn) btn.textContent = document.fullscreenElement ? 'EXIT FS' : 'FULLSCREEN';
+      if (btn) btn.textContent = document.fullscreenElement ? 'EXIT FS' : 'FS';
     });
 
     function toggleMapCockpitPOV() {
@@ -911,8 +902,8 @@
       const overlay3D = document.getElementById('threejs-overlay');
 
       if (mapCockpitPOVEnabled) {
-        btn.innerText = '2D RADAR';
-        btn.style.background = '#382200';
+        btn.innerText = '2D';
+        btn.style.background = 'rgba(45,30,0,0.85)';
         btn.style.borderColor = 'var(--accent-amber)';
         if (overlay3D) overlay3D.style.display = 'block';
 
@@ -921,9 +912,9 @@
           selectAircraft(currentPayload.aircraft[0]);
         }
       } else {
-        btn.innerText = '3D POV';
-        btn.style.background = '#161616';
-        btn.style.borderColor = '#333333';
+        btn.innerText = 'POV';
+        btn.style.background = 'rgba(25,25,25,0.7)';
+        btn.style.borderColor = 'rgba(255,255,255,0.15)';
         if (overlay3D) overlay3D.style.display = 'none';
 
         // Reset map to top-down 2D orthographic radar view
