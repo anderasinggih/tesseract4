@@ -2202,17 +2202,16 @@
           if (selectedCallsign && currentPayload && currentPayload.aircraft && fullAmbient && fullDir) {
             const ac = currentPayload.aircraft.find(a => a.callsign === selectedCallsign);
             if (ac) {
-              // 1. Surrounding 3D Traffic Airborne Visualizer (< 40 NM Range)
+              // 1. Surrounding 3D Traffic Airborne Visualizer (Optimized instance reuse, zero garbage collection)
               if (window.trafficAircraftGroup && window.trafficPlaneModelTemplate) {
-                // Clear previous traffic objects
-                while (window.trafficAircraftGroup.children.length > 0) {
-                  window.trafficAircraftGroup.remove(window.trafficAircraftGroup.children[0]);
-                }
+                if (!window.trafficMeshPool) window.trafficMeshPool = new Map();
+
+                const activeCallsigns = new Set();
+                const maxVisualNM = 60.0 + Math.max(0, (10.5 - povZoomLevel)) * 80.0;
 
                 currentPayload.aircraft.forEach(otherAc => {
                   if (otherAc.callsign === selectedCallsign) return;
 
-                  // Compute real Great-Circle distance and bearing from player aircraft to other aircraft
                   const lat1 = ac.coord.lat * (Math.PI / 180.0);
                   const lon1 = ac.coord.lng * (Math.PI / 180.0);
                   const lat2 = otherAc.coord.lat * (Math.PI / 180.0);
@@ -2223,87 +2222,61 @@
                   const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLon / 2) ** 2;
                   const distNM = 3440.065 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 
-                  // Dynamic visual range that expands automatically when zooming out (from 60 NM up to 400 NM)
-                  const maxVisualNM = 60.0 + Math.max(0, (10.5 - povZoomLevel)) * 80.0;
-
-                  // Render other aircraft if within current visual horizon
                   if (distNM < maxVisualNM) {
-                    // True compass bearing from player aircraft to the other aircraft (0-360)
+                    activeCallsigns.add(otherAc.callsign);
+
+                    let trafficContainer = window.trafficMeshPool.get(otherAc.callsign);
+                    if (!trafficContainer) {
+                      trafficContainer = new THREE.Group();
+                      const otherModel = window.trafficPlaneModelTemplate.clone();
+                      const trafficScale = (window.trafficPlaneScaleFactor || 1.0) * currentActualScale;
+                      otherModel.scale.set(trafficScale, trafficScale, trafficScale);
+                      otherModel.position.set(0, 0, 0);
+                      trafficContainer.add(otherModel);
+                      window.trafficAircraftGroup.add(trafficContainer);
+                      window.trafficMeshPool.set(otherAc.callsign, trafficContainer);
+                    }
+                    trafficContainer.visible = true;
+
                     const y = Math.sin(dLon) * Math.cos(lat2);
                     const x = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLon);
                     let trueBearing = Math.atan2(y, x) * (180.0 / Math.PI);
                     if (trueBearing < 0) trueBearing += 360;
 
-                    // Relative bearing angle from player's current camera compass heading (0 = directly ahead, 90 = right, 180 = behind, 270 = left)
                     let relAngleDeg = (trueBearing - (currentCamHeading || 0) + 360) % 360;
                     const relAngleRad = relAngleDeg * (Math.PI / 180.0);
 
-                    // Physical 3D distance in scene space.
-                    // 1 NM = 20 scene units → gives correct perspective scale:
-                    // - 5 NM → 100 units from camera → traffic appears small but visible
-                    // - 20 NM → 400 units → tiny realistic speck
                     const sceneDist = distNM * 20;
                     const relX = Math.sin(relAngleRad) * sceneDist;
                     const relZ = -Math.cos(relAngleRad) * sceneDist;
 
-                    // Camera pitch compensation:
-                    // Camera is at (0, 1.22, 13.95) looking at (0,0,0) → ~5° downward tilt.
-                    // Without this, objects along -Z appear BELOW player on screen.
-                    // Compensate by lifting Y proportional to forward depth (-relZ * tan(pitch)).
                     const CAM_Y = 1.22, CAM_Z = 13.95;
-                    const cameraPitchRad = Math.atan2(CAM_Y, CAM_Z); // ~0.0873 rad ≈ 5°
+                    const cameraPitchRad = Math.atan2(CAM_Y, CAM_Z);
                     const pitchCompY = -relZ * Math.tan(cameraPitchRad);
-
-                    // Altitude delta: 1000 ft = 4.0 scene units (proportional to 20-unit/NM scale)
                     const altDeltaFt = (otherAc.altitude - ac.altitude);
                     const altY = (altDeltaFt / 1000.0) * 4.0;
-
-                    // Final Y = pitch lift (perspective horizon) + altitude offset
                     const relY = pitchCompY + altY;
 
-                    // Container positioned in camera coordinate frame
-                    const trafficContainer = new THREE.Group();
                     trafficContainer.position.set(relX, relY, relZ);
 
-                    // Pitch: synchronised with flight level
                     const otherIsClimbing = otherAc.targetAltitude > otherAc.altitude + 300;
                     const otherIsDescending = otherAc.targetAltitude < otherAc.altitude - 300;
                     let otherPitchOffset = 0;
                     if (otherIsClimbing) otherPitchOffset = +0.06;
                     if (otherIsDescending) otherPitchOffset = -0.06;
 
-                    // Heading & Attitude math
                     const relHeadingDeg = (otherAc.heading - (currentCamHeading || 0) + 360) % 360;
                     trafficContainer.rotation.order = 'XYZ';
                     trafficContainer.rotation.x = otherPitchOffset + (typeof USER_CALIBRATION_PITCH_X !== 'undefined' ? USER_CALIBRATION_PITCH_X : 19.3);
                     trafficContainer.rotation.y = -relHeadingDeg * (Math.PI / 180.0);
                     trafficContainer.rotation.z = 0;
+                  }
+                });
 
-                    // Clone 3D plane mesh
-                    const otherModel = window.trafficPlaneModelTemplate.clone();
-                    const trafficScale = (window.trafficPlaneScaleFactor || 1.0) * currentActualScale;
-                    otherModel.scale.set(trafficScale, trafficScale, trafficScale);
-                    otherModel.position.set(0, 0, 0);
-
-                    // High-Visibility Glowing Outline / Tactical Wireframe when OUTLINE is toggled ON
-                    if (trafficAircraftOutlineEnabled) {
-                      otherModel.traverse((child) => {
-                        if (child.isMesh && child.material) {
-                          child.material = child.material.clone();
-                          child.material.emissive = new THREE.Color(0x00ff88);
-                          child.material.emissiveIntensity = 0.85;
-                        }
-                      });
-                      const boxGeo = new THREE.BoxGeometry(7.5 * trafficScale, 2.8 * trafficScale, 7.5 * trafficScale);
-                      const boxEdges = new THREE.EdgesGeometry(boxGeo);
-                      const boxMat = new THREE.LineBasicMaterial({ color: 0x00ff88, linewidth: 1.5 });
-                      const hudTargetBox = new THREE.LineSegments(boxEdges, boxMat);
-                      hudTargetBox.position.set(0, 0, 0);
-                      otherModel.add(hudTargetBox);
-                    }
-
-                    trafficContainer.add(otherModel);
-                    window.trafficAircraftGroup.add(trafficContainer);
+                // Hide out-of-range traffic meshes
+                window.trafficMeshPool.forEach((mesh, cs) => {
+                  if (!activeCallsigns.has(cs)) {
+                    mesh.visible = false;
                   }
                 });
               }
