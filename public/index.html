@@ -1861,14 +1861,9 @@
             const size = box.getSize(new THREE.Vector3());
             const center = box.getCenter(new THREE.Vector3());
 
-            // Center origin
-            loadedModel.position.x += (loadedModel.position.x - center.x);
-            loadedModel.position.y += (loadedModel.position.y - center.y);
-            loadedModel.position.z += (loadedModel.position.z - center.z);
-
-            // Scale to comfortable realistic ~3.8-unit wingspan (proportional and sleek against satellite map)
+            // Balanced natural ~5.5-unit wingspan
             const maxDim = Math.max(size.x, size.y, size.z);
-            const scaleFactor = 3.8 / (maxDim || 1.0);
+            const scaleFactor = 5.5 / (maxDim || 1.0);
             loadedModel.scale.set(scaleFactor, scaleFactor, scaleFactor);
 
             // Mathematically verified: nose+X → -Z (fwd), dorsal+Z → +Y (up), wings±Y → ±X (level)
@@ -1914,44 +1909,6 @@
         );
       }
 
-      let currentPOVMode = 'cockpit'; // 'cockpit', 'chase', 'orbit'
-
-      window.setCameraPOV = function (mode) {
-        currentPOVMode = mode;
-        const btnCockpit = document.getElementById('btn-pov-cockpit');
-        const btnChase = document.getElementById('btn-pov-chase');
-        const btnOrbit = document.getElementById('btn-pov-orbit');
-
-        if (btnCockpit) {
-          btnCockpit.style.background = mode === 'cockpit' ? '#333' : '#0a0a0a';
-          btnCockpit.style.borderColor = mode === 'cockpit' ? '#666' : '#333';
-        }
-        if (btnChase) {
-          btnChase.style.background = mode === 'chase' ? '#333' : '#0a0a0a';
-          btnChase.style.borderColor = mode === 'chase' ? '#666' : '#333';
-        }
-        if (btnOrbit) {
-          btnOrbit.style.background = mode === 'orbit' ? '#333' : '#0a0a0a';
-          btnOrbit.style.borderColor = mode === 'orbit' ? '#666' : '#333';
-        }
-
-        if (threeCamera) {
-          if (mode === 'cockpit') {
-            threeCamera.position.set(0, 1.4, 3.8);
-            threeCamera.lookAt(0, -0.6, -15);
-          } else if (mode === 'chase') {
-            threeCamera.position.set(0, 5, -12);
-            threeCamera.lookAt(0, 0, 5);
-          } else if (mode === 'orbit') {
-            threeCamera.position.set(10, 8, 12);
-            threeCamera.lookAt(0, 0, 0);
-          }
-        }
-      };
-
-      // Set initial default to Cockpit Forward-Down POV
-      window.setCameraPOV('cockpit');
-
       function render3D() {
         requestAnimationFrame(render3D);
         if (earthGrid) {
@@ -1996,7 +1953,7 @@
               const USER_CALIBRATION_PITCH_X = 19.3; // Rotasi X: Pitch (Dongak + / Nunduk -)
               const USER_CALIBRATION_YAW_Y = 0.0; // Rotasi Y: Yaw / Heading (Putar Kiri - / Kanan +)
               const USER_CALIBRATION_ROLL_Z = 0.0; // Rotasi Z: Roll / Miring Sayap
-              const USER_PLANE_SCALE_MULTIPLIER = 0.55; // Skala ukuran pesawat (0.55 = 45% lebih ramping & proporsional terhadap peta)
+              const USER_PLANE_SCALE_MULTIPLIER = 0.85; // Skala ukuran seimbang & proporsional
 
               fullPlaneGroup.rotation.x = pitchOffset + USER_CALIBRATION_PITCH_X;
               fullPlaneGroup.rotation.y = USER_CALIBRATION_YAW_Y;
