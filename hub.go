@@ -357,12 +357,18 @@ func (h *ATCHub) updateKinematics(dt float64) {
 			}
 		}
 
-		// Check airspace sector transition
+		// Check airspace sector transition & trigger clean handoff protocol
 		for _, sec := range GlobalAirspaceSectors {
 			if IsPointInSector(ac.Coord, sec.Bounds) {
 				if ac.SectorID != sec.ID && ac.HandoffState == "NONE" {
-					// Aircraft crossed into new sector
-					ac.SectorID = sec.ID
+					// Aircraft is entering a new sector: initiate clean handoff request
+					ac.HandoffState = "PENDING"
+					ac.HandoffTarget = sec.ID
+					fromName := ac.SectorID
+					if oldSec, ok := h.sectors[ac.SectorID]; ok {
+						fromName = oldSec.Name
+					}
+					h.addLog("HANDOFF", ac.Callsign, fmt.Sprintf("INBOUND HANDOFF: %s requesting entry from %s to %s", ac.Callsign, fromName, sec.Name))
 				}
 				break
 			}

@@ -2134,11 +2134,21 @@
 
     function acceptInboundHandoff() {
       if (!ws || ws.readyState !== WebSocket.OPEN || !activeInboundHandoff) return;
+      const targetCallsign = activeInboundHandoff.callsign;
       playHandoffSuccessSound(); // Play joyful mission success fanfare!
       ws.send(JSON.stringify({
         type: 'handoff_accept',
-        callsign: activeInboundHandoff.callsign
+        callsign: targetCallsign
       }));
+
+      showTacticalToast(`HANDOFF ACCEPTED: Radar contact ${targetCallsign}! Squawk IDENT.`, 'HANDOFF');
+
+      // Auto-select the accepted flight if no flight is selected
+      if (currentPayload && currentPayload.aircraft) {
+        const handedAc = currentPayload.aircraft.find(a => a.callsign === targetCallsign);
+        if (handedAc) selectAircraft(handedAc);
+      }
+
       document.getElementById('handoff-banner').style.display = 'none';
       activeInboundHandoff = null;
     }
