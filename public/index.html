@@ -302,27 +302,15 @@
 
     connect();
 
-    // 60FPS LERP Renderer
-    let currentLines = null;
-    let targetLines = null;
-    let lerpFactor = 0.45;
+    // High-performance direct frame rendering (Anti-Glitch)
+    let activeLines = [];
 
     function renderLoop() {
-      if (targetLines && targetLines.length > 0) {
-        if (!currentLines || currentLines.length !== targetLines.length) {
-          currentLines = JSON.parse(JSON.stringify(targetLines));
-        } else {
-          for (let i = 0; i < targetLines.length; i++) {
-            currentLines[i].x1 += (targetLines[i].x1 - currentLines[i].x1) * lerpFactor;
-            currentLines[i].y1 += (targetLines[i].y1 - currentLines[i].y1) * lerpFactor;
-            currentLines[i].x2 += (targetLines[i].x2 - currentLines[i].x2) * lerpFactor;
-            currentLines[i].y2 += (targetLines[i].y2 - currentLines[i].y2) * lerpFactor;
-          }
-        }
+      // Clear Canvas
+      ctx.fillStyle = '#000000';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-        ctx.fillStyle = '#000000';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-
+      if (activeLines && activeLines.length > 0) {
         const centerX = canvas.width / 2;
         const centerY = canvas.height / 2;
         const scale = Math.min(canvas.width, canvas.height) * (window.innerWidth < 768 ? 0.65 : 0.55);
@@ -330,9 +318,9 @@
         ctx.save();
         ctx.translate(centerX, centerY);
 
-        // Render each projected 2D line with its environment styling
-        for (let i = 0; i < currentLines.length; i++) {
-          const line = currentLines[i];
+        // Render each 2D wireframe line directly
+        for (let i = 0; i < activeLines.length; i++) {
+          const line = activeLines[i];
           ctx.strokeStyle = line.color || '#00FF00';
           ctx.lineWidth = line.color === '#00FF00' ? (window.innerWidth < 768 ? 2.4 : 2.0) : 1.2;
           ctx.shadowColor = line.color || '#00FF00';
@@ -363,8 +351,8 @@
         tickDisplay.innerText = `${tickMs.toFixed(0)}ms`;
       }
 
-      if (lines && lines.length > 0) {
-        targetLines = lines;
+      if (lines) {
+        activeLines = lines;
       }
     }
 
