@@ -655,11 +655,12 @@
         <!-- POV Toggle -->
         <button id="btn-map-pov" class="btn-action btn-amber btn-nav-compact" style="padding: 4px 8px; font-size: 8.5px;"
           onclick="toggleMapCockpitPOV()">POV</button>
-        <!-- POV Interactive Zoom Level Buttons -->
-        <div id="pov-zoom-controls" style="display: none; gap: 3px; align-items: center;">
+        <!-- POV Interactive Zoom Level & Outline Toggle -->
+        <div id="pov-zoom-controls" style="display: none; gap: 4px; align-items: center;">
           <button class="btn-action btn-nav-compact" style="padding: 4px 6px; font-size: 8.5px; background: rgba(30,30,30,0.8); border-color: #666;" onclick="adjustPOVZoom(-0.5)" title="Zoom Out (Wider View)">-</button>
           <span id="pov-zoom-display" style="font-size: 8px; font-weight: 800; color: var(--accent-cyan); min-width: 28px; text-align: center;">10.5x</span>
           <button class="btn-action btn-nav-compact" style="padding: 4px 6px; font-size: 8.5px; background: rgba(30,30,30,0.8); border-color: #666;" onclick="adjustPOVZoom(+0.5)" title="Zoom In (Closer View)">+</button>
+          <button id="btn-traffic-outline" class="btn-action btn-nav-compact" style="padding: 4px 7px; font-size: 8.5px; background: rgba(30,30,30,0.8); border-color: #555; color: #888;" onclick="toggleTrafficOutline()" title="Toggle Traffic Aircraft High-Visibility Outline">OUTLINE</button>
         </div>
       </div>
     </div>
@@ -1391,14 +1392,6 @@
 
       // Keep aircraft accurately anchored in 3D perspective space across all zoom scales
       if (fullPlaneGroup) {
-        // Natural perspective scaling with altitude and zoom level
-        const zoomScale = Math.pow(2, (povZoomLevel - 10.5) * 0.4);
-        const altitudeFactor = selectedCallsign && currentPayload && currentPayload.aircraft ? 
-          (currentPayload.aircraft.find(a => a.callsign === selectedCallsign)?.altitude || 35000) / 35000 : 1.0;
-        
-        // Pinned securely to the center flight vector
-        fullPlaneGroup.scale.set(zoomScale, zoomScale, zoomScale);
-        fullPlaneGroup.position.set(0, -1.2 * altitudeFactor, 0);
       }
     }
 
@@ -1410,6 +1403,19 @@
         adjustPOVZoom(delta);
       }
     }, { passive: false });
+
+    let trafficAircraftOutlineEnabled = false;
+
+    function toggleTrafficOutline() {
+      trafficAircraftOutlineEnabled = !trafficAircraftOutlineEnabled;
+      const btn = document.getElementById('btn-traffic-outline');
+      if (btn) {
+        btn.style.color = trafficAircraftOutlineEnabled ? 'var(--accent-green)' : '#888888';
+        btn.style.borderColor = trafficAircraftOutlineEnabled ? 'var(--accent-green)' : '#555555';
+        btn.style.background = trafficAircraftOutlineEnabled ? 'rgba(0, 50, 20, 0.9)' : 'rgba(30,30,30,0.8)';
+      }
+      playUiClickSound();
+    }
 
     function toggleMapCockpitPOV() {
       mapCockpitPOVEnabled = !mapCockpitPOVEnabled;
@@ -1905,6 +1911,25 @@
                     const trafficScale = (window.trafficPlaneScaleFactor || 1.0) * currentActualScale;
                     otherModel.scale.set(trafficScale, trafficScale, trafficScale);
                     otherModel.position.set(0, 0, 0);
+
+                    // High-Visibility Glowing Outline / Tactical Wireframe when OUTLINE is toggled ON
+                    if (trafficAircraftOutlineEnabled) {
+                      otherModel.traverse((child) => {
+                        if (child.isMesh && child.material) {
+                          child.material = child.material.clone();
+                          child.material.emissive = new THREE.Color(0x00ff88);
+                          child.material.emissiveIntensity = 0.85;
+                        }
+                      });
+
+                      // Add Tactical HUD Target Box around surrounding aircraft
+                      const boxGeo = new THREE.BoxGeometry(7.5 * trafficScale, 2.8 * trafficScale, 7.5 * trafficScale);
+                      const boxEdges = new THREE.EdgesGeometry(boxGeo);
+                      const boxMat = new THREE.LineBasicMaterial({ color: 0x00ff88, linewidth: 1.5 });
+                      const hudTargetBox = new THREE.LineSegments(boxEdges, boxMat);
+                      hudTargetBox.position.set(0, 0, 0);
+                      otherModel.add(hudTargetBox);
+                    }
 
                     // Level cruise attitude matching player aircraft (+0.28 upright pitch + climb/descent)
                     const otherIsClimbing = otherAc.targetAltitude > otherAc.altitude + 300;
