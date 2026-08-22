@@ -963,6 +963,158 @@
       if (btn) btn.textContent = document.fullscreenElement ? 'EXIT FS' : 'FS';
     });
 
+    // ─── Tactical Web Audio Aviation Sound Engine ───────────────────────────
+    let audioCtx = null;
+    let jetEngineGain = null;
+    let jetNoiseNode = null;
+    let jetTurbineOsc = null;
+
+    function initAudioEngine() {
+      if (audioCtx) return;
+      try {
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        audioCtx = new AudioContext();
+      } catch (e) {
+        console.warn("Web Audio API not supported", e);
+      }
+    }
+
+    // Realistic Jet Turbofan Engine Synthesizer (Filtered Noise + High-RPM Whine)
+    function startJetEngineSound() {
+      initAudioEngine();
+      if (!audioCtx) return;
+      if (audioCtx.state === 'suspended') {
+        audioCtx.resume();
+      }
+      if (jetEngineGain) return; // Already playing
+
+      jetEngineGain = audioCtx.createGain();
+      jetEngineGain.gain.setValueAtTime(0.01, audioCtx.currentTime);
+      jetEngineGain.gain.exponentialRampToValueAtTime(0.18, audioCtx.currentTime + 1.2);
+      jetEngineGain.connect(audioCtx.destination);
+
+      // 1. Aerodynamic Airflow & Jet Thrust (Pink Noise generator)
+      const bufferSize = audioCtx.sampleRate * 2;
+      const noiseBuffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+      const output = noiseBuffer.getChannelData(0);
+      let b0 = 0, b1 = 0, b2 = 0, b3 = 0, b4 = 0, b5 = 0, b6 = 0;
+      for (let i = 0; i < bufferSize; i++) {
+        const white = Math.random() * 2 - 1;
+        b0 = 0.99886 * b0 + white * 0.0555179;
+        b1 = 0.99332 * b1 + white * 0.0750759;
+        b2 = 0.96900 * b2 + white * 0.1538520;
+        b3 = 0.86650 * b3 + white * 0.3104856;
+        b4 = 0.55000 * b4 + white * 0.5329522;
+        b5 = -0.7616 * b5 - white * 0.0168980;
+        output[i] = (b0 + b1 + b2 + b3 + b4 + b5 + b6 + white * 0.5362) * 0.08;
+        b6 = white * 0.115926;
+      }
+
+      jetNoiseNode = audioCtx.createBufferSource();
+      jetNoiseNode.buffer = noiseBuffer;
+      jetNoiseNode.loop = true;
+
+      // Low-pass Filter for heavy jet rumble
+      const lowpass = audioCtx.createBiquadFilter();
+      lowpass.type = 'lowpass';
+      lowpass.frequency.setValueAtTime(420, audioCtx.currentTime);
+
+      jetNoiseNode.connect(lowpass);
+      lowpass.connect(jetEngineGain);
+      jetNoiseNode.start();
+
+      // 2. High-RPM Jet Turbine Blade Whine
+      jetTurbineOsc = audioCtx.createOscillator();
+      jetTurbineOsc.type = 'sine';
+      jetTurbineOsc.frequency.setValueAtTime(140, audioCtx.currentTime); // Low spool harmonic
+
+      const turbineGain = audioCtx.createGain();
+      turbineGain.gain.setValueAtTime(0.04, audioCtx.currentTime);
+
+      jetTurbineOsc.connect(turbineGain);
+      turbineGain.connect(jetEngineGain);
+      jetTurbineOsc.start();
+    }
+
+    function stopJetEngineSound() {
+      if (jetEngineGain && audioCtx) {
+        jetEngineGain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.8);
+        setTimeout(() => {
+          if (jetNoiseNode) {
+            try { jetNoiseNode.stop(); } catch (e) {}
+            jetNoiseNode.disconnect();
+            jetNoiseNode = null;
+          }
+          if (jetTurbineOsc) {
+            try { jetTurbineOsc.stop(); } catch (e) {}
+            jetTurbineOsc.disconnect();
+            jetTurbineOsc = null;
+          }
+          if (jetEngineGain) {
+            jetEngineGain.disconnect();
+            jetEngineGain = null;
+          }
+        }, 850);
+      }
+    }
+
+    // Play High-Priority ATC Emergency / Conflict Alarm (Two-Tone Warning Chime)
+    function playAlertChime() {
+      initAudioEngine();
+      if (!audioCtx) return;
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+
+      const now = audioCtx.currentTime;
+      const osc1 = audioCtx.createOscillator();
+      const osc2 = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+
+      osc1.type = 'triangle';
+      osc2.type = 'sawtooth';
+
+      // Chime Tone 1: 880Hz (A5) -> Tone 2: 587Hz (D5)
+      osc1.frequency.setValueAtTime(880, now);
+      osc1.frequency.setValueAtTime(587, now + 0.15);
+      osc2.frequency.setValueAtTime(884, now);
+      osc2.frequency.setValueAtTime(590, now + 0.15);
+
+      gain.gain.setValueAtTime(0.18, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.65);
+
+      osc1.connect(gain);
+      osc2.connect(gain);
+      gain.connect(audioCtx.destination);
+
+      osc1.start(now);
+      osc2.start(now);
+      osc1.stop(now + 0.7);
+      osc2.stop(now + 0.7);
+    }
+
+    // Play Mission / Handoff / Sector Task Alert Tone (Crisp Radar Ping)
+    function playTaskPing() {
+      initAudioEngine();
+      if (!audioCtx) return;
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+
+      const now = audioCtx.currentTime;
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(1050, now);
+      osc.frequency.exponentialRampToValueAtTime(1400, now + 0.08);
+
+      gain.gain.setValueAtTime(0.12, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+
+      osc.start(now);
+      osc.stop(now + 0.38);
+    }
+
     function toggleMapCockpitPOV() {
       mapCockpitPOVEnabled = !mapCockpitPOVEnabled;
       const btn = document.getElementById('btn-map-pov');
@@ -976,6 +1128,9 @@
         if (overlay3D) overlay3D.style.display = 'block';
         if (analogRadarBox) analogRadarBox.style.display = 'block';
 
+        // Start Realistic Jet Turbofan Sound Engine
+        startJetEngineSound();
+
         // Pick first flight if none selected
         if (!selectedCallsign && currentPayload && currentPayload.aircraft && currentPayload.aircraft.length > 0) {
           selectAircraft(currentPayload.aircraft[0]);
@@ -986,6 +1141,9 @@
         btn.style.borderColor = 'rgba(255,255,255,0.15)';
         if (overlay3D) overlay3D.style.display = 'none';
         if (analogRadarBox) analogRadarBox.style.display = 'none';
+
+        // Stop Jet Engine Sound Engine
+        stopJetEngineSound();
 
         // Reset map to top-down 2D orthographic radar view
         map.easeTo({
@@ -1636,8 +1794,11 @@
         }
       }
 
-      // Inbound Handoff Alert Banner
+      // Inbound Handoff Alert Banner & Task Audio Notification
       if (payload.handoffs && payload.handoffs.length > 0) {
+        if (!activeInboundHandoff || activeInboundHandoff.callsign !== payload.handoffs[0].callsign) {
+          playTaskPing(); // Play clean sonar mission ping
+        }
         activeInboundHandoff = payload.handoffs[0];
         document.getElementById('handoff-msg').innerText = `${activeInboundHandoff.callsign} requesting entry from ${activeInboundHandoff.fromSector}`;
         document.getElementById('handoff-banner').style.display = 'block';
@@ -1678,9 +1839,20 @@
         }
       }
 
-      // Radio Stream
+      // Radio Stream & Dynamic Audio Chime for In-Flight Emergencies / Task Events
       if (payload.logs && payload.logs.length !== lastLogLength) {
+        const newLogs = payload.logs.slice(lastLogLength);
         lastLogLength = payload.logs.length;
+
+        // Check if new incoming logs contain emergency or handoff tasks
+        newLogs.forEach(l => {
+          if (l.type === 'ALERT' || l.type === 'EMERGENCY' || l.message.includes('MAYDAY')) {
+            playAlertChime(); // Urgent 2-tone ATC Master Warning Chime
+          } else if (l.type === 'SYS' || l.type === 'HANDOFF') {
+            playTaskPing(); // Mission Task update ping
+          }
+        });
+
         const stream = document.getElementById('radio-stream');
         stream.innerHTML = payload.logs.map(l => {
           return `<div class="log-line log-${l.type}">[${l.timestamp}] [${l.callsign}] ${l.message}</div>`;
