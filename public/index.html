@@ -316,11 +316,12 @@
     <div class="form-group">
       <label>AIRSPACE SECTOR (FIR)</label>
       <select id="sector-select" class="form-control" onchange="claimSector()">
-        <option value="sec-wiii">WIII_FIR - Jakarta FIR (Western Indonesia)</option>
-        <option value="sec-wsjc">WSJC_ACC - Singapore ACC (Malacca Sector)</option>
-        <option value="sec-waaa">WAAA_FIR - Ujung Pandang FIR (Eastern Indonesia)</option>
-        <option value="sec-vtbb">VTBB_ACC - Bangkok ACC (Indochina Sector)</option>
-        <option value="sec-ybbb">YBBB_FIR - Brisbane / Sydney ACC (Oceanic)</option>
+        <option value="sec-wiii">WIII_FIR - Jakarta FIR (Indonesia)</option>
+        <option value="sec-wsjc">WSJC_ACC - Singapore ACC (Southeast Asia)</option>
+        <option value="sec-rjjj">RJJJ_ACC - Tokyo ACC (East Asia / Pacific)</option>
+        <option value="sec-egtt">EGTT_ACC - London / Eurocontrol (Europe)</option>
+        <option value="sec-kzny">KZNY_ACC - New York ARTCC (North America)</option>
+        <option value="sec-ybbb">YBBB_FIR - Sydney / Brisbane (Oceania)</option>
       </select>
     </div>
 
@@ -372,8 +373,9 @@
           <select id="handoff-target-select" class="form-control" style="margin-bottom: 4px;">
             <option value="sec-wsjc">WSJC_ACC (Singapore)</option>
             <option value="sec-wiii">WIII_FIR (Jakarta)</option>
-            <option value="sec-waaa">WAAA_FIR (Ujung Pandang)</option>
-            <option value="sec-vtbb">VTBB_ACC (Bangkok)</option>
+            <option value="sec-rjjj">RJJJ_ACC (Tokyo)</option>
+            <option value="sec-egtt">EGTT_ACC (London)</option>
+            <option value="sec-kzny">KZNY_ACC (New York)</option>
             <option value="sec-ybbb">YBBB_FIR (Sydney)</option>
           </select>
           <button class="atc-btn btn-amber" onclick="initiateHandoff()">INITIATE SECTOR HANDOFF</button>
@@ -550,20 +552,29 @@
         document.getElementById('controller-id-badge').innerText = `CTR-${selfControllerId}`;
       }
 
-      document.getElementById('flights-count').innerText = `${payload.totalFlights} ACTIVE`;
-      const alertEl = document.getElementById('alerts-count');
-      alertEl.innerText = `${payload.activeAlerts} CONFLICTS`;
-      alertEl.style.color = payload.activeAlerts > 0 ? 'var(--radar-red)' : 'var(--radar-green)';
+      // Update counts without touching DOM tree unnecessarily
+      const totalStr = `${payload.totalFlights} ACTIVE`;
+      const flightsEl = document.getElementById('flights-count');
+      if (flightsEl.innerText !== totalStr) flightsEl.innerText = totalStr;
 
-      // Active Sector label
-      const mySec = payload.sectors.find(s => s.id === payload.sectorId);
-      if (mySec) {
-        document.getElementById('my-sector-name').innerText = `${mySec.icao} (${mySec.name.split(' ')[0]})`;
+      const alertEl = document.getElementById('alerts-count');
+      const alertStr = `${payload.activeAlerts} CONFLICTS`;
+      if (alertEl.innerText !== alertStr) {
+        alertEl.innerText = alertStr;
+        alertEl.style.color = payload.activeAlerts > 0 ? 'var(--radar-red)' : 'var(--radar-green)';
       }
 
-      // Controller Roster
+      // Active Sector label
+      const mySec = payload.sectors ? payload.sectors.find(s => s.id === payload.sectorId) : null;
+      if (mySec) {
+        const secLabel = `${mySec.icao} (${mySec.name.split(' ')[0]})`;
+        const mySecEl = document.getElementById('my-sector-name');
+        if (mySecEl.innerText !== secLabel) mySecEl.innerText = secLabel;
+      }
+
+      // Controller Roster (Only update on change)
       const rosterContainer = document.getElementById('controller-roster');
-      rosterContainer.innerHTML = payload.sectors.map(s => {
+      const rosterHtml = payload.sectors.map(s => {
         const isMe = s.controllerId === selfControllerId;
         return `
           <div style="display: flex; justify-content: space-between; padding: 3px 0; border-bottom: 1px dashed rgba(255,255,255,0.05); ${isMe ? 'color: var(--radar-green); font-weight: 700;' : ''}">
@@ -572,6 +583,9 @@
           </div>
         `;
       }).join('');
+      if (rosterContainer.innerHTML !== rosterHtml) {
+        rosterContainer.innerHTML = rosterHtml;
+      }
 
       // Handoff Notification
       if (payload.handoffs && payload.handoffs.length > 0) {
