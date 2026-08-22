@@ -282,14 +282,14 @@
       }
     }
 
-    // Mouse Look (Yaw & Pitch)
+    // Mouse Look (Yaw & Pitch) with Throttled Batching
+    let accumulatedDX = 0;
+    let accumulatedDY = 0;
+
     window.addEventListener('mousemove', (e) => {
-      if (document.pointerLockElement === canvas && ws && ws.readyState === WebSocket.OPEN) {
-        ws.send(JSON.stringify({
-          type: 'look',
-          dx: e.movementX,
-          dy: e.movementY
-        }));
+      if (document.pointerLockElement === canvas) {
+        accumulatedDX += e.movementX;
+        accumulatedDY += e.movementY;
       }
     });
 
@@ -310,8 +310,23 @@
       activeKeys.delete(key);
     });
 
+    // Unified 60Hz Input Sender (Mencegah TCP Congestion / Flooding)
     setInterval(() => {
-      if (ws && ws.readyState === WebSocket.OPEN && activeKeys.size > 0) {
+      if (!ws || ws.readyState !== WebSocket.OPEN) return;
+
+      // 1. Kirim akumulasi rotasi mouse jika ada gerakan
+      if (accumulatedDX !== 0 || accumulatedDY !== 0) {
+        ws.send(JSON.stringify({
+          type: 'look',
+          dx: accumulatedDX,
+          dy: accumulatedDY
+        }));
+        accumulatedDX = 0;
+        accumulatedDY = 0;
+      }
+
+      // 2. Kirim input pergerakan keyboard
+      if (activeKeys.size > 0) {
         activeKeys.forEach((key) => {
           ws.send(JSON.stringify({
             type: 'move',
