@@ -57,12 +57,12 @@ func (p *Player) ReadPump(c *websocket.Conn) {
 		p.Mutex.Lock()
 		switch cmd.Type {
 		case "look":
-			// FPS Mouse/Swipe Look (Standar PUBG):
-			// Gerak mouse ke kanan (+DX) -> Kamera menoleh ke kanan (+Yaw)
-			// Gerak mouse ke atas (-DY) -> Kamera mendongak ke atas (+Pitch)
+			// FPS Natural Look (Standard FPS / PUBG):
+			// Geser mouse/swipe ke kanan -> Kamera menoleh ke kanan
+			// Geser mouse/swipe ke atas -> Kamera mendongak ke atas
 			sensitivity := 0.003
-			p.Yaw += cmd.DX * sensitivity
-			p.Pitch -= cmd.DY * sensitivity
+			p.Yaw -= cmd.DX * sensitivity
+			p.Pitch += cmd.DY * sensitivity
 
 			// Clamp pitch sudut pandang atas/bawah
 			if p.Pitch > 1.45 {
