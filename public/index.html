@@ -1979,9 +1979,9 @@
             else if (isSelected) acColor = '#ffffff';
             else acColor = '#cccccc';
 
-            // In 3D Cockpit POV Mode: Hide floating 2D box tag for a clean cinematic view
-            if (mapCockpitPOVEnabled && isSelected) {
-              return; // Clean cinematic view without floating HUD box obstruction
+            // In 3D Cockpit POV Mode: All aircraft in visual range are rendered as genuine 3D models in Three.js
+            if (mapCockpitPOVEnabled) {
+              return; // Clean cinematic 3D world without 2D icon overlays
             }
 
             let planeSize = isSelected ? 10 : 7.5;
@@ -2051,8 +2051,8 @@
       requestAnimationFrame(drawRadarScope);
     }
 
-    // Authentic Green Phosphor Airborne PPI Radar Sweep Canvas Loop
-    let radarSweepAngle = 0;
+    // Modern Tactical Rectangular TCAS / Navigation Display (Full Panel Fit)
+    let radarSweepScanX = 0;
     function drawAnalogRadarScope() {
       const aCanvas = document.getElementById('analog-radar-canvas');
       if (!aCanvas) return;
@@ -2060,72 +2060,83 @@
       const w = aCanvas.width;
       const h = aCanvas.height;
       const cx = w / 2;
-      const cy = h / 2;
-      const maxR = Math.min(cx, cy) - 10;
+      const cy = h - 25; // Aircraft centered near bottom looking forward-up
 
-      // Dark tactical green phosphor background with slight trail decay
-      actx.fillStyle = 'rgba(3, 10, 6, 0.2)';
+      // Sleek avionics glass cockpit background
+      actx.fillStyle = 'rgba(5, 8, 12, 0.35)';
       actx.fillRect(0, 0, w, h);
 
-      // Radar Concentric Range Rings (10NM, 20NM, 30NM, 40NM)
-      actx.strokeStyle = 'rgba(0, 230, 118, 0.25)';
+      // Subtle Tactical Grid Lines (Rectangular layout matching the panel)
+      actx.strokeStyle = 'rgba(0, 221, 255, 0.08)';
       actx.lineWidth = 1;
-      for (let r = 1; r <= 4; r++) {
+      const gridSize = 24;
+      for (let x = 0; x < w; x += gridSize) {
         actx.beginPath();
-        actx.arc(cx, cy, (maxR / 4) * r, 0, Math.PI * 2);
+        actx.moveTo(x, 0);
+        actx.lineTo(x, h);
+        actx.stroke();
+      }
+      for (let y = 0; y < h; y += gridSize) {
+        actx.beginPath();
+        actx.moveTo(0, y);
+        actx.lineTo(w, y);
         actx.stroke();
       }
 
-      // Crosshair & Azimuth Marks
-      actx.beginPath();
-      actx.moveTo(cx - maxR, cy);
-      actx.lineTo(cx + maxR, cy);
-      actx.moveTo(cx, cy - maxR);
-      actx.lineTo(cx, cy + maxR);
-      actx.stroke();
+      // Forward View Range Arcs (10NM, 20NM, 30NM, 40NM)
+      actx.strokeStyle = 'rgba(0, 221, 255, 0.22)';
+      actx.lineWidth = 1.2;
+      const maxRadius = Math.min(w * 0.48, h * 0.85);
+      for (let r = 1; r <= 4; r++) {
+        const radius = (maxRadius / 4) * r;
+        actx.beginPath();
+        actx.arc(cx, cy, radius, Math.PI * 1.15, Math.PI * 1.85);
+        actx.stroke();
 
-      // Heading Cardinal Ticks
-      actx.fillStyle = 'rgba(0, 230, 118, 0.6)';
-      actx.font = '700 7.5px JetBrains Mono';
-      actx.fillText('N', cx - 3, cy - maxR + 8);
-      actx.fillText('S', cx - 3, cy + maxR - 3);
-      actx.fillText('W', cx - maxR + 3, cy + 3);
-      actx.fillText('E', cx + maxR - 8, cy + 3);
+        // Range Label (NM)
+        actx.fillStyle = 'rgba(0, 221, 255, 0.6)';
+        actx.font = '700 7px JetBrains Mono';
+        actx.fillText(`${r * 10}NM`, cx - 10, cy - radius - 2);
+      }
 
-      // Rotating Phosphor Radar Sweep Beam
-      radarSweepAngle = (radarSweepAngle + 0.04) % (Math.PI * 2);
-      const sweepX = cx + Math.cos(radarSweepAngle) * maxR;
-      const sweepY = cy + Math.sin(radarSweepAngle) * maxR;
-
-      // Gradient Sweep Line with Phosphor Glow
-      const grad = actx.createRadialGradient(cx, cy, 2, cx, cy, maxR);
-      grad.addColorStop(0, 'rgba(0, 255, 136, 0.8)');
-      grad.addColorStop(1, 'rgba(0, 255, 136, 0.05)');
-
+      // Forward Flight Track Vector Line
+      actx.strokeStyle = 'rgba(0, 255, 136, 0.4)';
+      actx.setLineDash([4, 4]);
       actx.beginPath();
       actx.moveTo(cx, cy);
-      actx.arc(cx, cy, maxR, radarSweepAngle - 0.35, radarSweepAngle);
-      actx.lineTo(cx, cy);
-      actx.fillStyle = 'rgba(0, 230, 118, 0.12)';
-      actx.fill();
-
-      actx.beginPath();
-      actx.moveTo(cx, cy);
-      actx.lineTo(sweepX, sweepY);
-      actx.strokeStyle = '#00ff88';
-      actx.lineWidth = 1.5;
-      actx.shadowColor = '#00ff88';
-      actx.shadowBlur = 6;
+      actx.lineTo(cx, 12);
       actx.stroke();
-      actx.shadowBlur = 0;
+      actx.setLineDash([]);
 
-      // Center Player Aircraft Symbol
-      actx.fillStyle = '#00ff88';
+      // Tactical Horizontal Radar Scan Bar Sweep (Moving forward)
+      radarSweepScanX = (radarSweepScanX + 1.8) % (maxRadius + 20);
+      const scanY = cy - radarSweepScanX;
+      if (scanY > 10) {
+        const scanGrad = actx.createLinearGradient(0, scanY - 12, 0, scanY);
+        scanGrad.addColorStop(0, 'rgba(0, 221, 255, 0)');
+        scanGrad.addColorStop(1, 'rgba(0, 221, 255, 0.18)');
+        actx.fillStyle = scanGrad;
+        actx.fillRect(cx - maxRadius, scanY - 12, maxRadius * 2, 12);
+
+        actx.strokeStyle = 'rgba(0, 221, 255, 0.6)';
+        actx.lineWidth = 1;
+        actx.beginPath();
+        actx.moveTo(cx - maxRadius, scanY);
+        actx.lineTo(cx + maxRadius, scanY);
+        actx.stroke();
+      }
+
+      // Center Player Aircraft Icon (Chevron shape)
+      actx.fillStyle = '#00e5ff';
       actx.beginPath();
-      actx.arc(cx, cy, 3, 0, Math.PI * 2);
+      actx.moveTo(cx, cy - 8);
+      actx.lineTo(cx - 7, cy + 6);
+      actx.lineTo(cx, cy + 2);
+      actx.lineTo(cx + 7, cy + 6);
+      actx.closePath();
       actx.fill();
 
-      // Render Nearby Surrounding Aircraft Blips (< 40 NM)
+      // Render Nearby Surrounding Aircraft (< 40 NM in forward/lateral sector)
       if (selectedCallsign && currentPayload && currentPayload.aircraft) {
         const myAc = currentPayload.aircraft.find(a => a.callsign === selectedCallsign);
         if (myAc) {
@@ -2148,31 +2159,52 @@
               let bearingToOther = Math.atan2(y, x) * (180.0 / Math.PI);
               if (bearingToOther < 0) bearingToOther += 360;
 
-              // Convert polar to cartesian
-              const rPx = (distNM / 40.0) * maxR;
-              const angleRad = (bearingToOther - 90) * (Math.PI / 180.0);
-              const bx = cx + Math.cos(angleRad) * rPx;
-              const by = cy + Math.sin(angleRad) * rPx;
+              // Relative angle relative to own heading
+              let relAngleDeg = (bearingToOther - (myAc.heading || 0) + 540) % 360 - 180;
+              const relAngleRad = relAngleDeg * (Math.PI / 180.0);
 
-              // Blip Color based on conflict or emergency
-              const isAlert = otherAc.conflictAlert || otherAc.emergencyState;
-              actx.fillStyle = isAlert ? '#ff2244' : '#00ff88';
-              actx.shadowColor = isAlert ? '#ff2244' : '#00ff88';
-              actx.shadowBlur = 8;
-              actx.beginPath();
-              actx.arc(bx, by, 3, 0, Math.PI * 2);
-              actx.fill();
-              actx.shadowBlur = 0;
+              // Map position relative to forward apex (cy)
+              const rPx = (distNM / 40.0) * maxRadius;
+              const bx = cx + Math.sin(relAngleRad) * rPx;
+              const by = cy - Math.cos(relAngleRad) * rPx;
 
-              // Callsign & Altitude tag
-              actx.fillStyle = '#ffffff';
-              actx.font = '600 7px JetBrains Mono';
-              actx.fillText(otherAc.callsign, bx + 5, by - 2);
-              actx.fillStyle = '#aaaaaa';
-              actx.font = '6px JetBrains Mono';
-              const altDelta = Math.round((otherAc.altitude - myAc.altitude) / 100);
-              const altStr = altDelta >= 0 ? `+${altDelta}` : `${altDelta}`;
-              actx.fillText(`FL${Math.round(otherAc.altitude / 100)} (${altStr})`, bx + 5, by + 6);
+              // Only render if inside panel boundaries
+              if (bx >= 10 && bx <= w - 10 && by >= 10 && by <= h - 5) {
+                const isAlert = otherAc.conflictAlert || otherAc.emergencyState;
+
+                // Diamond TCAS Target Marker
+                actx.fillStyle = isAlert ? '#ff2244' : '#00ff88';
+                actx.shadowColor = isAlert ? '#ff2244' : '#00ff88';
+                actx.shadowBlur = 6;
+                actx.beginPath();
+                actx.moveTo(bx, by - 4);
+                actx.lineTo(bx + 4, by);
+                actx.lineTo(bx, by + 4);
+                actx.lineTo(bx - 4, by);
+                actx.closePath();
+                actx.fill();
+                actx.shadowBlur = 0;
+
+                // Relative Heading Arrow Vector
+                const relHdgRad = ((otherAc.heading - myAc.heading) * Math.PI) / 180.0;
+                actx.strokeStyle = isAlert ? '#ff2244' : '#00ff88';
+                actx.lineWidth = 1.2;
+                actx.beginPath();
+                actx.moveTo(bx, by);
+                actx.lineTo(bx + Math.sin(relHdgRad) * 8, by - Math.cos(relHdgRad) * 8);
+                actx.stroke();
+
+                // Telemetry Tag
+                actx.fillStyle = '#ffffff';
+                actx.font = '700 7.5px JetBrains Mono';
+                actx.fillText(otherAc.callsign, bx + 6, by - 2);
+
+                actx.fillStyle = '#aaccdd';
+                actx.font = '6.5px JetBrains Mono';
+                const altDelta = Math.round((otherAc.altitude - myAc.altitude) / 100);
+                const altStr = altDelta >= 0 ? `+${altDelta}` : `${altDelta}`;
+                actx.fillText(`FL${Math.round(otherAc.altitude / 100)} (${altStr})`, bx + 6, by + 6);
+              }
             }
           });
         }
