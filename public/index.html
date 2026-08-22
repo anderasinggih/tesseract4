@@ -1880,24 +1880,24 @@
                     if (bearingToOther < 0) bearingToOther += 360;
 
                     // Relative angle relative to player aircraft forward nose heading
-                    let relAngleDeg = (bearingToOther - (ac.heading || 0) + 360) % 360;
+                    let relAngleDeg = (bearingToOther - (currentCamHeading || 0) + 360) % 360;
                     const relAngleRad = relAngleDeg * (Math.PI / 180.0);
 
-                    // Map distance (1 NM ≈ 2.5 3D space units)
-                    const sceneDist = Math.max(3.0, distNM * 2.5);
+                    // Dynamic distance in 3D scene scaled with real zoom level (staying locked on coordinates)
+                    const sceneDist = distNM * 2.5 * currentActualScale;
                     const relX = Math.sin(relAngleRad) * sceneDist;
                     const relZ = -Math.cos(relAngleRad) * sceneDist; // Forward is -Z
 
-                    // Altitude delta (1000 ft ≈ 0.5 3D space units)
+                    // Altitude delta scaled proportionally
                     const altDeltaFt = (otherAc.altitude - ac.altitude);
-                    const relY = -1.2 + (altDeltaFt / 1000.0) * 0.5;
+                    const relY = (altDeltaFt / 1000.0) * 0.5 * currentActualScale;
 
                     // Create container for traffic aircraft at correct relative offset
                     const trafficContainer = new THREE.Group();
                     trafficContainer.position.set(relX, relY, relZ);
 
                     // True heading rotation in 3D scene (relative to own aircraft forward axis)
-                    const relHdgDeg = (otherAc.heading - ac.heading + 360) % 360;
+                    const relHdgDeg = (otherAc.heading - currentCamHeading + 360) % 360;
                     trafficContainer.rotation.y = (relHdgDeg * Math.PI) / 180.0;
 
                     // Clone 3D plane mesh
