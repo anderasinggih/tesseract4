@@ -162,6 +162,8 @@ func (h *ATCHub) spawnCommercialFlight() {
 		Lng: orig.Coord.Lng + (dest.Coord.Lng-orig.Coord.Lng)*startFraction,
 	}
 
+	bearing := CalculateTrueBearing(startCoord, dest.Coord)
+
 	h.aircraft[callsign] = &Aircraft{
 		Callsign:       callsign,
 		Airline:        sched.Airline,
@@ -251,6 +253,16 @@ func (h *ATCHub) updateKinematics(dt float64) {
 
 	// 1. Move and steer each aircraft
 	for callsign, ac := range h.aircraft {
+		// Flight Management System (FMS) Auto-Nav: If heading not manually assigned by ATC, continuously track destination
+		if ac.TargetHeading == ac.Heading {
+			for _, apt := range GlobalMajorAirports {
+				if apt.ICAO == ac.Destination {
+					ac.TargetHeading = CalculateTrueBearing(ac.Coord, apt.Coord)
+					break
+				}
+			}
+		}
+
 		// Heading turn rate (approx 3 deg/sec standard rate 1 turn)
 		turnRate := 3.0 * dt
 		diffHeading := ac.TargetHeading - ac.Heading
