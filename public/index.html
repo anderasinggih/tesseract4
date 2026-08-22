@@ -1523,11 +1523,27 @@
     let wasdInterval = null;
 
     function applyWASD() {
-      if (!mapCockpitPOVEnabled) return;
-      if (wasdHeld['w'] || wasdHeld['W']) adjustAltitude(+1000);
-      if (wasdHeld['s'] || wasdHeld['S']) adjustAltitude(-1000);
-      if (wasdHeld['a'] || wasdHeld['A']) adjustHeading(-5);
-      if (wasdHeld['d'] || wasdHeld['D']) adjustHeading(+5);
+      if (!mapCockpitPOVEnabled || !selectedCallsign || !currentPayload || !ws || ws.readyState !== WebSocket.OPEN) return;
+      const ac = currentPayload.aircraft && currentPayload.aircraft.find(a => a.callsign === selectedCallsign);
+      if (!ac) return;
+
+      // Read LIVE aircraft values — never touch the slider, no sound spam
+      if (wasdHeld['a'] || wasdHeld['A']) {
+        const nextHdg = (ac.heading - 3 + 360) % 360; // turn left 3°/tick
+        ws.send(JSON.stringify({ type: 'set_heading', callsign: selectedCallsign, heading: nextHdg }));
+      }
+      if (wasdHeld['d'] || wasdHeld['D']) {
+        const nextHdg = (ac.heading + 3 + 360) % 360; // turn right 3°/tick
+        ws.send(JSON.stringify({ type: 'set_heading', callsign: selectedCallsign, heading: nextHdg }));
+      }
+      if (wasdHeld['w'] || wasdHeld['W']) {
+        const nextAlt = Math.min(43000, ac.altitude + 500); // climb 500ft/tick
+        ws.send(JSON.stringify({ type: 'set_altitude', callsign: selectedCallsign, altitude: nextAlt }));
+      }
+      if (wasdHeld['s'] || wasdHeld['S']) {
+        const nextAlt = Math.max(1000, ac.altitude - 500); // descend 500ft/tick
+        ws.send(JSON.stringify({ type: 'set_altitude', callsign: selectedCallsign, altitude: nextAlt }));
+      }
     }
 
     document.addEventListener('keydown', (e) => {
