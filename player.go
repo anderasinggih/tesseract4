@@ -9,78 +9,49 @@ import (
 	"github.com/gofiber/websocket/v2"
 )
 
-// AgentConnection represents a live physical client WebSocket session
-type AgentConnection struct {
-	ID      string
-	Alias   string
-	Faction string
-	City    string
-	Coord   GeoCoord
-	Conn    *websocket.Conn
-	Send    chan []byte
+// ATCClientConnection represents an active air traffic controller session
+type ATCClientConnection struct {
+	ID       string
+	Callsign string
+	SectorID string
+	Conn     *websocket.Conn
+	Send     chan []byte
 }
 
-// WritePump pushes state updates to the browser
-func (a *AgentConnection) WritePump() {
-	defer a.Conn.Close()
+func (c *ATCClientConnection) WritePump() {
+	defer c.Conn.Close()
 
 	for {
-		message, ok := <-a.Send
+		message, ok := <-c.Send
 		if !ok {
-			_ = a.Conn.WriteMessage(websocket.CloseMessage, []byte{})
+			_ = c.Conn.WriteMessage(websocket.CloseMessage, []byte{})
 			return
 		}
 
-		err := a.Conn.WriteMessage(websocket.TextMessage, message)
+		err := c.Conn.WriteMessage(websocket.TextMessage, message)
 		if err != nil {
 			return
 		}
 	}
 }
 
-// ReadPump handles commands from the cyber operator UI
-func (a *AgentConnection) ReadPump(c *websocket.Conn) {
+func (c *ATCClientConnection) ReadPump(conn *websocket.Conn) {
 	for {
-		var cmd ClientCommand
-		err := c.ReadJSON(&cmd)
+		var cmd ClientATCCommand
+		err := conn.ReadJSON(&cmd)
 		if err != nil {
 			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
-				log.Printf("[ReadPump] Operator %s disconnected: %v", a.ID, err)
+				log.Printf("[ReadPump] Controller %s disconnected: %v", c.ID, err)
 			}
 			break
 		}
 
-		switch cmd.Type {
-		case "join":
-			if cmd.Alias != "" {
-				a.Alias = cmd.Alias
-			}
-			if cmd.Faction != "" {
-				a.Faction = cmd.Faction
-			}
-			if cmd.City != "" {
-				a.City = cmd.City
-			}
-			GlobalWarRoom.UpdateAgent(a.ID, a.Alias, a.Faction, a.City)
-
-		case "attack":
-			if cmd.TargetCity != "" && cmd.Vector != "" {
-				payloadMB := cmd.PayloadMB
-				if payloadMB <= 0 {
-					payloadMB = 250
-				}
-				GlobalWarRoom.LaunchAttack(a.ID, a.City, cmd.TargetCity, cmd.Vector, payloadMB)
-			}
-
-		case "defend":
-			GlobalWarRoom.DeployDefense(a.ID, cmd.ActionType, cmd.ArcID, cmd.TargetCity)
-		}
+		GlobalATCHub.ExecuteATCCommand(cmd, c.ID)
 	}
 }
 
-// TelemetryLoop streams the global war room state to the client at 30Hz
-func (a *AgentConnection) TelemetryLoop(ctx context.Context) {
-	ticker := time.NewTicker(33 * time.Millisecond) // 30Hz
+func (c *ATCClientConnection) TelemetryLoop(ctx context.Context) {
+	ticker := time.NewTicker(66 * time.Millisecond) // ~15Hz smooth radar update
 	defer ticker.Stop()
 
 	for {
@@ -89,11 +60,11 @@ func (a *AgentConnection) TelemetryLoop(ctx context.Context) {
 			return
 
 		case <-ticker.C:
-			state := GlobalWarRoom.GetSnapshot(a.ID)
-			data, err := json.Marshal(state)
+			payload := GlobalATCHub.GetSnapshot(c.ID)
+			data, err := json.Marshal(payload)
 			if err == nil {
 				select {
-				case a.Send <- data:
+				case c.Send <- data:
 				default:
 				}
 			}

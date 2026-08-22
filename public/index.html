@@ -3,26 +3,25 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>CYBER WARFARE OPS // GLOBAL THREAT MATRIX</title>
+  <title>GLOBAL ATC RADAR // SECTOR HANDOFF OPS</title>
   
-  <!-- MapLibre GL JS & CSS (mapcn Foundation) -->
+  <!-- MapLibre GL JS & CSS -->
   <link href="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css" rel="stylesheet" />
   <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
   
-  <!-- Professional Monospace Typography -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700;800&display=swap" rel="stylesheet">
 
   <style>
     :root {
-      --bg-dark: #080a0f;
-      --panel-bg: rgba(12, 16, 24, 0.92);
+      --radar-bg: #070a0e;
+      --panel-bg: rgba(10, 15, 23, 0.94);
       --border-color: rgba(255, 255, 255, 0.12);
-      --border-active: rgba(0, 255, 136, 0.4);
-      --red-team: #ff2a5f;
-      --blue-team: #00b4d8;
-      --neon-green: #00e676;
+      --radar-green: #00e676;
+      --radar-amber: #ffb703;
+      --radar-cyan: #00b4d8;
+      --radar-red: #ff2a5f;
       --text-muted: #8290a5;
       --text-main: #e2e8f0;
     }
@@ -39,7 +38,7 @@
       width: 100%;
       height: 100%;
       overflow: hidden;
-      background: var(--bg-dark);
+      background: var(--radar-bg);
       color: var(--text-main);
     }
 
@@ -50,7 +49,7 @@
       width: 100vw;
       height: 100vh;
       z-index: 1;
-      background: #05070a;
+      background: #040608;
     }
 
     #canvas-overlay {
@@ -63,16 +62,16 @@
       z-index: 2;
     }
 
-    /* Professional Cyber Header */
+    /* Top Bar Header */
     #top-bar {
       position: absolute;
-      top: 12px;
-      left: 12px;
-      right: 12px;
+      top: 10px;
+      left: 10px;
+      right: 10px;
       display: flex;
       justify-content: space-between;
       align-items: center;
-      padding: 10px 16px;
+      padding: 8px 14px;
       background: var(--panel-bg);
       border: 1px solid var(--border-color);
       border-radius: 4px;
@@ -81,8 +80,8 @@
     }
 
     .brand-title {
-      font-size: 13px;
-      font-weight: 700;
+      font-size: 12px;
+      font-weight: 800;
       letter-spacing: 1px;
       color: #fff;
       display: flex;
@@ -90,16 +89,16 @@
       gap: 8px;
     }
 
-    .status-dot {
-      width: 8px;
-      height: 8px;
-      background: var(--neon-green);
+    .radar-pulse {
+      width: 7px;
+      height: 7px;
+      background: var(--radar-green);
       border-radius: 50%;
     }
 
     .metrics-bar {
       display: flex;
-      gap: 24px;
+      gap: 20px;
       font-size: 11px;
     }
 
@@ -112,13 +111,12 @@
     .metric-title {
       color: var(--text-muted);
       font-size: 9px;
-      letter-spacing: 0.5px;
       text-transform: uppercase;
     }
 
     .metric-val {
       font-weight: 700;
-      font-size: 13px;
+      font-size: 12px;
     }
 
     /* Structured Panels */
@@ -129,14 +127,15 @@
       border-radius: 4px;
       backdrop-filter: blur(10px);
       z-index: 10;
-      padding: 14px;
+      padding: 12px;
     }
 
-    #action-deck {
-      top: 70px;
-      left: 12px;
-      width: 310px;
-      max-height: calc(100vh - 84px);
+    /* Left Sector & Controller Deck */
+    #sector-deck {
+      top: 60px;
+      left: 10px;
+      width: 300px;
+      max-height: calc(100vh - 72px);
       overflow-y: auto;
     }
 
@@ -146,43 +145,11 @@
       letter-spacing: 1px;
       text-transform: uppercase;
       color: var(--text-main);
-      margin-bottom: 12px;
+      margin-bottom: 10px;
       border-bottom: 1px solid var(--border-color);
-      padding-bottom: 6px;
+      padding-bottom: 5px;
       display: flex;
       justify-content: space-between;
-    }
-
-    .faction-toggle {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 6px;
-      margin-bottom: 12px;
-    }
-
-    .faction-btn {
-      padding: 8px;
-      border-radius: 4px;
-      font-weight: 700;
-      font-size: 11px;
-      cursor: pointer;
-      border: 1px solid var(--border-color);
-      transition: all 0.15s ease;
-      text-align: center;
-      background: rgba(255, 255, 255, 0.03);
-      color: var(--text-muted);
-    }
-
-    .faction-btn.red-active {
-      background: rgba(255, 42, 95, 0.12);
-      border-color: var(--red-team);
-      color: var(--red-team);
-    }
-
-    .faction-btn.blue-active {
-      background: rgba(0, 180, 216, 0.12);
-      border-color: var(--blue-team);
-      color: var(--blue-team);
     }
 
     .form-group {
@@ -195,13 +162,12 @@
       color: var(--text-muted);
       margin-bottom: 3px;
       text-transform: uppercase;
-      letter-spacing: 0.5px;
     }
 
     .form-control {
       width: 100%;
-      padding: 7px 9px;
-      background: rgba(0, 0, 0, 0.5);
+      padding: 6px 8px;
+      background: rgba(0, 0, 0, 0.6);
       border: 1px solid var(--border-color);
       border-radius: 4px;
       color: #fff;
@@ -210,47 +176,65 @@
     }
 
     .form-control:focus {
-      border-color: var(--border-active);
+      border-color: var(--radar-green);
     }
 
-    .strike-btn {
+    .atc-btn {
       width: 100%;
-      padding: 10px;
+      padding: 8px;
       font-weight: 700;
-      font-size: 11px;
-      letter-spacing: 1px;
+      font-size: 10px;
+      letter-spacing: 0.5px;
       border-radius: 4px;
       cursor: pointer;
       border: none;
       transition: background 0.15s;
-      margin-top: 4px;
       text-transform: uppercase;
     }
 
-    .strike-btn-red {
-      background: var(--red-team);
-      color: #fff;
-    }
-    .strike-btn-red:hover { background: #e02454; }
+    .btn-green { background: var(--radar-green); color: #040608; }
+    .btn-green:hover { background: #00c853; }
+    .btn-amber { background: var(--radar-amber); color: #040608; }
+    .btn-amber:hover { background: #ffa000; }
+    .btn-cyan { background: var(--radar-cyan); color: #040608; }
+    .btn-cyan:hover { background: #0096c7; }
 
-    .strike-btn-blue {
-      background: var(--blue-team);
-      color: #05070a;
+    /* Selected Aircraft Flight Strip Box */
+    #flight-strip-box {
+      margin-top: 10px;
+      padding: 10px;
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid var(--border-color);
+      border-left: 3px solid var(--radar-cyan);
+      border-radius: 3px;
     }
-    .strike-btn-blue:hover { background: #0096c7; }
 
-    /* Right Telemetry & Matrix Terminal Feed */
+    /* Right Telemetry & Handoff Deck */
     #telemetry-deck {
-      top: 70px;
-      right: 12px;
-      width: 360px;
-      max-height: calc(100vh - 84px);
+      top: 60px;
+      right: 10px;
+      width: 340px;
+      max-height: calc(100vh - 72px);
       display: flex;
       flex-direction: column;
       gap: 10px;
     }
 
-    #terminal-stream {
+    #handoff-banner {
+      display: none;
+      background: rgba(255, 183, 3, 0.15);
+      border: 1px solid var(--radar-amber);
+      border-radius: 4px;
+      padding: 8px 10px;
+      animation: pulseAlert 1s infinite alternate;
+    }
+
+    @keyframes pulseAlert {
+      0% { border-color: var(--radar-amber); }
+      100% { border-color: #fff; }
+    }
+
+    #radio-stream {
       background: rgba(0, 0, 0, 0.7);
       border: 1px solid var(--border-color);
       border-radius: 4px;
@@ -261,66 +245,29 @@
       line-height: 1.4;
     }
 
-    .log-line {
-      margin-bottom: 3px;
-      word-break: break-all;
-    }
-    .log-WARN { color: var(--red-team); }
-    .log-CRIT { color: #ff5722; font-weight: 700; }
-    .log-DEFENSE { color: var(--blue-team); font-weight: 700; }
-    .log-INFO { color: var(--neon-green); }
+    .log-line { margin-bottom: 3px; word-break: break-all; }
+    .log-RADIO { color: var(--radar-green); }
+    .log-ALERT { color: var(--radar-red); font-weight: 700; }
+    .log-HANDOFF { color: var(--radar-amber); font-weight: 700; }
+    .log-SYS { color: var(--text-muted); }
 
-    /* Active Threat List */
-    #intercept-list {
-      max-height: 160px;
-      overflow-y: auto;
-      display: flex;
-      flex-direction: column;
-      gap: 5px;
-    }
-
-    .threat-card {
-      background: rgba(255, 255, 255, 0.02);
-      border: 1px solid var(--border-color);
-      border-left: 3px solid var(--red-team);
-      border-radius: 3px;
-      padding: 6px 8px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      font-size: 10px;
-    }
-
-    .intercept-action-btn {
-      padding: 4px 7px;
-      background: var(--blue-team);
-      color: #05070a;
-      font-weight: 700;
-      border: none;
-      border-radius: 3px;
-      cursor: pointer;
-      font-size: 9px;
-      letter-spacing: 0.5px;
-    }
-    .intercept-action-btn:hover { background: #0096c7; }
-
-    /* Mobile Clean Layout */
+    /* Mobile Responsive */
     @media (max-width: 900px) {
-      #top-bar { padding: 8px 10px; }
-      .brand-title { font-size: 11px; }
-      .metrics-bar { gap: 12px; font-size: 9px; }
-      #action-deck {
-        top: 56px;
-        left: 8px;
-        right: 8px;
+      #top-bar { padding: 6px 8px; }
+      .brand-title { font-size: 10px; }
+      .metrics-bar { gap: 10px; font-size: 8px; }
+      #sector-deck {
+        top: 50px;
+        left: 6px;
+        right: 6px;
         width: auto;
         max-height: 38vh;
       }
       #telemetry-deck {
-        bottom: 8px;
+        bottom: 6px;
         top: auto;
-        left: 8px;
-        right: 8px;
+        left: 6px;
+        right: 6px;
         width: auto;
         max-height: 32vh;
       }
@@ -332,131 +279,133 @@
   <div id="map-container"></div>
   <canvas id="canvas-overlay"></canvas>
 
-  <!-- Top Clean Metrics Bar -->
+  <!-- Top Bar -->
   <div id="top-bar">
     <div class="brand-title">
-      <span class="status-dot"></span>
-      CYBER WARFARE OPS // THREAT MATRIX
+      <span class="radar-pulse"></span>
+      GLOBAL ATC RADAR // SECTOR HANDOFF OPS
     </div>
     <div class="metrics-bar">
       <div class="metric-badge">
-        <span class="metric-title">DEFCON LEVEL</span>
-        <span class="metric-val" id="defcon-val" style="color: var(--red-team);">DEFCON 4</span>
+        <span class="metric-title">ASSIGNED SECTOR</span>
+        <span class="metric-val" id="my-sector-name" style="color: var(--radar-green);">WIII_FIR (Jakarta)</span>
       </div>
       <div class="metric-badge">
-        <span class="metric-title">RED : BLUE SCORE</span>
-        <span class="metric-val"><span id="red-score" style="color: var(--red-team);">0</span> : <span id="blue-score" style="color: var(--blue-team);">0</span></span>
+        <span class="metric-title">AIR TRAFFIC COUNT</span>
+        <span class="metric-val" id="flights-count" style="color: var(--radar-cyan);">0 ACTIVE</span>
       </div>
       <div class="metric-badge">
-        <span class="metric-title">SHANNON ENTROPY</span>
-        <span class="metric-val" id="entropy-val" style="color: var(--neon-green);">4.20 H(X)</span>
+        <span class="metric-title">COLLISION ALERTS (STCA)</span>
+        <span class="metric-val" id="alerts-count" style="color: var(--radar-green);">0 CONFLICTS</span>
       </div>
     </div>
   </div>
 
-  <!-- Left Control Deck -->
-  <div id="action-deck" class="glass-panel">
+  <!-- Left Tactical Controller Deck -->
+  <div id="sector-deck" class="glass-panel">
     <div class="panel-header">
-      <span>TACTICAL DECK</span>
-      <span id="agent-id-badge" style="color: var(--blue-team);">SENTINEL-INIT</span>
-    </div>
-
-    <!-- Faction Selector -->
-    <div class="faction-toggle">
-      <div id="btn-faction-red" class="faction-btn red-active" onclick="setFaction('red')">RED TEAM [ATTACK]</div>
-      <div id="btn-faction-blue" class="faction-btn" onclick="setFaction('blue')">BLUE TEAM [DEFEND]</div>
+      <span>ATC CONTROLLER STATION</span>
+      <span id="controller-id-badge" style="color: var(--radar-cyan);">CTR-INIT</span>
     </div>
 
     <div class="form-group">
-      <label>OPERATOR ALIAS</label>
-      <input type="text" id="operator-alias" class="form-control" value="Specter-01" onchange="syncAgentProfile()">
+      <label>CONTROLLER CALLSIGN</label>
+      <input type="text" id="controller-callsign" class="form-control" value="JAKARTA_CTR" onchange="claimSector()">
     </div>
 
     <div class="form-group">
-      <label>STATION BASE</label>
-      <select id="origin-city" class="form-control" onchange="syncAgentProfile()">
-        <option value="Jakarta">Jakarta [ID] (AS131440)</option>
-        <option value="Singapore">Singapore [SG] (AS4657)</option>
-        <option value="Tokyo">Tokyo [JP] (AS2514)</option>
-        <option value="Frankfurt">Frankfurt [DE] (AS8881)</option>
-        <option value="Washington DC">Washington DC [US] (AS396982)</option>
-        <option value="London">London [GB] (AS5459)</option>
-        <option value="Sydney">Sydney [AU] (AS1221)</option>
-        <option value="São Paulo">São Paulo [BR] (AS22548)</option>
-        <option value="Seoul">Seoul [KR] (AS9318)</option>
-        <option value="Zurich">Zurich [CH] (AS3303)</option>
-        <option value="Hong Kong">Hong Kong [HK] (AS9381)</option>
-        <option value="San Francisco">San Francisco [US] (AS13335)</option>
+      <label>AIRSPACE SECTOR (FIR)</label>
+      <select id="sector-select" class="form-control" onchange="claimSector()">
+        <option value="sec-wiii">WIII_FIR - Jakarta FIR (Western Indonesia)</option>
+        <option value="sec-wsjc">WSJC_ACC - Singapore ACC (Malacca Sector)</option>
+        <option value="sec-waaa">WAAA_FIR - Ujung Pandang FIR (Eastern Indonesia)</option>
+        <option value="sec-vtbb">VTBB_ACC - Bangkok ACC (Indochina Sector)</option>
+        <option value="sec-ybbb">YBBB_FIR - Brisbane / Sydney ACC (Oceanic)</option>
       </select>
     </div>
 
-    <!-- Red Team Form -->
-    <div id="red-controls">
-      <div class="form-group">
-        <label>TARGET NODE</label>
-        <select id="target-city" class="form-control">
-          <option value="Washington DC">Washington DC (199.19.0.1)</option>
-          <option value="Tokyo">Tokyo (133.242.18.5)</option>
-          <option value="Frankfurt">Frankfurt (194.109.6.99)</option>
-          <option value="London">London (195.66.224.1)</option>
-          <option value="Singapore">Singapore (165.21.100.2)</option>
-          <option value="Jakarta">Jakarta (103.119.214.1)</option>
-          <option value="Hong Kong">Hong Kong (202.45.84.1)</option>
-        </select>
-      </div>
-
-      <div class="form-group">
-        <label>EXPLOIT VECTOR</label>
-        <select id="attack-vector" class="form-control">
-          <option value="DDoS SYN Flood">DDoS SYN Flood (100 Gbps)</option>
-          <option value="Ransomware Encryptor">Ransomware Payload (High Entropy)</option>
-          <option value="Kernel 0-Day Exploit">Kernel Remote 0-Day Exploit</option>
-          <option value="DNS Amplification">DNS Amplification Reflection</option>
-        </select>
-      </div>
-
-      <div class="form-group">
-        <label>BURST PAYLOAD: <span id="payload-display" style="color: var(--neon-green);">450 MB</span></label>
-        <input type="range" id="payload-size" min="100" max="1000" step="50" value="450" class="form-control" oninput="document.getElementById('payload-display').innerText = this.value + ' MB'">
-      </div>
-
-      <button class="strike-btn strike-btn-red" onclick="launchCyberAttack()">LAUNCH ATTACK</button>
+    <div class="panel-header" style="margin-top: 10px;">
+      <span>FLIGHT VECTOR CONTROLS</span>
+      <span id="selected-callsign-header" style="color: var(--radar-amber);">NO AIRCRAFT SELECTED</span>
     </div>
 
-    <!-- Blue Team Form -->
-    <div id="blue-controls" style="display: none;">
-      <div class="form-group">
-        <label>FIREWALL NODE SHIELD</label>
-        <select id="shield-target-city" class="form-control">
-          <option value="Jakarta">Jakarta Grid</option>
-          <option value="Washington DC">Washington DC Grid</option>
-          <option value="Frankfurt">Frankfurt Core</option>
-          <option value="Tokyo">Tokyo Gateway</option>
-        </select>
+    <!-- Active Selected Aircraft Strip -->
+    <div id="flight-strip-box">
+      <div style="font-size: 10px; color: var(--text-muted); margin-bottom: 6px;">Click any aircraft on radar to issue vectors.</div>
+      
+      <div id="flight-controls" style="display: none;">
+        <div style="display: flex; justify-content: space-between; margin-bottom: 6px; font-weight: 700;">
+          <span id="strip-callsign" style="color: #fff;">GIA880</span>
+          <span id="strip-route" style="color: var(--radar-cyan);">WIII -> WSSS</span>
+        </div>
+
+        <div class="form-group">
+          <label>ASSIGN VECTOR HEADING: <span id="hdg-display" style="color: var(--radar-green);">090°</span></label>
+          <input type="range" id="input-heading" min="0" max="359" step="5" value="90" class="form-control" oninput="updateHeadingPreview(this.value)" onchange="sendVectorHeading(this.value)">
+        </div>
+
+        <div class="form-group">
+          <label>ASSIGN FLIGHT LEVEL (ALTITUDE)</label>
+          <select id="input-altitude" class="form-control" onchange="sendAltitude(this.value)">
+            <option value="10000">FL100 (10,000 ft - Approach)</option>
+            <option value="18000">FL180 (18,000 ft - Transition)</option>
+            <option value="24000">FL240 (24,000 ft)</option>
+            <option value="28000">FL280 (28,000 ft)</option>
+            <option value="32000">FL320 (32,000 ft - Cruise)</option>
+            <option value="35000">FL350 (35,000 ft - Cruise)</option>
+            <option value="38000">FL380 (38,000 ft - Cruise)</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label>ASSIGN AIRSPEED</label>
+          <select id="input-speed" class="form-control" onchange="sendSpeed(this.value)">
+            <option value="250">250 KTS (Approach Limit)</option>
+            <option value="320">320 KTS (Medium Climb)</option>
+            <option value="450">450 KTS (Normal Cruise)</option>
+            <option value="480">480 KTS (High Speed)</option>
+          </select>
+        </div>
+
+        <div class="form-group" style="margin-top: 8px;">
+          <label>TRANSFER HANDOFF TO SECTOR</label>
+          <select id="handoff-target-select" class="form-control" style="margin-bottom: 4px;">
+            <option value="sec-wsjc">WSJC_ACC (Singapore)</option>
+            <option value="sec-wiii">WIII_FIR (Jakarta)</option>
+            <option value="sec-waaa">WAAA_FIR (Ujung Pandang)</option>
+            <option value="sec-vtbb">VTBB_ACC (Bangkok)</option>
+            <option value="sec-ybbb">YBBB_FIR (Sydney)</option>
+          </select>
+          <button class="atc-btn btn-amber" onclick="initiateHandoff()">INITIATE SECTOR HANDOFF</button>
+        </div>
       </div>
-      <button class="strike-btn strike-btn-blue" onclick="deployNodeShield()">DEPLOY SHIELD</button>
     </div>
   </div>
 
   <!-- Right Telemetry Deck -->
   <div id="telemetry-deck" class="glass-panel">
-    <div class="panel-header">
-      <span>THREAT INTERCEPTION</span>
-      <span id="active-arcs-count" style="color: var(--red-team);">0 ARCS</span>
-    </div>
-    <div id="intercept-list">
-      <div style="color: var(--text-muted); font-size: 10px;">Scanning airspace for active attack arcs...</div>
+    <!-- Inbound Handoff Alert Banner -->
+    <div id="handoff-banner">
+      <div style="font-weight: 700; color: var(--radar-amber); font-size: 11px; margin-bottom: 4px;">INBOUND HANDOFF ALERT</div>
+      <div id="handoff-msg" style="font-size: 10px; color: #fff; margin-bottom: 6px;">GIA880 requesting entry from Jakarta FIR</div>
+      <button class="atc-btn btn-green" id="btn-accept-handoff" onclick="acceptInboundHandoff()">ACCEPT HANDOFF & SQUAWK IDENT</button>
     </div>
 
-    <div class="panel-header" style="margin-top: 8px;">
-      <span>TELEMETRY LOG STREAM</span>
-      <span style="color: var(--neon-green);">30 FPS</span>
+    <div class="panel-header">
+      <span>SECTOR CONTROLLER ROSTER</span>
+      <span style="color: var(--radar-cyan);">ACTIVE OPS</span>
     </div>
-    <div id="terminal-stream"></div>
+    <div id="controller-roster" style="font-size: 10px; display: flex; flex-direction: column; gap: 4px;"></div>
+
+    <div class="panel-header" style="margin-top: 6px;">
+      <span>ATC RADIO & LOG COMMUNICATIONS</span>
+      <span style="color: var(--radar-green);">LIVE 10HZ</span>
+    </div>
+    <div id="radio-stream"></div>
   </div>
 
   <script>
-    // 1. Initialize MapLibre GL Dark Map (mapcn Dark Styling)
+    // 1. MapLibre GL Dark Aviation Scope
     const map = new maplibregl.Map({
       container: 'map-container',
       style: {
@@ -483,12 +432,11 @@
           }
         ]
       },
-      center: [20, 20],
-      zoom: 1.8,
+      center: [108.0, -2.0],
+      zoom: 4.8,
       attributionControl: false
     });
 
-    // 2. Setup Canvas Overlay for High-Performance Geodesic Arc Rendering
     const canvas = document.getElementById('canvas-overlay');
     const ctx = canvas.getContext('2d');
 
@@ -499,27 +447,28 @@
     window.addEventListener('resize', resizeCanvas);
     resizeCanvas();
 
-    // 3. WebSocket Connection with War Room Actor Model Engine
+    // 2. WebSocket ATC Real-Time Connection
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     const wsUrl = `${protocol}//${window.location.host}/ws`;
     let ws = null;
-    let currentFaction = 'red';
-    let selfAgentId = '';
-    let warState = null;
+    let selfControllerId = '';
+    let currentPayload = null;
+    let selectedCallsign = null;
+    let activeInboundHandoff = null;
 
     function connectWS() {
       ws = new WebSocket(wsUrl);
 
       ws.onopen = () => {
-        syncAgentProfile();
+        claimSector();
       };
 
       ws.onmessage = (event) => {
         try {
-          warState = JSON.parse(event.data);
-          renderWarRoomState(warState);
+          currentPayload = JSON.parse(event.data);
+          onPayloadReceived(currentPayload);
         } catch (e) {
-          console.error("Frame parse error:", e);
+          console.error("Parse error:", e);
         }
       };
 
@@ -529,169 +478,292 @@
     }
     connectWS();
 
-    function setFaction(faction) {
-      currentFaction = faction;
-      document.getElementById('btn-faction-red').className = `faction-btn ${faction === 'red' ? 'red-active' : ''}`;
-      document.getElementById('btn-faction-blue').className = `faction-btn ${faction === 'blue' ? 'blue-active' : ''}`;
-      document.getElementById('red-controls').style.display = faction === 'red' ? 'block' : 'none';
-      document.getElementById('blue-controls').style.display = faction === 'blue' ? 'block' : 'none';
-      syncAgentProfile();
-    }
-
-    function syncAgentProfile() {
+    function claimSector() {
       if (!ws || ws.readyState !== WebSocket.OPEN) return;
-      const alias = document.getElementById('operator-alias').value;
-      const city = document.getElementById('origin-city').value;
+      const callsign = document.getElementById('controller-callsign').value;
+      const sectorId = document.getElementById('sector-select').value;
       ws.send(JSON.stringify({
-        type: 'join',
-        alias: alias,
-        faction: currentFaction,
-        city: city
+        type: 'claim_sector',
+        controller: callsign,
+        sectorId: sectorId
       }));
     }
 
-    function launchCyberAttack() {
-      if (!ws || ws.readyState !== WebSocket.OPEN) return;
-      const targetCity = document.getElementById('target-city').value;
-      const vector = document.getElementById('attack-vector').value;
-      const payloadMB = parseInt(document.getElementById('payload-size').value, 10);
-
+    function sendVectorHeading(val) {
+      if (!ws || ws.readyState !== WebSocket.OPEN || !selectedCallsign) return;
       ws.send(JSON.stringify({
-        type: 'attack',
-        targetCity: targetCity,
-        vector: vector,
-        payloadMb: payloadMB
+        type: 'set_heading',
+        callsign: selectedCallsign,
+        heading: parseFloat(val)
       }));
     }
 
-    function interceptArc(arcId) {
-      if (!ws || ws.readyState !== WebSocket.OPEN) return;
+    function updateHeadingPreview(val) {
+      document.getElementById('hdg-display').innerText = `${String(val).padStart(3, '0')}°`;
+    }
+
+    function sendAltitude(val) {
+      if (!ws || ws.readyState !== WebSocket.OPEN || !selectedCallsign) return;
       ws.send(JSON.stringify({
-        type: 'defend',
-        actionType: 'bgp_null_route',
-        arcId: arcId
+        type: 'set_altitude',
+        callsign: selectedCallsign,
+        altitude: parseInt(val, 10)
       }));
     }
 
-    function deployNodeShield() {
-      if (!ws || ws.readyState !== WebSocket.OPEN) return;
-      const city = document.getElementById('shield-target-city').value;
+    function sendSpeed(val) {
+      if (!ws || ws.readyState !== WebSocket.OPEN || !selectedCallsign) return;
       ws.send(JSON.stringify({
-        type: 'defend',
-        actionType: 'firewall_patch',
-        targetCity: city
+        type: 'set_speed',
+        callsign: selectedCallsign,
+        speed: parseFloat(val)
       }));
     }
 
-    // 4. Update HUD and Terminal Matrix (Clean, Non-Glitching)
-    let lastLogCount = 0;
-    function renderWarRoomState(state) {
-      if (!state) return;
+    function initiateHandoff() {
+      if (!ws || ws.readyState !== WebSocket.OPEN || !selectedCallsign) return;
+      const targetSec = document.getElementById('handoff-target-select').value;
+      ws.send(JSON.stringify({
+        type: 'handoff_init',
+        callsign: selectedCallsign,
+        toSector: targetSec
+      }));
+    }
 
-      if (state.agentId && state.agentId !== selfAgentId) {
-        selfAgentId = state.agentId;
-        document.getElementById('agent-id-badge').innerText = `SENTINEL-${selfAgentId}`;
+    function acceptInboundHandoff() {
+      if (!ws || ws.readyState !== WebSocket.OPEN || !activeInboundHandoff) return;
+      ws.send(JSON.stringify({
+        type: 'handoff_accept',
+        callsign: activeInboundHandoff.callsign
+      }));
+      document.getElementById('handoff-banner').style.display = 'none';
+      activeInboundHandoff = null;
+    }
+
+    // 3. UI State Synchronization
+    let lastLogLength = 0;
+    function onPayloadReceived(payload) {
+      if (!payload) return;
+
+      if (payload.controllerId && payload.controllerId !== selfControllerId) {
+        selfControllerId = payload.controllerId;
+        document.getElementById('controller-id-badge').innerText = `CTR-${selfControllerId}`;
       }
 
-      document.getElementById('defcon-val').innerText = state.threatLevel;
-      document.getElementById('red-score').innerText = state.redScore;
-      document.getElementById('blue-score').innerText = state.blueScore;
-      document.getElementById('entropy-val').innerText = `${state.globalEntropy.toFixed(2)} H(X)`;
-      document.getElementById('active-arcs-count').innerText = `${state.activeArcs.length} ARCS`;
+      document.getElementById('flights-count').innerText = `${payload.totalFlights} ACTIVE`;
+      const alertEl = document.getElementById('alerts-count');
+      alertEl.innerText = `${payload.activeAlerts} CONFLICTS`;
+      alertEl.style.color = payload.activeAlerts > 0 ? 'var(--radar-red)' : 'var(--radar-green)';
 
-      // Intercept list update
-      const interceptContainer = document.getElementById('intercept-list');
-      if (!state.activeArcs || state.activeArcs.length === 0) {
-        interceptContainer.innerHTML = '<div style="color: var(--text-muted); font-size: 10px;">Airspace clear. No active attack arcs.</div>';
+      // Active Sector label
+      const mySec = payload.sectors.find(s => s.id === payload.sectorId);
+      if (mySec) {
+        document.getElementById('my-sector-name').innerText = `${mySec.icao} (${mySec.name.split(' ')[0]})`;
+      }
+
+      // Controller Roster
+      const rosterContainer = document.getElementById('controller-roster');
+      rosterContainer.innerHTML = payload.sectors.map(s => {
+        const isMe = s.controllerId === selfControllerId;
+        return `
+          <div style="display: flex; justify-content: space-between; padding: 3px 0; border-bottom: 1px dashed rgba(255,255,255,0.05); ${isMe ? 'color: var(--radar-green); font-weight: 700;' : ''}">
+            <span>${s.icao}</span>
+            <span style="color: ${s.controller === 'AUTO-TOWER' ? 'var(--text-muted)' : 'var(--radar-cyan)'};">${s.controller}</span>
+          </div>
+        `;
+      }).join('');
+
+      // Handoff Notification
+      if (payload.handoffs && payload.handoffs.length > 0) {
+        activeInboundHandoff = payload.handoffs[0];
+        document.getElementById('handoff-msg').innerText = `${activeInboundHandoff.callsign} requesting entry from ${activeInboundHandoff.fromSector}`;
+        document.getElementById('handoff-banner').style.display = 'block';
       } else {
-        // Deterministic stable sorting by ID to prevent DOM jumping
-        const sortedArcs = [...state.activeArcs].sort((a, b) => (b.progress - a.progress) || a.id.localeCompare(b.id));
-        interceptContainer.innerHTML = sortedArcs.map(arc => {
-          return `
-            <div class="threat-card" style="border-left-color: ${arc.color}">
-              <div>
-                <div style="font-weight: 700; color: ${arc.color};">${arc.vector}</div>
-                <div style="color: var(--text-muted); font-size: 9px;">${arc.originCity} -> ${arc.targetCity} (${arc.payloadSize}MB)</div>
-              </div>
-              <div>
-                ${arc.neutralized 
-                  ? `<span style="color: var(--blue-team); font-weight: 700;">[NULL-ROUTED]</span>` 
-                  : `<button class="intercept-action-btn" onclick="interceptArc('${arc.id}')">BGP NULL-ROUTE</button>`
-                }
-              </div>
-            </div>
-          `;
-        }).join('');
+        document.getElementById('handoff-banner').style.display = 'none';
+        activeInboundHandoff = null;
       }
 
-      // Terminal Logs Auto-scroll
-      if (state.logs && state.logs.length !== lastLogCount) {
-        lastLogCount = state.logs.length;
-        const term = document.getElementById('terminal-stream');
-        term.innerHTML = state.logs.map(l => {
-          return `<div class="log-line log-${l.level}">[${l.timestamp}] [${l.tag}] ${l.message}</div>`;
+      // Update Selected Aircraft Strip
+      if (selectedCallsign) {
+        const ac = payload.aircraft.find(a => a.callsign === selectedCallsign);
+        if (ac) {
+          document.getElementById('strip-callsign').innerText = `${ac.callsign} (${ac.aircraftType})`;
+          document.getElementById('strip-route').innerText = `${ac.origin} -> ${ac.destination} | FL${Math.round(ac.altitude/100)} | ${Math.round(ac.speed)}KTS`;
+        }
+      }
+
+      // Radio Stream
+      if (payload.logs && payload.logs.length !== lastLogLength) {
+        lastLogLength = payload.logs.length;
+        const stream = document.getElementById('radio-stream');
+        stream.innerHTML = payload.logs.map(l => {
+          return `<div class="log-line log-${l.type}">[${l.timestamp}] [${l.callsign}] ${l.message}</div>`;
         }).join('');
-        term.scrollTop = term.scrollHeight;
+        stream.scrollTop = stream.scrollHeight;
       }
     }
 
-    // 5. 60FPS Geodesic Ballistic Laser Arc Renderer
-    function drawGeodesicArcs() {
+    // 4. Radar Scope Click Detection
+    window.addEventListener('click', (e) => {
+      if (!currentPayload || !currentPayload.aircraft) return;
+      if (e.target.closest('#sector-deck') || e.target.closest('#telemetry-deck') || e.target.closest('#top-bar')) return;
+
+      const clickX = e.clientX;
+      const clickY = e.clientY;
+
+      let nearestAc = null;
+      let minDist = 30; // Pixel radius
+
+      currentPayload.aircraft.forEach(ac => {
+        const pt = map.project([ac.coord.lng, ac.coord.lat]);
+        const dist = Math.hypot(pt.x - clickX, pt.y - clickY);
+        if (dist < minDist) {
+          minDist = dist;
+          nearestAc = ac;
+        }
+      });
+
+      if (nearestAc) {
+        selectAircraft(nearestAc);
+      }
+    });
+
+    function selectAircraft(ac) {
+      selectedCallsign = ac.callsign;
+      document.getElementById('selected-callsign-header').innerText = ac.callsign;
+      document.getElementById('flight-controls').style.display = 'block';
+      document.getElementById('strip-callsign').innerText = `${ac.callsign} (${ac.aircraftType})`;
+      document.getElementById('strip-route').innerText = `${ac.origin} -> ${ac.destination}`;
+      document.getElementById('input-heading').value = Math.round(ac.targetHeading);
+      document.getElementById('hdg-display').innerText = `${String(Math.round(ac.targetHeading)).padStart(3, '0')}°`;
+    }
+
+    // 5. Radar Canvas Drawing Loop (Sectors, Aircraft Mode S Tags, Runways)
+    function drawRadarScope() {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-      if (warState && warState.nodes) {
-        // Draw Target Infrastructure Nodes on Map
-        warState.nodes.forEach(node => {
-          const pt = map.project([node.coord.lng, node.coord.lat]);
-          if (pt.x >= 0 && pt.x <= canvas.width && pt.y >= 0 && pt.y <= canvas.height) {
+      if (currentPayload) {
+        // Draw Sector Boundary Polygons
+        if (currentPayload.sectors) {
+          currentPayload.sectors.forEach(sec => {
+            if (!sec.bounds || sec.bounds.length === 0) return;
             ctx.beginPath();
-            ctx.arc(pt.x, pt.y, node.shield ? 9 : 5, 0, Math.PI * 2);
-            ctx.fillStyle = node.shield ? 'rgba(0, 180, 216, 0.4)' : (node.health < 50 ? 'rgba(255, 42, 95, 0.5)' : 'rgba(0, 230, 118, 0.25)');
-            ctx.fill();
-            ctx.strokeStyle = node.shield ? '#00b4d8' : (node.health < 50 ? '#ff2a5f' : '#00e676');
+            sec.bounds.forEach((pt, idx) => {
+              const p = map.project([pt.lng, pt.lat]);
+              if (idx === 0) ctx.moveTo(p.x, p.y);
+              else ctx.lineTo(p.x, p.y);
+            });
+            ctx.closePath();
+            ctx.strokeStyle = sec.color + '44';
+            ctx.lineWidth = sec.id === currentPayload.sectorId ? 2 : 1;
+            ctx.setLineDash([4, 4]);
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            // Sector Label
+            const centerPt = map.project([sec.center.lng, sec.center.lat]);
+            ctx.fillStyle = sec.color + '66';
+            ctx.font = '11px JetBrains Mono';
+            ctx.fillText(sec.icao, centerPt.x - 20, centerPt.y);
+          });
+        }
+
+        // Draw Airport Waypoints
+        if (currentPayload.airports) {
+          currentPayload.airports.forEach(apt => {
+            const pt = map.project([apt.coord.lng, apt.coord.lat]);
+            if (pt.x >= 0 && pt.x <= canvas.width && pt.y >= 0 && pt.y <= canvas.height) {
+              ctx.beginPath();
+              ctx.arc(pt.x, pt.y, 3, 0, Math.PI * 2);
+              ctx.fillStyle = '#64748b';
+              ctx.fill();
+
+              ctx.fillStyle = '#94a3b8';
+              ctx.font = '9px JetBrains Mono';
+              ctx.fillText(apt.iata, pt.x + 6, pt.y + 3);
+            }
+          });
+        }
+
+        // Draw Aircraft Transponders & Radar Vector Heading Lines
+        if (currentPayload.aircraft) {
+          currentPayload.aircraft.forEach(ac => {
+            const pt = map.project([ac.coord.lng, ac.coord.lat]);
+            if (pt.x < -50 || pt.x > canvas.width + 50 || pt.y < -50 || pt.y > canvas.height + 50) return;
+
+            const isSelected = ac.callsign === selectedCallsign;
+            const isConflict = ac.conflictAlert;
+            const isMySector = ac.sectorId === currentPayload.sectorId;
+
+            let acColor = isMySector ? '#00e676' : '#00b4d8';
+            if (isConflict) acColor = '#ff2a5f';
+            if (ac.handoffState === 'PENDING') acColor = '#ffb703';
+
+            // Radar breadcrumb history trail
+            if (ac.trail && ac.trail.length > 0) {
+              ctx.beginPath();
+              ac.trail.forEach((t, i) => {
+                const tp = map.project([t.lng, t.lat]);
+                if (i === 0) ctx.moveTo(tp.x, tp.y);
+                else ctx.lineTo(tp.x, tp.y);
+              });
+              ctx.strokeStyle = acColor + '33';
+              ctx.lineWidth = 1;
+              ctx.stroke();
+            }
+
+            // Heading Vector Leader Line (1 minute prediction)
+            const rad = (ac.heading - 90) * Math.PI / 180.0;
+            const lineLen = Math.max(20, ac.speed * 0.08);
+            const vecX = pt.x + Math.cos(rad) * lineLen;
+            const vecY = pt.y + Math.sin(rad) * lineLen;
+
+            ctx.beginPath();
+            ctx.moveTo(pt.x, pt.y);
+            ctx.lineTo(vecX, vecY);
+            ctx.strokeStyle = acColor;
             ctx.lineWidth = 1.2;
             ctx.stroke();
 
-            // Clean Node Label
+            // Aircraft Center Symbol (Cross / Diamond)
+            ctx.beginPath();
+            ctx.arc(pt.x, pt.y, isSelected ? 5 : 3.5, 0, Math.PI * 2);
+            ctx.fillStyle = acColor;
+            ctx.fill();
+            if (isSelected) {
+              ctx.beginPath();
+              ctx.arc(pt.x, pt.y, 9, 0, Math.PI * 2);
+              ctx.strokeStyle = '#ffb703';
+              ctx.lineWidth = 1.5;
+              ctx.stroke();
+            }
+
+            // Mode S Data Tag Block
+            const tagX = pt.x + 12;
+            const tagY = pt.y - 12;
+
+            ctx.fillStyle = isConflict ? 'rgba(255, 42, 95, 0.85)' : 'rgba(7, 10, 14, 0.85)';
+            ctx.fillRect(tagX - 2, tagY - 9, 74, 28);
+            ctx.strokeStyle = acColor;
+            ctx.strokeRect(tagX - 2, tagY - 9, 74, 28);
+
+            ctx.fillStyle = '#ffffff';
+            ctx.font = '700 9px JetBrains Mono';
+            ctx.fillText(ac.callsign, tagX, tagY);
+
             ctx.fillStyle = '#cbd5e1';
-            ctx.font = '10px JetBrains Mono';
-            ctx.fillText(`${node.city} [${node.health}%]`, pt.x + 8, pt.y + 3);
-          }
-        });
+            ctx.font = '8px JetBrains Mono';
+            ctx.fillText(`FL${Math.round(ac.altitude/100)} ${Math.round(ac.speed)}K`, tagX, tagY + 9);
+            ctx.fillText(`${ac.origin}▶${ac.destination}`, tagX, tagY + 17);
+          });
+        }
       }
 
-      if (warState && warState.activeArcs) {
-        warState.activeArcs.forEach(arc => {
-          const startPt = map.project([arc.originCoord.lng, arc.originCoord.lat]);
-          const targetPt = map.project([arc.targetCoord.lng, arc.targetCoord.lat]);
-          const currentPt = map.project([arc.currentPos.lng, arc.currentPos.lat]);
-
-          // Quadratic curved trajectory line
-          const midX = (startPt.x + targetPt.x) / 2;
-          const midY = (startPt.y + targetPt.y) / 2 - Math.min(100, Math.hypot(targetPt.x - startPt.x, targetPt.y - startPt.y) * 0.25);
-
-          ctx.beginPath();
-          ctx.moveTo(startPt.x, startPt.y);
-          ctx.quadraticCurveTo(midX, midY, targetPt.x, targetPt.y);
-          ctx.strokeStyle = arc.neutralized ? 'rgba(0, 180, 216, 0.3)' : (arc.color + '44');
-          ctx.lineWidth = 1.5;
-          ctx.setLineDash([3, 3]);
-          ctx.stroke();
-          ctx.setLineDash([]);
-
-          // Glowing missile head particle at current progress
-          ctx.beginPath();
-          ctx.arc(currentPt.x, currentPt.y, 4, 0, Math.PI * 2);
-          ctx.fillStyle = arc.neutralized ? '#00b4d8' : arc.color;
-          ctx.fill();
-        });
-      }
-
-      requestAnimationFrame(drawGeodesicArcs);
+      requestAnimationFrame(drawRadarScope);
     }
 
     map.on('load', () => {
-      requestAnimationFrame(drawGeodesicArcs);
+      requestAnimationFrame(drawRadarScope);
     });
   </script>
 </body>

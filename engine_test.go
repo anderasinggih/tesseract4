@@ -1,83 +1,121 @@
 package main
 
 import (
+	"math"
 	"sync"
 	"testing"
 	"time"
 )
 
-// TestWarRoomHubConcurrentAttackDefense tests high concurrency between red attackers and blue defenders
-func TestWarRoomHubConcurrentAttackDefense(t *testing.T) {
-	hub := NewWarRoomHub()
+// TestATCKinematicsAndSeparation verifies spherical bearing and conflict detection math
+func TestATCKinematicsAndSeparation(t *testing.T) {
+	cgk := GeoCoord{Lat: -6.1256, Lng: 106.6558} // Jakarta (CGK)
+	sin := GeoCoord{Lat: 1.3644, Lng: 103.9915}  // Singapore (SIN)
+
+	distNM := DistanceInNauticalMiles(cgk, sin)
+	if distNM < 450 || distNM > 550 {
+		t.Fatalf("Unexpected CGK-SIN distance: %f NM", distNM)
+	}
+
+	bearing := CalculateTrueBearing(cgk, sin)
+	if bearing < 320 || bearing > 360 {
+		t.Fatalf("Unexpected CGK-SIN bearing: %f deg", bearing)
+	}
+
+	// Kinematics movement test: 450 kts for 1 hour should move ~450 NM
+	moved := MoveAircraftPosition(cgk, 0, 450, 3600)
+	movedDist := DistanceInNauticalMiles(cgk, moved)
+	if math.Abs(movedDist-450.0) > 2.0 {
+		t.Fatalf("Movement calculation drifted: moved %f NM, expected 450 NM", movedDist)
+	}
+}
+
+// TestATCHubConcurrentCommands verifies thread safety for multiple controllers managing flights
+func TestATCHubConcurrentCommands(t *testing.T) {
+	hub := NewATCHub()
 	go hub.Run()
 
 	done := make(chan struct{})
 	var wg sync.WaitGroup
 
-	// Spawn 20 simulated operators
-	for i := 0; i < 20; i++ {
-		agent := &AgentConnection{
-			ID:      "agent-test",
-			Alias:   "Operator",
-			Faction: "red",
-			City:    "Jakarta",
-			Send:    make(chan []byte, 64),
+	// Spawn simulated controllers
+	for i := 0; i < 5; i++ {
+		client := &ATCClientConnection{
+			ID:       "ctr-test",
+			Callsign: "JAKARTA_APP",
+			SectorID: "sec-wiii",
+			Send:     make(chan []byte, 64),
 		}
-		hub.register <- agent
+		hub.register <- client
 
-		// Consume outbound stream
-		go func(a *AgentConnection) {
+		go func(c *ATCClientConnection) {
 			for {
 				select {
 				case <-done:
 					return
-				case <-a.Send:
+				case <-c.Send:
 				}
 			}
-		}(agent)
+		}(client)
 	}
 
-	// Goroutine 1: Rapid red team attack launches
+	// Goroutine 1: Continuous vector and altitude commands
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		for i := 0; i < 500; i++ {
+		for i := 0; i < 300; i++ {
 			select {
 			case <-done:
 				return
 			default:
-				hub.LaunchAttack("agent-red", "Jakarta", "Washington DC", "DDoS SYN Flood", 500)
+				hub.ExecuteATCCommand(ClientATCCommand{
+					Type:     "set_heading",
+					Callsign: "GIA880",
+					Heading:  180,
+				}, "ctr-test")
+				hub.ExecuteATCCommand(ClientATCCommand{
+					Type:     "set_altitude",
+					Callsign: "GIA880",
+					Altitude: 32000,
+				}, "ctr-test")
 				time.Sleep(1 * time.Millisecond)
 			}
 		}
 	}()
 
-	// Goroutine 2: Rapid blue team defense mitigations
+	// Goroutine 2: Handoff transactions
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		for i := 0; i < 500; i++ {
+		for i := 0; i < 300; i++ {
 			select {
 			case <-done:
 				return
 			default:
-				hub.DeployDefense("agent-blue", "bgp_null_route", "test-arc", "Washington DC")
-				hub.DeployDefense("agent-blue", "firewall_patch", "", "Tokyo")
+				hub.ExecuteATCCommand(ClientATCCommand{
+					Type:     "handoff_init",
+					Callsign: "GIA880",
+					ToSector: "sec-wsjc",
+				}, "ctr-test")
+				hub.ExecuteATCCommand(ClientATCCommand{
+					Type:     "handoff_accept",
+					Callsign: "GIA880",
+				}, "ctr-test")
 				time.Sleep(1 * time.Millisecond)
 			}
 		}
 	}()
 
-	// Goroutine 3: Continuous snapshot readers (Simulating 30Hz WebSocket streamers)
+	// Goroutine 3: Snapshot telemetry readers
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		for i := 0; i < 500; i++ {
+		for i := 0; i < 300; i++ {
 			select {
 			case <-done:
 				return
 			default:
-				_ = hub.GetSnapshot("agent-test")
+				_ = hub.GetSnapshot("ctr-test")
 				time.Sleep(1 * time.Millisecond)
 			}
 		}
@@ -86,31 +124,4 @@ func TestWarRoomHubConcurrentAttackDefense(t *testing.T) {
 	time.Sleep(100 * time.Millisecond)
 	close(done)
 	wg.Wait()
-}
-
-// TestGeodesicGreatCircleMath verifies mathematical correctness of spherical slerp waypoints
-func TestGeodesicGreatCircleMath(t *testing.T) {
-	p1 := GeoCoord{Lat: -6.2088, Lng: 106.8456} // Jakarta
-	p2 := GeoCoord{Lat: 35.6762, Lng: 139.6503} // Tokyo
-
-	dist := CalculateGreatCircleDistance(p1, p2)
-	if dist < 5000 || dist > 6500 {
-		t.Fatalf("Unexpected Great-Circle distance Jakarta-Tokyo: %f km", dist)
-	}
-
-	mid := CalculateGeodesicWaypoint(p1, p2, 0.5)
-	if mid.Lat == 0 && mid.Lng == 0 {
-		t.Fatalf("Failed to calculate mid-waypoint")
-	}
-
-	// Shannon entropy test
-	plain := []byte("AAAAABBBBBCCCCCDDDDD")
-	plainEntropy := CalculateShannonEntropy(plain)
-
-	randomBytes := GenerateRandomPayloadBytes(256, true)
-	randomEntropy := CalculateShannonEntropy(randomBytes)
-
-	if randomEntropy <= plainEntropy {
-		t.Fatalf("Random encrypted payload should have higher entropy than patterned plain text")
-	}
 }

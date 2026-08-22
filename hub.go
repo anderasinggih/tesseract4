@@ -7,386 +7,475 @@ import (
 	"math/rand"
 	"sync"
 	"time"
-
-	"github.com/google/uuid"
 )
 
-// WarRoomHub coordinates real-time cyber battles using the zero-lock Actor Model
-type WarRoomHub struct {
-	clients        map[*AgentConnection]bool
-	register       chan *AgentConnection
-	unregister     chan *AgentConnection
-	broadcast      chan []byte
-	agentAction    chan func()
-	getStateChan   chan chan WarRoomState
-
-	// Global State
-	mu             sync.RWMutex
-	agents         map[string]*SentinelAgent
-	activeArcs     map[string]*AttackArc
-	nodes          map[string]*TargetNode
-	logs           []TerminalLog
-	redScore       int
-	blueScore      int
+var AirlineFleets = []struct {
+	Prefix  string
+	Airline string
+	Types   []string
+}{
+	{"GIA", "Garuda Indonesia", []string{"B77W", "A339", "B738"}},
+	{"SIA", "Singapore Airlines", []string{"A359", "B78X", "B77W"}},
+	{"LNI", "Lion Air", []string{"B739", "B738", "A339"}},
+	{"QFA", "Qantas Airways", []string{"B789", "A332", "A388"}},
+	{"THA", "Thai Airways", []string{"A359", "B77W", "B788"}},
+	{"MAS", "Malaysia Airlines", []string{"A359", "A333", "B738"}},
+	{"AWQ", "AirAsia", []string{"A320", "A321", "A333"}},
+	{"BTK", "Batik Air", []string{"A320", "B738", "B739"}},
+	{"CTV", "Citilink", []string{"A320", "A339", "ATR72"}},
+	{"SJY", "Sriwijaya Air", []string{"B738", "B735", "B733"}},
+	{"TRA", "TransNusa", []string{"ARJ21", "A320", "ATR42"}},
+	{"BVA", "Pelita Air", []string{"A320", "AT76", "B734"}},
+	{"ILM", "Super Air Jet", []string{"A320", "A321", "A320"}},
+	{"WON", "Wings Air", []string{"AT76", "AT75", "AT72"}},
+	{"SUS", "Susi Air", []string{"C208", "PC6", "PA18"}},
+	{"ALR", "Aviastar", []string{"DHC6", "BAe146", "C208"}},
+	{"TGN", "Trigana Air", []string{"AT72", "B733", "DHC6"}},
+	{"NEX", "Raya Airways", []string{"B762", "B734", "B763"}},
+	{"AXM", "AirAsia Malaysia", []string{"A320", "A321", "A20N"}},
+	{"FFM", "Firefly", []string{"AT72", "B738", "AT76"}},
+	{"MXD", "Batik Air Malaysia", []string{"B738", "B38M", "A333"}},
+	{"MSR", "MYAirline", []string{"A320", "A20N", "A320"}},
+	{"SCO", "Scoot", []string{"B788", "B789", "A320"}},
+	{"JSA", "Jetstar Asia", []string{"A320", "A321", "A21N"}},
+	{"BKP", "Bangkok Airways", []string{"A319", "A320", "AT76"}},
+	{"NOK", "Nok Air", []string{"B738", "B738", "Q400"}},
+	{"TLM", "Thai Lion Air", []string{"B738", "B739", "B38M"}},
+	{"TVJ", "Thai VietJet", []string{"A320", "A321", "A21N"}},
+	{"FDX", "FedEx Express", []string{"B77L", "B763", "MD11"}},
+	{"UPS", "UPS Airlines", []string{"B748", "B763", "MD11"}},
+	{"CLX", "Cargolux", []string{"B748", "B744", "B748"}},
+	{"SQC", "Singapore Cargo", []string{"B744", "B77L", "B744"}},
+	{"GIC", "Garuda Cargo", []string{"A332", "B738", "A333"}},
+	{"LNC", "Lion Cargo", []string{"B738", "A333", "B739"}},
+	{"MAS_C", "MASkargo", []string{"A332", "B744", "A332"}},
+	{"PAC", "Polar Air Cargo", []string{"B748", "B77L", "B763"}},
+	{"KPA", "K-Mile Air", []string{"B734", "B737", "B738"}},
+	{"WIA", "Cardig Air", []string{"B733", "B734", "B738"}},
+	{"BVA_C", "Pelita Cargo", []string{"AT72", "B734", "AT72"}},
+	{"TRI_C", "Tri-M.G. Cargo", []string{"B733", "B734", "B722"}},
 }
 
-func NewWarRoomHub() *WarRoomHub {
-	h := &WarRoomHub{
-		clients:      make(map[*AgentConnection]bool),
-		register:     make(chan *AgentConnection, 1024),
-		unregister:   make(chan *AgentConnection, 1024),
-		broadcast:    make(chan []byte, 4096),
-		agentAction:  make(chan func(), 1024),
-		getStateChan: make(chan chan WarRoomState, 64),
-		agents:       make(map[string]*SentinelAgent),
-		activeArcs:   make(map[string]*AttackArc),
-		nodes:        make(map[string]*TargetNode),
-		logs:         make([]TerminalLog, 0, 100),
+// ATCHub manages active aircraft kinematics, sectors, collision alerts, and handoffs
+type ATCHub struct {
+	clients     map[*ATCClientConnection]bool
+	register    chan *ATCClientConnection
+	unregister  chan *ATCClientConnection
+	commands    chan func()
+	
+	mu          sync.RWMutex
+	sectors     map[string]*AirspaceSector
+	aircraft    map[string]*Aircraft
+	controllers map[string]*ControllerSession
+	logs        []ATCLogEntry
+}
+
+func NewATCHub() *ATCHub {
+	h := &ATCHub{
+		clients:     make(map[*ATCClientConnection]bool),
+		register:    make(chan *ATCClientConnection, 1024),
+		unregister:  make(chan *ATCClientConnection, 1024),
+		commands:    make(chan func(), 1024),
+		sectors:     make(map[string]*AirspaceSector),
+		aircraft:    make(map[string]*Aircraft),
+		controllers: make(map[string]*ControllerSession),
+		logs:        make([]ATCLogEntry, 0, 100),
 	}
 
-	// Initialize global target infrastructure nodes
-	for _, n := range GlobalNodes {
-		h.nodes[n.City] = &TargetNode{
-			City:    n.City,
-			Country: n.Country,
-			Coord:   n.Coord,
-			IP:      n.IP,
-			ASN:     n.ASN,
-			Health:  100,
-			Shield:  false,
-		}
+	// Initialize default airspace sectors
+	for _, sec := range GlobalAirspaceSectors {
+		secCopy := sec
+		secCopy.Controller = "AUTO-TOWER"
+		h.sectors[sec.ID] = &secCopy
 	}
 
-	h.addLog("INFO", "Global Cyber Defense Grid initialized. Shannon entropy monitors online.", "SYS")
+	// Pre-spawn initial commercial flights
+	for i := 0; i < 18; i++ {
+		h.spawnCommercialFlight()
+	}
+
+	h.addLog("SYS", "ALL", "Air Traffic Control radar network online. STCA Conflict Alert active.")
 	return h
 }
 
-func (h *WarRoomHub) addLog(level, message, tag string) {
-	now := time.Now().Format("15:04:05.000")
-	entry := TerminalLog{
+func (h *ATCHub) addLog(logType, callsign, message string) {
+	now := time.Now().Format("15:04:05")
+	entry := ATCLogEntry{
 		Timestamp: now,
-		Level:     level,
+		Type:      logType,
+		Callsign:  callsign,
 		Message:   message,
-		Tag:       tag,
 	}
 	h.logs = append(h.logs, entry)
-	if len(h.logs) > 60 {
-		h.logs = h.logs[len(h.logs)-60:]
+	if len(h.logs) > 50 {
+		h.logs = h.logs[len(h.logs)-50:]
 	}
 }
 
-// Run executes the core event loop and 30Hz ballistic arc physics simulation
-func (h *WarRoomHub) Run() {
-	log.Println("⚡ [WarRoom Hub] Actor Model cyber battle engine active.")
-	ticker := time.NewTicker(33 * time.Millisecond) // ~30Hz simulation
+func (h *ATCHub) spawnCommercialFlight() {
+	if len(GlobalMajorAirports) < 2 {
+		return
+	}
+	origIdx := rand.Intn(len(GlobalMajorAirports))
+	destIdx := rand.Intn(len(GlobalMajorAirports))
+	if origIdx == destIdx {
+		destIdx = (origIdx + 1) % len(GlobalMajorAirports)
+	}
+
+	orig := GlobalMajorAirports[origIdx]
+	dest := GlobalMajorAirports[destIdx]
+
+	fleet := AirlineFleets[rand.Intn(len(AirlineFleets))]
+	flightNum := rand.Intn(890) + 100
+	callsign := fmt.Sprintf("%s%d", fleet.Prefix, flightNum)
+
+	// Avoid duplicate callsign
+	if _, exists := h.aircraft[callsign]; exists {
+		return
+	}
+
+	acType := fleet.Types[rand.Intn(len(fleet.Types))]
+	squawk := fmt.Sprintf("%04d", rand.Intn(7000)+1000)
+
+	// Calculate initial heading towards destination
+	bearing := CalculateTrueBearing(orig.Coord, dest.Coord)
+
+	// Random initial flight level (FL240 to FL390)
+	flightLevels := []int{24000, 28000, 31000, 33000, 35000, 37000, 39000}
+	initialAlt := flightLevels[rand.Intn(len(flightLevels))]
+	speed := float64(rand.Intn(60) + 430) // 430 - 490 kts
+
+	// Determine starting sector
+	sectorID := "sec-wiii"
+	for _, sec := range GlobalAirspaceSectors {
+		if IsPointInSector(orig.Coord, sec.Bounds) {
+			sectorID = sec.ID
+			break
+		}
+	}
+
+	// Slightly offset start coordinate along the path for immediate traffic spread
+	startFraction := rand.Float64() * 0.4
+	startCoord := GeoCoord{
+		Lat: orig.Coord.Lat + (dest.Coord.Lat-orig.Coord.Lat)*startFraction,
+		Lng: orig.Coord.Lng + (dest.Coord.Lng-orig.Coord.Lng)*startFraction,
+	}
+
+	h.aircraft[callsign] = &Aircraft{
+		Callsign:       callsign,
+		Airline:        fleet.Airline,
+		AircraftType:   acType,
+		Squawk:         squawk,
+		Origin:         orig.ICAO,
+		Destination:    dest.ICAO,
+		Coord:          startCoord,
+		Altitude:       initialAlt,
+		TargetAltitude: initialAlt,
+		Heading:        bearing,
+		TargetHeading:  bearing,
+		Speed:          speed,
+		TargetSpeed:    speed,
+		SectorID:       sectorID,
+		HandoffState:   "NONE",
+		ConflictAlert:  false,
+		Trail:          make([]GeoCoord, 0, 8),
+	}
+}
+
+// Run executes the continuous aircraft kinematics loop and collision checks at 10Hz
+func (h *ATCHub) Run() {
+	log.Println("✈️ [ATC Hub] Air traffic kinematics & collision alert engine started.")
+	ticker := time.NewTicker(100 * time.Millisecond) // 10Hz physics tick
 	defer ticker.Stop()
 
-	// Periodic automated background ambient botnet activity
-	ambientTicker := time.NewTicker(4 * time.Second)
-	defer ambientTicker.Stop()
+	respawnTicker := time.NewTicker(8 * time.Second)
+	defer respawnTicker.Stop()
 
 	for {
 		select {
-		case agentConn := <-h.register:
-			h.clients[agentConn] = true
+		case client := <-h.register:
+			h.clients[client] = true
 			h.mu.Lock()
-			h.agents[agentConn.ID] = &SentinelAgent{
-				ID:      agentConn.ID,
-				Alias:   agentConn.Alias,
-				Faction: agentConn.Faction,
-				City:    agentConn.City,
-				Coord:   agentConn.Coord,
-				Score:   0,
+			h.controllers[client.ID] = &ControllerSession{
+				ID:        client.ID,
+				Callsign:  client.Callsign,
+				SectorID:  client.SectorID,
+				Score:     100,
+				Handled:   0,
+				Conflicts: 0,
 			}
-			h.addLog("INFO", fmt.Sprintf("Operator [%s] connected from %s (Faction: %s)", agentConn.Alias, agentConn.City, agentConn.Faction), "SENTINEL")
+			if sec, ok := h.sectors[client.SectorID]; ok {
+				sec.Controller = client.Callsign
+				sec.ControllerID = client.ID
+			}
+			h.addLog("SYS", "ALL", fmt.Sprintf("Operator [%s] assumed control of sector [%s]", client.Callsign, client.SectorID))
 			h.mu.Unlock()
-			fmt.Printf("[WarRoom] Sentinel %s joined. Total active operators: %d\n", agentConn.ID, len(h.clients))
 
-		case agentConn := <-h.unregister:
-			if _, ok := h.clients[agentConn]; ok {
-				delete(h.clients, agentConn)
-				close(agentConn.Send)
+		case client := <-h.unregister:
+			if _, ok := h.clients[client]; ok {
+				delete(h.clients, client)
+				close(client.Send)
 				h.mu.Lock()
-				delete(h.agents, agentConn.ID)
-				h.addLog("WARN", fmt.Sprintf("Operator [%s] went offline.", agentConn.Alias), "SENTINEL")
+				if sec, ok := h.sectors[client.SectorID]; ok {
+					if sec.ControllerID == client.ID {
+						sec.Controller = "AUTO-TOWER"
+						sec.ControllerID = ""
+					}
+				}
+				delete(h.controllers, client.ID)
+				h.addLog("SYS", "ALL", fmt.Sprintf("Operator [%s] went offline. Sector assigned to AUTO-TOWER.", client.Callsign))
 				h.mu.Unlock()
-				fmt.Printf("[WarRoom] Sentinel %s disconnected. Active: %d\n", agentConn.ID, len(h.clients))
 			}
 
-		case action := <-h.agentAction:
-			action()
+		case cmd := <-h.commands:
+			cmd()
 
-		case <-ambientTicker.C:
-			// Spawn random ambient cyber attack if fewer than 8 active arcs
+		case <-respawnTicker.C:
 			h.mu.Lock()
-			if len(h.activeArcs) < 8 {
-				srcIdx := rand.Intn(len(GlobalNodes))
-				dstIdx := rand.Intn(len(GlobalNodes))
-				if srcIdx != dstIdx {
-					src := GlobalNodes[srcIdx]
-					dst := GlobalNodes[dstIdx]
-					vectors := []string{"DDoS SYN Flood", "Ransomware Encryptor", "Kernel 0-Day Exploit", "DNS Amplification"}
-					vec := vectors[rand.Intn(len(vectors))]
-					color := "#FF0033"
-					if vec == "Ransomware Encryptor" {
-						color = "#9900FF"
-					} else if vec == "Kernel 0-Day Exploit" {
-						color = "#00FF66"
-					}
-
-					payload := GenerateRandomPayloadBytes(1024, vec == "Ransomware Encryptor")
-					entropy := CalculateShannonEntropy(payload)
-
-					arcID := uuid.New().String()[:6]
-					h.activeArcs[arcID] = &AttackArc{
-						ID:          arcID,
-						AttackerID:  "BOTNET-AUTO",
-						Attacker:    "Autonomous Botnet",
-						OriginCity:  src.City,
-						OriginCoord: src.Coord,
-						TargetCity:  dst.City,
-						TargetCoord: dst.Coord,
-						TargetIP:    dst.IP,
-						TargetASN:   dst.ASN,
-						Vector:      vec,
-						Color:       color,
-						Progress:    0.0,
-						CurrentPos:  src.Coord,
-						PayloadSize: rand.Intn(800) + 100,
-						Entropy:     entropy,
-						Neutralized: false,
-					}
-					h.addLog("WARN", fmt.Sprintf("Inbound %s detected from %s -> %s (Target ASN: %s)", vec, src.City, dst.City, dst.ASN), "DETECT")
-				}
+			if len(h.aircraft) < 25 {
+				h.spawnCommercialFlight()
 			}
 			h.mu.Unlock()
 
 		case <-ticker.C:
-			// Advance ballistic projectile arcs along Geodesic Great-Circle paths
-			h.mu.Lock()
-			for id, arc := range h.activeArcs {
-				// Speed factor (completes in ~4-6 seconds)
-				arc.Progress += 0.008
-				if arc.Progress >= 1.0 {
-					// Arc reached target!
-					if !arc.Neutralized {
-						if node, ok := h.nodes[arc.TargetCity]; ok {
-							if node.Shield {
-								node.Shield = false
-								h.blueScore += 50
-								h.addLog("DEFENSE", fmt.Sprintf("Quantum Firewall deflected %s at %s!", arc.Vector, arc.TargetCity), "FIREWALL")
-							} else {
-								dmg := rand.Intn(15) + 10
-								node.Health -= dmg
-								if node.Health < 0 {
-									node.Health = 0
-								}
-								h.redScore += 100
-								h.addLog("CRIT", fmt.Sprintf("IMPACT! %s struck %s (%s). Node Health: %d%%", arc.Vector, arc.TargetCity, arc.TargetIP, node.Health), "EXPLOIT")
-							}
-						}
-					}
-					delete(h.activeArcs, id)
-				} else {
-					// Calculate precise current coordinate on spherical globe
-					arc.CurrentPos = CalculateGeodesicWaypoint(arc.OriginCoord, arc.TargetCoord, arc.Progress)
-				}
-			}
-
-			// Slowly regenerate node health
-			for _, node := range h.nodes {
-				if node.Health < 100 && rand.Float64() < 0.05 {
-					node.Health += 1
-				}
-			}
-			h.mu.Unlock()
+			h.updateKinematics(0.1) // dt = 0.1s
 		}
 	}
 }
 
-// GetSnapshot retrieves the current war room state for client streaming
-func (h *WarRoomHub) GetSnapshot(selfID string) WarRoomState {
+// updateKinematics moves all aircraft, applies heading/altitude steering, and runs STCA collision checks
+func (h *ATCHub) updateKinematics(dt float64) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+
+	// 1. Move and steer each aircraft
+	for callsign, ac := range h.aircraft {
+		// Heading turn rate (approx 3 deg/sec standard rate 1 turn)
+		turnRate := 3.0 * dt
+		diffHeading := ac.TargetHeading - ac.Heading
+		for diffHeading > 180 {
+			diffHeading -= 360
+		}
+		for diffHeading < -180 {
+			diffHeading += 360
+		}
+
+		if math.Abs(diffHeading) <= turnRate {
+			ac.Heading = ac.TargetHeading
+		} else if diffHeading > 0 {
+			ac.Heading += turnRate
+		} else {
+			ac.Heading -= turnRate
+		}
+		if ac.Heading < 0 {
+			ac.Heading += 360
+		} else if ac.Heading >= 360 {
+			ac.Heading -= 360
+		}
+
+		// Altitude climb/descent rate (~1500 fpm = 25 fps)
+		altRate := int(25.0 * dt * 10)
+		if ac.Altitude < ac.TargetAltitude {
+			ac.Altitude += altRate
+			if ac.Altitude > ac.TargetAltitude {
+				ac.Altitude = ac.TargetAltitude
+			}
+		} else if ac.Altitude > ac.TargetAltitude {
+			ac.Altitude -= altRate
+			if ac.Altitude < ac.TargetAltitude {
+				ac.Altitude = ac.TargetAltitude
+			}
+		}
+
+		// Speed adjust rate
+		if ac.Speed < ac.TargetSpeed {
+			ac.Speed += 10.0 * dt
+		} else if ac.Speed > ac.TargetSpeed {
+			ac.Speed -= 10.0 * dt
+		}
+
+		// Advance position along heading (Kinematics formula)
+		ac.Coord = MoveAircraftPosition(ac.Coord, ac.Heading, ac.Speed, dt)
+
+		// Record radar breadcrumb trail
+		if len(ac.Trail) == 0 || DistanceInNauticalMiles(ac.Trail[len(ac.Trail)-1], ac.Coord) > 5.0 {
+			ac.Trail = append(ac.Trail, ac.Coord)
+			if len(ac.Trail) > 6 {
+				ac.Trail = ac.Trail[1:]
+			}
+		}
+
+		// Check airspace sector transition
+		for _, sec := range GlobalAirspaceSectors {
+			if IsPointInSector(ac.Coord, sec.Bounds) {
+				if ac.SectorID != sec.ID && ac.HandoffState == "NONE" {
+					// Aircraft crossed into new sector
+					ac.SectorID = sec.ID
+				}
+				break
+			}
+		}
+
+		// Check if arrived near destination airport (< 8 NM)
+		for _, apt := range GlobalMajorAirports {
+			if apt.ICAO == ac.Destination && DistanceInNauticalMiles(ac.Coord, apt.Coord) < 10.0 {
+				h.addLog("RADIO", callsign, fmt.Sprintf("%s safely landed at %s (%s)", callsign, apt.Name, apt.ICAO))
+				delete(h.aircraft, callsign)
+				break
+			}
+		}
+	}
+
+	// 2. Short-Term Conflict Alert (STCA) Loss of Separation calculation
+	// Lateral < 5 NM and Vertical < 1000 ft
+	for _, ac1 := range h.aircraft {
+		ac1.ConflictAlert = false
+	}
+
+	for _, ac1 := range h.aircraft {
+		for _, ac2 := range h.aircraft {
+			if ac1.Callsign == ac2.Callsign {
+				continue
+			}
+
+			latDist := DistanceInNauticalMiles(ac1.Coord, ac2.Coord)
+			altDiff := math.Abs(float64(ac1.Altitude - ac2.Altitude))
+
+			if latDist < 5.0 && altDiff < 1000.0 {
+				ac1.ConflictAlert = true
+				ac2.ConflictAlert = true
+				if rand.Float64() < 0.05 {
+					h.addLog("ALERT", ac1.Callsign, fmt.Sprintf("TRAFFIC ALERT! %s & %s loss of separation (%.1f NM, %.0f ft diff)", ac1.Callsign, ac2.Callsign, latDist, altDiff))
+				}
+			}
+		}
+	}
+}
+
+// GetSnapshot constructs the payload for streaming to clients
+func (h *ATCHub) GetSnapshot(selfID string) ATCPayload {
 	h.mu.RLock()
 	defer h.mu.RUnlock()
 
-	agentsList := make([]SentinelAgent, 0, len(h.agents))
-	for _, a := range h.agents {
-		agentsList = append(agentsList, *a)
+	sectorsList := make([]AirspaceSector, 0, len(h.sectors))
+	for _, s := range h.sectors {
+		sectorsList = append(sectorsList, *s)
 	}
 
-	// Deterministic stable sorting by Score DESC, then ID ASC (Prevents UI glitching on identical scores)
-	for i := 0; i < len(agentsList)-1; i++ {
-		for j := i + 1; j < len(agentsList); j++ {
-			if agentsList[j].Score > agentsList[i].Score || (agentsList[j].Score == agentsList[i].Score && agentsList[j].ID < agentsList[i].ID) {
-				agentsList[i], agentsList[j] = agentsList[j], agentsList[i]
-			}
+	aircraftList := make([]Aircraft, 0, len(h.aircraft))
+	activeAlerts := 0
+	for _, a := range h.aircraft {
+		aircraftList = append(aircraftList, *a)
+		if a.ConflictAlert {
+			activeAlerts++
 		}
 	}
 
-	arcsList := make([]AttackArc, 0, len(h.activeArcs))
-	var totalEntropy float64
-	for _, arc := range h.activeArcs {
-		arcsList = append(arcsList, *arc)
-		totalEntropy += arc.Entropy
+	controllersList := make([]ControllerSession, 0, len(h.controllers))
+	mySectorID := "sec-wiii"
+	for _, c := range h.controllers {
+		controllersList = append(controllersList, *c)
+		if c.ID == selfID {
+			mySectorID = c.SectorID
+		}
 	}
 
-	nodesList := make([]TargetNode, 0, len(h.nodes))
-	for _, n := range h.nodes {
-		nodesList = append(nodesList, *n)
+	// Inbound handoffs for current player's sector
+	handoffs := make([]HandoffNotification, 0)
+	for _, a := range h.aircraft {
+		if a.HandoffState == "PENDING" && a.HandoffTarget == mySectorID {
+			fromSecName := a.SectorID
+			if s, ok := h.sectors[a.SectorID]; ok {
+				fromSecName = s.Name
+			}
+			handoffs = append(handoffs, HandoffNotification{
+				Callsign:     a.Callsign,
+				FromSector:   fromSecName,
+				ToSector:     mySectorID,
+				FromOperator: a.SectorID,
+			})
+		}
 	}
 
-	logsCopy := make([]TerminalLog, len(h.logs))
+	logsCopy := make([]ATCLogEntry, len(h.logs))
 	copy(logsCopy, h.logs)
 
-	avgEntropy := 4.2
-	if len(h.activeArcs) > 0 {
-		avgEntropy = totalEntropy / float64(len(h.activeArcs))
-	}
-
-	threat := "DEFCON 4"
-	if len(h.activeArcs) > 6 {
-		threat = "DEFCON 1"
-	} else if len(h.activeArcs) > 4 {
-		threat = "DEFCON 2"
-	} else if len(h.activeArcs) > 2 {
-		threat = "DEFCON 3"
-	}
-
-	return WarRoomState{
-		Type:          "state_update",
-		AgentID:       selfID,
-		Agents:        agentsList,
-		ActiveArcs:    arcsList,
-		Nodes:         nodesList,
-		Logs:          logsCopy,
-		RedScore:      h.redScore,
-		BlueScore:     h.blueScore,
-		GlobalEntropy: math.Round(avgEntropy*100) / 100,
-		ThreatLevel:   threat,
+	return ATCPayload{
+		Type:         "radar_update",
+		ControllerID: selfID,
+		SectorID:     mySectorID,
+		Sectors:      sectorsList,
+		Airports:     GlobalMajorAirports,
+		AircraftList: aircraftList,
+		Controllers:  controllersList,
+		Handoffs:     handoffs,
+		Logs:         logsCopy,
+		TotalFlights: len(h.aircraft),
+		ActiveAlerts: activeAlerts,
 	}
 }
 
-// LaunchAttack creates a new targeted cyber attack arc
-func (h *WarRoomHub) LaunchAttack(attackerID, originCity, targetCity, vector string, payloadMB int) {
-	h.agentAction <- func() {
+// ExecuteATCCommand modifies flight parameters or completes handoffs
+func (h *ATCHub) ExecuteATCCommand(cmd ClientATCCommand, operatorID string) {
+	h.commands <- func() {
 		h.mu.Lock()
 		defer h.mu.Unlock()
 
-		var srcCoord GeoCoord
-		var srcFound bool
-		for _, n := range GlobalNodes {
-			if n.City == originCity {
-				srcCoord = n.Coord
-				srcFound = true
-				break
-			}
-		}
-		if !srcFound {
-			srcCoord = GlobalNodes[0].Coord
-		}
-
-		var dstNode *TargetNode
-		for _, n := range h.nodes {
-			if n.City == targetCity {
-				dstNode = n
-				break
-			}
-		}
-		if dstNode == nil {
-			return
-		}
-
-		color := "#FF0033"
-		if vector == "Ransomware Encryptor" {
-			color = "#9900FF"
-		} else if vector == "Kernel 0-Day Exploit" {
-			color = "#00FF66"
-		}
-
-		payload := GenerateRandomPayloadBytes(1024, vector == "Ransomware Encryptor")
-		entropy := CalculateShannonEntropy(payload)
-
-		attackerAlias := "Operator-" + attackerID
-		if a, ok := h.agents[attackerID]; ok {
-			attackerAlias = a.Alias
-			a.Attacks++
-			a.Score += 20
-		}
-
-		arcID := uuid.New().String()[:6]
-		h.activeArcs[arcID] = &AttackArc{
-			ID:          arcID,
-			AttackerID:  attackerID,
-			Attacker:    attackerAlias,
-			OriginCity:  originCity,
-			OriginCoord: srcCoord,
-			TargetCity:  targetCity,
-			TargetCoord: dstNode.Coord,
-			TargetIP:    dstNode.IP,
-			TargetASN:   dstNode.ASN,
-			Vector:      vector,
-			Color:       color,
-			Progress:    0.0,
-			CurrentPos:  srcCoord,
-			PayloadSize: payloadMB,
-			Entropy:     entropy,
-			Neutralized: false,
-		}
-
-		h.addLog("WARN", fmt.Sprintf("[%s] launched %s at %s (%s, %d MB, Entropy: %.2f)", attackerAlias, vector, targetCity, dstNode.IP, payloadMB, entropy), "RED-OPS")
-	}
-}
-
-// DeployDefense intercepts or shields an infrastructure node
-func (h *WarRoomHub) DeployDefense(defenderID, actionType, arcID, targetCity string) {
-	h.agentAction <- func() {
-		h.mu.Lock()
-		defer h.mu.Unlock()
-
-		defenderAlias := "Sentinel-" + defenderID
-		if a, ok := h.agents[defenderID]; ok {
-			defenderAlias = a.Alias
-			a.Defends++
-			a.Score += 50
-		}
-
-		switch actionType {
-		case "bgp_null_route", "intercept":
-			if arc, ok := h.activeArcs[arcID]; ok {
-				arc.Neutralized = true
-				arc.MitigatedBy = defenderAlias
-				arc.Color = "#0088FF"
-				h.blueScore += 100
-				h.addLog("DEFENSE", fmt.Sprintf("[%s] successfully neutralized attack %s via BGP Null-Route!", defenderAlias, arc.Vector), "BLUE-OPS")
-			}
-
-		case "firewall_patch", "shield":
-			if node, ok := h.nodes[targetCity]; ok {
-				node.Shield = true
-				h.blueScore += 30
-				h.addLog("DEFENSE", fmt.Sprintf("[%s] deployed Quantum Firewall Shield to %s (%s)", defenderAlias, targetCity, node.IP), "BLUE-OPS")
-			}
-		}
-	}
-}
-
-// UpdateAgent updates an operator's alias, faction, or home city
-func (h *WarRoomHub) UpdateAgent(agentID, alias, faction, city string) {
-	h.agentAction <- func() {
-		h.mu.Lock()
-		defer h.mu.Unlock()
-
-		if a, ok := h.agents[agentID]; ok {
-			a.Alias = alias
-			a.Faction = faction
-			a.City = city
-			for _, n := range GlobalNodes {
-				if n.City == city {
-					a.Coord = n.Coord
-					break
+		switch cmd.Type {
+		case "claim_sector":
+			if sec, ok := h.sectors[cmd.SectorID]; ok {
+				// Vacate old sector
+				for _, s := range h.sectors {
+					if s.ControllerID == operatorID {
+						s.Controller = "AUTO-TOWER"
+						s.ControllerID = ""
+					}
 				}
+				sec.Controller = cmd.Controller
+				sec.ControllerID = operatorID
+				if c, ok := h.controllers[operatorID]; ok {
+					c.SectorID = cmd.SectorID
+					c.Callsign = cmd.Controller
+				}
+				h.addLog("SYS", "ALL", fmt.Sprintf("[%s] took over sector %s", cmd.Controller, sec.Name))
 			}
-			h.addLog("INFO", fmt.Sprintf("[%s] switched faction to %s stationed at %s", alias, faction, city), "SENTINEL")
+
+		case "set_heading":
+			if ac, ok := h.aircraft[cmd.Callsign]; ok {
+				ac.TargetHeading = cmd.Heading
+				h.addLog("RADIO", ac.Callsign, fmt.Sprintf("%s, fly heading %03.0f", ac.Callsign, cmd.Heading))
+			}
+
+		case "set_altitude":
+			if ac, ok := h.aircraft[cmd.Callsign]; ok {
+				ac.TargetAltitude = cmd.Altitude
+				h.addLog("RADIO", ac.Callsign, fmt.Sprintf("%s, climb/descend and maintain FL%d", ac.Callsign, cmd.Altitude/100))
+			}
+
+		case "set_speed":
+			if ac, ok := h.aircraft[cmd.Callsign]; ok {
+				ac.TargetSpeed = cmd.Speed
+				h.addLog("RADIO", ac.Callsign, fmt.Sprintf("%s, adjust speed to %.0f knots", ac.Callsign, cmd.Speed))
+			}
+
+		case "handoff_init":
+			if ac, ok := h.aircraft[cmd.Callsign]; ok {
+				ac.HandoffState = "PENDING"
+				ac.HandoffTarget = cmd.ToSector
+				h.addLog("HANDOFF", ac.Callsign, fmt.Sprintf("Handoff initiated for %s to %s", ac.Callsign, cmd.ToSector))
+			}
+
+		case "handoff_accept":
+			if ac, ok := h.aircraft[cmd.Callsign]; ok {
+				ac.HandoffState = "NONE"
+				ac.SectorID = ac.HandoffTarget
+				ac.HandoffTarget = ""
+				if c, ok := h.controllers[operatorID]; ok {
+					c.Score += 25
+					c.Handled++
+				}
+				h.addLog("HANDOFF", ac.Callsign, fmt.Sprintf("Handoff ACCEPTED: %s is now under control of %s", ac.Callsign, ac.SectorID))
+			}
 		}
 	}
 }
