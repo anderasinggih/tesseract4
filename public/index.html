@@ -1700,8 +1700,8 @@
         fallbackWings.position.set(0, 0, -0.5);
         fallbackPlaneGroup.add(fallbackWings);
 
-        fallbackPlaneGroup.scale.set(0.6, 0.6, 0.6);
-        fallbackPlaneGroup.position.set(0, -1.2, 0);
+        fallbackPlaneGroup.scale.set(0.35, 0.35, 0.35);
+        fallbackPlaneGroup.position.set(0, -0.8, 0);
         window.fullPlaneMeshGroup.add(fallbackPlaneGroup);
 
         // Group to hold nearby surrounding 3D aircraft models in visual range (< 50 NM)
@@ -1866,9 +1866,9 @@
             loadedModel.position.y += (loadedModel.position.y - center.y);
             loadedModel.position.z += (loadedModel.position.z - center.z);
 
-            // Scale to comfortable ~6.8-unit wingspan (slightly smaller for full-body view)
+            // Scale to comfortable realistic ~3.8-unit wingspan (proportional and sleek against satellite map)
             const maxDim = Math.max(size.x, size.y, size.z);
-            const scaleFactor = 6.8 / (maxDim || 1.0);
+            const scaleFactor = 3.8 / (maxDim || 1.0);
             loadedModel.scale.set(scaleFactor, scaleFactor, scaleFactor);
 
             // Mathematically verified: nose+X → -Z (fwd), dorsal+Z → +Y (up), wings±Y → ±X (level)
@@ -1898,13 +1898,13 @@
                 window.fullPlaneMeshGroup.remove(window.fullPlaneMeshGroup.children[0]);
               }
               const fullModel = loadedModel.clone();
-              fullModel.scale.set(scaleFactor * 1.5, scaleFactor * 1.5, scaleFactor * 1.5);
+              fullModel.scale.set(scaleFactor, scaleFactor, scaleFactor);
               fullModel.position.set(0, 0, 0); // Directly centered on origin
               window.fullPlaneMeshGroup.add(fullModel);
 
               // Save template for surrounding traffic rendering
               window.trafficPlaneModelTemplate = loadedModel.clone();
-              window.trafficPlaneScaleFactor = scaleFactor * 1.5;
+              window.trafficPlaneScaleFactor = scaleFactor;
             }
           },
           undefined,
@@ -1991,11 +1991,12 @@
               if (typeof currentPlaneBankRoll === 'undefined') window.currentPlaneBankRoll = 0;
               window.currentPlaneBankRoll += (targetBankRoll - window.currentPlaneBankRoll) * 0.08;
 
-              // ─── USER CALIBRATION ROTATION (Ubah nilai di sini) ───
+              // ─── USER CALIBRATION ROTATION & SCALE (Ubah nilai di sini) ───
               // Ganti angka di bawah ini untuk merotasi pesawat & floor grid bersamaan:
               const USER_CALIBRATION_PITCH_X = 19.3; // Rotasi X: Pitch (Dongak + / Nunduk -)
               const USER_CALIBRATION_YAW_Y = 0.0; // Rotasi Y: Yaw / Heading (Putar Kiri - / Kanan +)
               const USER_CALIBRATION_ROLL_Z = 0.0; // Rotasi Z: Roll / Miring Sayap
+              const USER_PLANE_SCALE_MULTIPLIER = 0.55; // Skala ukuran pesawat (0.55 = 45% lebih ramping & proporsional terhadap peta)
 
               fullPlaneGroup.rotation.x = pitchOffset + USER_CALIBRATION_PITCH_X;
               fullPlaneGroup.rotation.y = USER_CALIBRATION_YAW_Y;
@@ -2003,7 +2004,8 @@
               fullPlaneGroup.position.set(0, 0, 0); // 100% Dead Center on screen
 
               // Perspective scale tied 1:1 proportionally to real map zoom level
-              fullPlaneGroup.scale.set(currentActualScale, currentActualScale, currentActualScale);
+              const finalScale = currentActualScale * USER_PLANE_SCALE_MULTIPLIER;
+              fullPlaneGroup.scale.set(finalScale, finalScale, finalScale);
             }
           }
 
