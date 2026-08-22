@@ -1906,9 +1906,15 @@
                     otherModel.scale.set(trafficScale, trafficScale, trafficScale);
                     otherModel.position.set(0, 0, 0);
 
-                    // Level cruise attitude (0.00 pitch)
+                    // Level cruise attitude matching player aircraft (+0.28 upright pitch + climb/descent)
+                    const otherIsClimbing = otherAc.targetAltitude > otherAc.altitude + 300;
+                    const otherIsDescending = otherAc.targetAltitude < otherAc.altitude - 300;
+                    let otherPitchOffset = 0;
+                    if (otherIsClimbing) otherPitchOffset = +0.06;
+                    if (otherIsDescending) otherPitchOffset = -0.06;
+
                     const modelWrapper = new THREE.Group();
-                    modelWrapper.rotation.x = 0.0;
+                    modelWrapper.rotation.x = +0.28 + otherPitchOffset;
                     modelWrapper.add(otherModel);
 
                     trafficContainer.add(modelWrapper);
