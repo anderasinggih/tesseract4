@@ -1303,15 +1303,12 @@
     const ctx = canvas.getContext('2d');
 
     function resizeCanvas() {
-      const dpr = window.devicePixelRatio || 1;
       const w = window.innerWidth;
       const h = window.innerHeight;
-      canvas.width = Math.floor(w * dpr);
-      canvas.height = Math.floor(h * dpr);
+      canvas.width = w;
+      canvas.height = h;
       canvas.style.width = w + 'px';
       canvas.style.height = h + 'px';
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0); // Crisp subpixel alignment for sharp text and lines
-      ctx.imageSmoothingEnabled = true;
 
       if (typeof map !== 'undefined' && map && map.resize) {
         map.resize();
