@@ -1364,12 +1364,16 @@
       const disp = document.getElementById('pov-zoom-display');
       if (disp) disp.innerText = `${povZoomLevel.toFixed(1)}x`;
 
-      // Dynamically adjust Three.js 3D plane distance
-      if (fullThreeCamera) {
-        // Wider zoom out pulls 3D camera back
-        const camDistance = 15.0 + (10.5 - povZoomLevel) * 3.5;
-        const camHeight = 3.0 + (10.5 - povZoomLevel) * 1.2;
-        fullThreeCamera.position.set(0, Math.max(1.5, camHeight), Math.max(8.0, camDistance));
+      // Keep aircraft accurately anchored in 3D perspective space across all zoom scales
+      if (fullPlaneGroup) {
+        // Natural perspective scaling with altitude and zoom level
+        const zoomScale = Math.pow(2, (povZoomLevel - 10.5) * 0.4);
+        const altitudeFactor = selectedCallsign && currentPayload && currentPayload.aircraft ? 
+          (currentPayload.aircraft.find(a => a.callsign === selectedCallsign)?.altitude || 35000) / 35000 : 1.0;
+        
+        // Pinned securely to the center flight vector
+        fullPlaneGroup.scale.set(zoomScale, zoomScale, zoomScale);
+        fullPlaneGroup.position.set(0, -1.2 * altitudeFactor, 0);
       }
     }
 
@@ -1788,11 +1792,23 @@
 
         // Render Fullscreen 3D Overlay on Map when 3D Cockpit POV is ON
         if (mapCockpitPOVEnabled && fullThreeRenderer && fullThreeScene && fullThreeCamera) {
-          if (fullPlaneGroup) {
-            // Stable level cruise attitude
-            fullPlaneGroup.rotation.x = +0.55;
-            // Extremely light, subtle natural atmospheric drift
-            fullPlaneGroup.rotation.z = Math.sin(Date.now() * 0.001) * 0.012;
+          if (selectedCallsign && currentPayload && currentPayload.aircraft) {
+            const ac = currentPayload.aircraft.find(a => a.callsign === selectedCallsign);
+            if (ac && fullPlaneGroup) {
+              // Altitude climb/descent pitch reaction (+0.55 level cruise + climb delta)
+              const isClimbing = ac.targetAltitude > ac.altitude + 300;
+              const isDescending = ac.targetAltitude < ac.altitude - 300;
+              let pitchOffset = 0;
+              if (isClimbing) pitchOffset = -0.08;   // Nose up
+              if (isDescending) pitchOffset = +0.08; // Nose down
+
+              fullPlaneGroup.rotation.x = +0.55 + pitchOffset;
+              fullPlaneGroup.rotation.z = Math.sin(Date.now() * 0.001) * 0.012; // Natural atmospheric drift
+
+              // Perspective scale tied to zoom level
+              const zoomScale = Math.pow(2, (povZoomLevel - 10.5) * 0.35);
+              fullPlaneGroup.scale.set(zoomScale, zoomScale, zoomScale);
+            }
           }
 
           // Dynamic Day/Night Lighting Adaptation based on Selected Aircraft Longitude
