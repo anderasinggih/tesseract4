@@ -30,6 +30,8 @@ type Aircraft struct {
 	HandoffState   string   `json:"handoffState"`   // "NONE", "PENDING", "ACCEPTED"
 	HandoffTarget  string   `json:"handoffTarget"`  // Sector receiving handoff
 	ConflictAlert  bool     `json:"conflictAlert"`  // True if Loss of Separation detected (< 5NM & < 1000ft)
+	EmergencyState bool     `json:"emergencyState"` // True if Mayday 7700 emergency active
+	EmergencyType  string   `json:"emergencyType"`  // "ENGINE_FAILURE", "MEDICAL", "WEATHER_DEVIATION"
 	Trail          []GeoCoord `json:"trail"`        // Past radar history trail
 }
 

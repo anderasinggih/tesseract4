@@ -89,8 +89,8 @@ func NewATCHub() *ATCHub {
 		h.sectors[sec.ID] = &secCopy
 	}
 
-	// Pre-spawn initial commercial flights across all sectors
-	for i := 0; i < 40; i++ {
+	// Pre-spawn initial commercial flights across all sectors (Dense global traffic)
+	for i := 0; i < 75; i++ {
 		h.spawnCommercialFlight()
 	}
 
@@ -144,7 +144,6 @@ func (h *ATCHub) spawnCommercialFlight() {
 	}
 
 	squawk := fmt.Sprintf("%04d", rand.Intn(7000)+1000)
-	bearing := CalculateTrueBearing(orig.Coord, dest.Coord)
 
 	// Determine starting sector
 	sectorID := "sec-wiii"
@@ -181,18 +180,23 @@ func (h *ATCHub) spawnCommercialFlight() {
 		SectorID:       sectorID,
 		HandoffState:   "NONE",
 		ConflictAlert:  false,
+		EmergencyState: false,
+		EmergencyType:  "",
 		Trail:          make([]GeoCoord, 0, 8),
 	}
 }
 
 // Run executes the continuous aircraft kinematics loop and collision checks at 60Hz
 func (h *ATCHub) Run() {
-	log.Println("✈️ [ATC Hub] Air traffic kinematics & collision alert engine started at 60 FPS.")
+	log.Println("[ATC Hub] Air traffic kinematics & collision alert engine started at 60 FPS.")
 	ticker := time.NewTicker(16 * time.Millisecond) // 60Hz (16.6ms) physics tick
 	defer ticker.Stop()
 
-	respawnTicker := time.NewTicker(8 * time.Second)
+	respawnTicker := time.NewTicker(4 * time.Second)
 	defer respawnTicker.Stop()
+
+	emergencyTicker := time.NewTicker(25 * time.Second) // Dynamic in-flight emergencies
+	defer emergencyTicker.Stop()
 
 	lastTick := time.Now()
 
@@ -237,8 +241,30 @@ func (h *ATCHub) Run() {
 
 		case <-respawnTicker.C:
 			h.mu.Lock()
-			if len(h.aircraft) < 25 {
+			if len(h.aircraft) < 65 {
 				h.spawnCommercialFlight()
+			}
+			h.mu.Unlock()
+
+		case <-emergencyTicker.C:
+			h.mu.Lock()
+			// Randomly assign emergency to a flight
+			if len(h.aircraft) > 0 {
+				var targetAc *Aircraft
+				for _, ac := range h.aircraft {
+					if !ac.EmergencyState {
+						targetAc = ac
+						break
+					}
+				}
+				if targetAc != nil {
+					targetAc.EmergencyState = true
+					targetAc.Squawk = "7700" // International MAYDAY squawk
+					emergencyTypes := []string{"ENGINE_FAILURE", "MEDICAL", "CABIN_DEPRESS"}
+					targetAc.EmergencyType = emergencyTypes[rand.Intn(len(emergencyTypes))]
+					targetAc.TargetAltitude = 10000 // Emergency descent to FL100
+					h.addLog("ALERT", targetAc.Callsign, fmt.Sprintf("MAYDAY 7700: %s reports %s! Requesting immediate priority descent to FL100!", targetAc.Callsign, targetAc.EmergencyType))
+				}
 			}
 			h.mu.Unlock()
 

@@ -729,16 +729,16 @@
         <div class="form-group">
           <div style="display: flex; justify-content: space-between; align-items: center;">
             <label style="margin: 0;">VECTOR HDG: <span id="hdg-display" style="color: var(--accent-cyan); font-weight: 700;">090°</span></label>
-            <button type="button" class="btn-turn" style="background: rgba(0, 221, 255, 0.15); border-color: var(--accent-cyan); color: var(--accent-cyan);" onclick="steerDirectToDestination()">DIRECT DEST 🎯</button>
+            <button type="button" class="btn-turn" style="background: rgba(0, 221, 255, 0.15); border-color: var(--accent-cyan); color: var(--accent-cyan);" onclick="steerDirectToDestination()">NAV DIRECT</button>
           </div>
           <input type="range" id="input-heading" min="0" max="359" step="1" value="90"
             oninput="updateHeadingPreview(this.value)" onchange="sendVectorHeading(this.value)">
           <!-- Quick Turn Steer Buttons -->
           <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; margin-top: 3px;">
-            <button type="button" class="btn-turn" onclick="adjustHeading(-10)">◀ -10°</button>
-            <button type="button" class="btn-turn" onclick="adjustHeading(-5)">◀ -5°</button>
-            <button type="button" class="btn-turn" onclick="adjustHeading(+5)">+5° ▶</button>
-            <button type="button" class="btn-turn" onclick="adjustHeading(+10)">+10° ▶</button>
+            <button type="button" class="btn-turn" onclick="adjustHeading(-10)">&laquo; -10°</button>
+            <button type="button" class="btn-turn" onclick="adjustHeading(-5)">&lsaquo; -5°</button>
+            <button type="button" class="btn-turn" onclick="adjustHeading(+5)">+5° &rsaquo;</button>
+            <button type="button" class="btn-turn" onclick="adjustHeading(+10)">+10° &raquo;</button>
           </div>
         </div>
 
@@ -1979,11 +1979,13 @@
 
             const isSelected = ac.callsign === selectedCallsign;
             const isConflict = ac.conflictAlert;
+            const isEmergency = ac.emergencyState;
             const isHandoff = ac.handoffState === 'PENDING';
 
             // Clean Black & White with Important Highlights
             let acColor = '#ffffff';
-            if (isConflict) acColor = 'var(--accent-red)';
+            if (isEmergency) acColor = 'var(--accent-red)';
+            else if (isConflict) acColor = 'var(--accent-red)';
             else if (isHandoff) acColor = 'var(--accent-amber)';
             else if (isSelected) acColor = '#ffffff';
             else acColor = '#cccccc';
@@ -1997,24 +1999,24 @@
             // Draw Clean Airplane Silhouette Icon
             drawAirplaneIcon(pt.x, pt.y, ac.heading, acColor, planeSize, isSelected, false);
 
-            // Detailed Box Tag ONLY shows when Selected OR when Conflict Alert
-            if (isSelected || isConflict) {
+            // Detailed Box Tag shows when Selected, Conflict Alert, or MAYDAY Emergency
+            if (isSelected || isConflict || isEmergency) {
               const tagX = pt.x + 14;
               const tagY = pt.y - 14;
 
-              ctx.fillStyle = isConflict ? 'rgba(255, 34, 68, 0.95)' : 'rgba(10, 10, 10, 0.95)';
-              ctx.fillRect(tagX - 2, tagY - 9, 84, 28);
-              ctx.strokeStyle = isConflict ? '#ffffff' : '#ffffff';
-              ctx.strokeRect(tagX - 2, tagY - 9, 84, 28);
+              ctx.fillStyle = (isConflict || isEmergency) ? 'rgba(255, 34, 68, 0.95)' : 'rgba(10, 10, 10, 0.95)';
+              ctx.fillRect(tagX - 2, tagY - 9, 90, 30);
+              ctx.strokeStyle = (isConflict || isEmergency) ? '#ffffff' : '#ffffff';
+              ctx.strokeRect(tagX - 2, tagY - 9, 90, 30);
 
               ctx.fillStyle = '#ffffff';
               ctx.font = '700 9px JetBrains Mono';
-              ctx.fillText(ac.callsign, tagX, tagY);
+              ctx.fillText(isEmergency ? `! ${ac.callsign} [7700]` : ac.callsign, tagX, tagY);
 
               ctx.fillStyle = '#cccccc';
               ctx.font = '8px JetBrains Mono';
               ctx.fillText(`FL${Math.round(ac.altitude / 100)} ${Math.round(ac.speed)}K`, tagX, tagY + 9);
-              ctx.fillText(`${ac.origin}▶${ac.destination}`, tagX, tagY + 17);
+              ctx.fillText(isEmergency ? `${ac.emergencyType}` : `${ac.origin}>${ac.destination}`, tagX, tagY + 17);
             } else {
               // Minimal Callsign underneath
               ctx.fillStyle = '#888888';
