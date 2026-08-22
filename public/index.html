@@ -1446,12 +1446,12 @@
       if (disp) disp.innerText = `${povZoomLevel.toFixed(1)}x`;
     }
 
-    // Interactive Mouse Wheel Zoom when in POV Mode (capped at 11x)
+    // Mouse Wheel: disabled in POV mode — fixed-camera, no false size ratio from zoom
     window.addEventListener('wheel', (e) => {
       if (mapCockpitPOVEnabled) {
         e.preventDefault();
-        const delta = e.deltaY < 0 ? +0.3 : -0.3;
-        adjustPOVZoom(delta);
+        // POV is a fixed-FOV window — scroll zoom intentionally disabled
+        return;
       }
     }, { passive: false });
 
@@ -1929,7 +1929,9 @@
 
         // Render Fullscreen 3D Overlay on Map when 3D Cockpit POV is ON
         if (mapCockpitPOVEnabled && fullThreeRenderer && fullThreeScene && fullThreeCamera) {
-          const currentActualScale = Math.pow(2, (povZoomLevel - 10.5));
+          // Fixed scale — POV is a true fixed-FOV camera, NOT zoom-dependent.
+          // Zoom level only affects the 2D map underneath, never the 3D scene.
+          const currentActualScale = 1.0;
 
           if (selectedCallsign && currentPayload && currentPayload.aircraft) {
             const ac = currentPayload.aircraft.find(a => a.callsign === selectedCallsign);
@@ -1960,9 +1962,8 @@
               fullPlaneGroup.rotation.z = window.currentPlaneBankRoll + USER_CALIBRATION_ROLL_Z + Math.sin(Date.now() * 0.001) * 0.008;
               fullPlaneGroup.position.set(0, 0, 0); // 100% Dead Center on screen
 
-              // Fixed world-space scale — 3D POV is independent of map zoom.
-              // trafficPlaneScaleFactor is set when GLTF loads (wingspan = 5.5 units).
-              const finalScale = (window.trafficPlaneScaleFactor || 1.0) * USER_PLANE_SCALE_MULTIPLIER;
+              // Perspective scale tied 1:1 proportionally to real map zoom level
+              const finalScale = currentActualScale * USER_PLANE_SCALE_MULTIPLIER;
               fullPlaneGroup.scale.set(finalScale, finalScale, finalScale);
             }
           }
@@ -2007,30 +2008,24 @@
                     let relAngleDeg = (trueBearing - (currentCamHeading || 0) + 360) % 360;
                     const relAngleRad = relAngleDeg * (Math.PI / 180.0);
 
-                    // ── UNIFIED WORLD-SPACE POSITIONING (100% zoom-independent) ──────────────
-                    // Source of truth: polar rings are [15, 30, 60] units = [5, 10, 20] NM
-                    // Therefore: 1 NM = 3 Three.js units — used everywhere for consistency.
-                    // Altitude uses the same scale: 1 ft = NM_TO_SCENE/6076 units.
-                    // Perspective projection naturally handles apparent size — no manual shrink.
-                    const NM_TO_SCENE = 3;                     // 1 NM = 3 scene units
-                    const FT_TO_SCENE = NM_TO_SCENE / 6076;   // ≈ 0.000494 units/ft
-
-                    const sceneDist = distNM * NM_TO_SCENE;
-                    const relX =  Math.sin(relAngleRad) * sceneDist;
+                    // Physical 3D distance in screen coordinates (forward along camera is -Z, right is +X)
+                    const sceneDist = distNM * 2.5 * currentActualScale;
+                    const relX = Math.sin(relAngleRad) * sceneDist;
                     const relZ = -Math.cos(relAngleRad) * sceneDist;
 
                     // Camera pitch compensation:
-                    // Camera at (0, 1.22, 13.95) looks at origin → ~5° downward tilt.
-                    // Without this, objects along -Z project BELOW screen centre.
-                    // Lift Y by -relZ × (CAM_Y/CAM_Z) to place same-altitude traffic on horizon.
+                    // Camera is at (0, 1.22, 13.95) looking at (0,0,0) → ~5° downward tilt.
+                    // Without this, objects along -Z appear BELOW player on screen.
+                    // Compensate by lifting Y proportional to forward depth (-relZ * tan(pitch)).
                     const CAM_Y = 1.22, CAM_Z = 13.95;
-                    const pitchCompY = -relZ * (CAM_Y / CAM_Z);
+                    const cameraPitchRad = Math.atan2(CAM_Y, CAM_Z); // ~0.0873 rad ≈ 5°
+                    const pitchCompY = -relZ * Math.tan(cameraPitchRad);
 
-                    // Altitude: same world scale — 1000 ft ≈ 0.49 scene units
-                    const altDeltaFt = otherAc.altitude - ac.altitude;
-                    const altY = altDeltaFt * FT_TO_SCENE;
+                    // Authentic 3D flight altitude delta (1000 ft = 1.8 units) so altitude difference is immediately visible
+                    const altDeltaFt = (otherAc.altitude - ac.altitude);
+                    const altY = (altDeltaFt / 1000.0) * 1.8 * currentActualScale;
 
-                    // Final Y = horizon lift (corrects camera tilt) + real altitude offset
+                    // Final Y = pitch lift (perspective horizon) + altitude offset
                     const relY = pitchCompY + altY;
 
                     // Container positioned in camera coordinate frame
@@ -2053,9 +2048,7 @@
 
                     // Clone 3D plane mesh
                     const otherModel = window.trafficPlaneModelTemplate.clone();
-                    // Traffic model = same world-scale as player aircraft (wingspan 5.5 units).
-                    // Perspective projection handles apparent size — closer = bigger, far = smaller.
-                    const trafficScale = (window.trafficPlaneScaleFactor || 1.0);
+                    const trafficScale = (window.trafficPlaneScaleFactor || 1.0) * currentActualScale;
                     otherModel.scale.set(trafficScale, trafficScale, trafficScale);
                     otherModel.position.set(0, 0, 0);
 
