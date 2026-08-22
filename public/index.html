@@ -1208,6 +1208,65 @@
       osc.stop(now + 0.32);
     }
 
+    // 8. Realistic Aviation Radio Voice Readback Engine (Web Speech Synthesis + Radio Filter)
+    let atcVoiceQueue = [];
+    let isSpeakingVoice = false;
+
+    function speakAtcRadio(text, isEmergency = false) {
+      if (!('speechSynthesis' in window)) return;
+
+      // Clean ICAO numbers to spoken phonetic format (e.g. 7700 -> seven seven zero zero, FL320 -> flight level three two zero)
+      let spokenText = text
+        .replace(/FL(\d{2,3})/gi, (_, fl) => `flight level ${fl.split('').join(' ')}`)
+        .replace(/(\d{3,4})/g, match => match.split('').join(' '))
+        .replace(/>/g, 'to')
+        .replace(/\[7700\]/g, 'squawk seven seven zero zero');
+
+      atcVoiceQueue.push({ text: spokenText, isEmergency });
+      processVoiceQueue();
+    }
+
+    function processVoiceQueue() {
+      if (isSpeakingVoice || atcVoiceQueue.length === 0) return;
+      if (!window.speechSynthesis) return;
+
+      const item = atcVoiceQueue.shift();
+      isSpeakingVoice = true;
+
+      // Play authentic radio mic click before transmission
+      playRadioRogerBeep();
+
+      setTimeout(() => {
+        const utterance = new SpeechSynthesisUtterance(item.text);
+        utterance.rate = item.isEmergency ? 1.05 : 1.0;
+        utterance.pitch = item.isEmergency ? 1.15 : 0.95;
+        utterance.volume = 0.9;
+
+        // Select English pilot/ATC voice if available
+        const voices = window.speechSynthesis.getVoices();
+        const pilotVoice = voices.find(v => (v.lang.startsWith('en') && (v.name.includes('David') || v.name.includes('Daniel') || v.name.includes('Natural') || v.name.includes('Google') || v.name.includes('Male')))) || voices.find(v => v.lang.startsWith('en'));
+        if (pilotVoice) {
+          utterance.voice = pilotVoice;
+        }
+
+        utterance.onend = () => {
+          // Play roger mic click after transmission
+          playRadioRogerBeep();
+          setTimeout(() => {
+            isSpeakingVoice = false;
+            processVoiceQueue();
+          }, 300);
+        };
+
+        utterance.onerror = () => {
+          isSpeakingVoice = false;
+          processVoiceQueue();
+        };
+
+        window.speechSynthesis.speak(utterance);
+      }, 120);
+    }
+
     // Tactical Toast Notification Handler
     let toastTimeout = null;
     function showTacticalToast(text, type = 'ALERT') {
@@ -1986,14 +2045,18 @@
         const newLogs = payload.logs.slice(lastLogLength);
         lastLogLength = payload.logs.length;
 
-        // Check if new incoming logs contain emergency or handoff tasks
+        // Check if new incoming logs contain emergency or handoff tasks and speak live radio voice
         newLogs.forEach(l => {
           if (l.type === 'ALERT' || l.type === 'EMERGENCY' || l.message.includes('MAYDAY')) {
-            playAlertChime(); // Urgent 2-tone ATC Master Warning Chime
+            playAlertChime(); // Urgent Boeing Master Caution Chime
             showTacticalToast(`MAYDAY ALERT: ${l.message}`, 'ALERT');
+            speakAtcRadio(`Mayday Mayday Mayday. ${l.callsign}. ${l.message}`, true);
+          } else if (l.type === 'COMMS') {
+            speakAtcRadio(`${l.callsign}, ${l.message}`, false);
           } else if (l.type === 'SYS' || l.type === 'HANDOFF') {
             playTaskPing(); // Mission Task update ping
             showTacticalToast(`ATC MISSION: ${l.message}`, 'HANDOFF');
+            speakAtcRadio(`${l.message}`, false);
           }
         });
 
