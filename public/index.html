@@ -10,6 +10,10 @@
   <meta name="theme-color" content="#000000">
   <title>GLOBAL ATC RADAR // TACTICAL AIRSPACE CONTROL</title>
 
+  <!-- CesiumJS Official Production Build -->
+  <link href="https://cesium.com/downloads/cesiumjs/releases/1.119/Build/Cesium/Widgets/widgets.css" rel="stylesheet">
+  <script src="https://cesium.com/downloads/cesiumjs/releases/1.119/Build/Cesium/Cesium.js"></script>
+
   <!-- MapLibre GL JS & CSS -->
   <link href="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css" rel="stylesheet" />
   <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
@@ -637,6 +641,7 @@
 <body>
 
   <div id="map-container"></div>
+  <div id="cesium-container" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; display: none;"></div>
   <div id="threejs-overlay"></div>
   <canvas id="canvas-overlay"></canvas>
 
@@ -1413,12 +1418,64 @@
       playUiClickSound();
     }
 
+    // ─── CesiumJS True 3D Globe & Flight Simulator Engine ────────────────
+    let cesiumViewer = null;
+    let cesiumAircraftEntities = new Map();
+    let cesiumPlayerAircraftEntity = null;
+
+    function initCesiumGlobe() {
+      if (cesiumViewer || typeof Cesium === 'undefined') return;
+
+      try {
+        Cesium.Ion.defaultAccessToken = ''; // Offline / public raster mode
+
+        cesiumViewer = new Cesium.Viewer('cesium-container', {
+          imageryProvider: new Cesium.UrlTemplateImageryProvider({
+            url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+            maximumLevel: 19,
+            credit: '© ESRI World Imagery'
+          }),
+          animation: false,
+          timeline: false,
+          fullscreenButton: false,
+          homeButton: false,
+          sceneModePicker: false,
+          baseLayerPicker: false,
+          navigationHelpButton: false,
+          geocoder: false,
+          infoBox: false,
+          selectionIndicator: false,
+          shadows: false,
+          skyAtmosphere: new Cesium.SkyAtmosphere(),
+          globe: new Cesium.Globe(Cesium.Ellipsoid.WGS84)
+        });
+
+        // Atmospheric & Globe visual fidelity
+        cesiumViewer.scene.globe.enableLighting = true;
+        cesiumViewer.scene.globe.atmosphereLightIntensity = 1.8;
+        cesiumViewer.scene.fog.enabled = true;
+        cesiumViewer.scene.fog.density = 0.0001;
+        cesiumViewer.scene.screenSpaceCameraController.enableTilt = true;
+        cesiumViewer.scene.screenSpaceCameraController.enableLook = true;
+
+        // Hide Cesium credit container for clean native tactical radar look
+        const credit = cesiumViewer.bottomContainer;
+        if (credit) credit.style.display = 'none';
+
+        console.log("[Cesium Engine] True 3D WGS84 Globe initialized successfully.");
+      } catch (err) {
+        console.warn("[Cesium Engine] WebGL/Cesium init note:", err);
+      }
+    }
+
     function toggleMapCockpitPOV() {
       mapCockpitPOVEnabled = !mapCockpitPOVEnabled;
       const btn = document.getElementById('btn-map-pov');
       const overlay3D = document.getElementById('threejs-overlay');
       const analogRadarBox = document.getElementById('view-3d-box');
       const zoomControls = document.getElementById('pov-zoom-controls');
+      const cesiumContainer = document.getElementById('cesium-container');
+      const mapContainer = document.getElementById('map-container');
 
       if (mapCockpitPOVEnabled) {
         btn.innerText = '2D';
@@ -1427,6 +1484,11 @@
         if (overlay3D) overlay3D.style.display = 'block';
         if (analogRadarBox) analogRadarBox.style.display = 'block';
         if (zoomControls) zoomControls.style.display = 'flex';
+
+        // Initialize and reveal Cesium 3D Globe
+        if (!cesiumViewer) initCesiumGlobe();
+        if (cesiumContainer) cesiumContainer.style.display = 'block';
+        if (mapContainer) mapContainer.style.display = 'none';
 
         // Start Realistic Jet Turbofan Sound Engine
         startJetEngineSound();
@@ -1447,17 +1509,20 @@
             targetCamLat = ac.coord.lat;
             targetCamHeading = ac.heading || 0;
 
-            map.jumpTo({
-              center: [currentCamLng, currentCamLat],
-              zoom: povZoomLevel,
-              bearing: currentCamHeading,
-              pitch: 82
-            });
+            if (cesiumViewer) {
+              const altMeters = Math.max(1000, (ac.altitude || 35000) * 0.3048);
+              const targetCartesian = Cesium.Cartesian3.fromDegrees(ac.coord.lng, ac.coord.lat, altMeters);
+              cesiumViewer.camera.flyTo({
+                destination: Cesium.Cartesian3.fromDegrees(ac.coord.lng, ac.coord.lat, altMeters + 250),
+                orientation: {
+                  heading: Cesium.Math.toRadians(ac.heading || 0),
+                  pitch: Cesium.Math.toRadians(-2.0), // 100% Horizontal looking straight forward into the horizon
+                  roll: 0.0
+                },
+                duration: 0.8
+              });
+            }
           }
-        }
-
-        if (typeof map !== 'undefined' && map && map.resize) {
-          map.resize();
         }
       } else {
         btn.innerText = 'POV';
@@ -1466,17 +1531,15 @@
         if (overlay3D) overlay3D.style.display = 'none';
         if (analogRadarBox) analogRadarBox.style.display = 'none';
         if (zoomControls) zoomControls.style.display = 'none';
+        if (cesiumContainer) cesiumContainer.style.display = 'none';
+        if (mapContainer) mapContainer.style.display = 'block';
 
         // Stop Jet Engine Sound Engine
         stopJetEngineSound();
 
-        // Reset map to top-down 2D orthographic radar view
-        map.easeTo({
-          pitch: 0,
-          bearing: 0,
-          zoom: 4.8,
-          duration: 1000
-        });
+        if (typeof map !== 'undefined' && map && map.resize) {
+          map.resize();
+        }
       }
     }
 
@@ -2704,17 +2767,28 @@
           currentCamLng += (targetCamLng - currentCamLng) * posLerp;
           currentCamLat += (targetCamLat - currentCamLat) * posLerp;
 
-          // Smooth shortest-arc compass heading interpolation
-          let diffHdg = (targetCamHeading - currentCamHeading + 540) % 360 - 180;
-          currentCamHeading += diffHdg * hdgLerp;
-          currentCamHeading = (currentCamHeading + 360) % 360;
+          // Real-Time Cesium 3D Globe Flight Perspective Follow (100% Horizontal Horizon View)
+          if (cesiumViewer && selectedCallsign && currentPayload && currentPayload.aircraft) {
+            const ac = currentPayload.aircraft.find(a => a.callsign === selectedCallsign);
+            if (ac) {
+              const altMeters = Math.max(1000, (ac.altitude || 35000) * 0.3048);
+              const camHeadingRad = Cesium.Math.toRadians(currentCamHeading);
+              
+              // Calculate camera eye position behind and slightly above the aircraft
+              const followDistance = 350.0 * Math.pow(2, (10.5 - povZoomLevel) * 0.4);
+              const eyeLat = currentCamLat - (Math.cos(camHeadingRad) * (followDistance / 111320.0));
+              const eyeLng = currentCamLng - (Math.sin(camHeadingRad) * (followDistance / (111320.0 * Math.cos(currentCamLat * Math.PI / 180.0))));
 
-          map.jumpTo({
-            center: [currentCamLng, currentCamLat],
-            zoom: povZoomLevel,
-            bearing: currentCamHeading,
-            pitch: 82
-          });
+              cesiumViewer.camera.setView({
+                destination: Cesium.Cartesian3.fromDegrees(eyeLng, eyeLat, altMeters + 45.0),
+                orientation: {
+                  heading: camHeadingRad,
+                  pitch: Cesium.Math.toRadians(-2.5), // 100% Level Horizontal forward gaze into the horizon
+                  roll: 0.0
+                }
+              });
+            }
+          }
         }
 
         // Render Forward Destination Flight Route in POV Mode (Clean glowing corridor to destination)
