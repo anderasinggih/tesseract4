@@ -432,30 +432,42 @@ func (h *ATCHub) updateKinematics(dt float64) {
 		}
 	}
 
-	// 2. Short-Term Conflict Alert (STCA) & Mid-Air Crash Detection
+	// 2. Short-Term Conflict Alert (STCA) & Mid-Air Crash Detection (Optimized spatial pair checks)
 	for _, ac1 := range h.aircraft {
 		ac1.ConflictAlert = false
 	}
 
+	acList := make([]*Aircraft, 0, len(h.aircraft))
+	for _, ac := range h.aircraft {
+		acList = append(acList, ac)
+	}
+
 	var crashedFlights []string
-	for _, ac1 := range h.aircraft {
-		for _, ac2 := range h.aircraft {
-			if ac1.Callsign == ac2.Callsign {
+	n := len(acList)
+	for i := 0; i < n; i++ {
+		ac1 := acList[i]
+		for j := i + 1; j < n; j++ {
+			ac2 := acList[j]
+
+			// Rapid bounding box pre-filter: 5 NM is roughly ~0.083 degrees
+			// Skip expensive trigonometric Haversine formula if planes are far apart
+			if math.Abs(ac1.Coord.Lat-ac2.Coord.Lat) > 0.1 || math.Abs(ac1.Coord.Lng-ac2.Coord.Lng) > 0.15 {
+				continue
+			}
+
+			altDiff := math.Abs(float64(ac1.Altitude - ac2.Altitude))
+			if altDiff >= 1000.0 {
 				continue
 			}
 
 			latDist := DistanceInNauticalMiles(ac1.Coord, ac2.Coord)
-			altDiff := math.Abs(float64(ac1.Altitude - ac2.Altitude))
 
 			// CRITICAL MID-AIR COLLISION / CRASH (< 0.4 NM and < 200 ft)
 			if latDist < 0.4 && altDiff < 200.0 {
 				crashedFlights = append(crashedFlights, ac1.Callsign, ac2.Callsign)
 				h.addLog("CRASH", "EMERGENCY", fmt.Sprintf("⚠️ MID-AIR COLLISION! %s and %s collided at FL%d (%.2f NM).", ac1.Callsign, ac2.Callsign, ac1.Altitude/100, latDist))
-				break
-			}
-
-			// Loss of Separation Warning (< 5 NM and < 1000 ft)
-			if latDist < 5.0 && altDiff < 1000.0 {
+			} else if latDist < 5.0 {
+				// Loss of Separation Warning (< 5 NM and < 1000 ft)
 				ac1.ConflictAlert = true
 				ac2.ConflictAlert = true
 				if rand.Float64() < 0.05 {

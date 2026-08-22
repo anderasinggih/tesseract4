@@ -3661,6 +3661,11 @@
           currentPayload.aircraft.forEach(otherAc => {
             if (otherAc.callsign === selectedCallsign) return;
 
+            // Fast bounding box pre-filter (~40 NM is ~0.66 deg)
+            if (Math.abs(myAc.coord.lat - otherAc.coord.lat) > 0.8 || Math.abs(myAc.coord.lng - otherAc.coord.lng) > 1.2) {
+              return;
+            }
+
             const lat1 = myAc.coord.lat * (Math.PI / 180.0);
             const lon1 = myAc.coord.lng * (Math.PI / 180.0);
             const lat2 = otherAc.coord.lat * (Math.PI / 180.0);
