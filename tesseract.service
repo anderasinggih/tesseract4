@@ -1,0 +1,18 @@
+[Unit]
+Description=The Tesseract Paradox Game Server
+After=network.target
+
+[Service]
+Type=simple
+User=www
+WorkingDirectory=/www/wwwroot/tesseract4
+ExecStart=/www/wwwroot/tesseract4/tesseract
+Restart=always
+RestartSec=5s
+Environment="PORT=8080"
+
+# Security & limits for high-scale WebSockets
+LimitNOFILE=65535
+
+[Install]
+WantedBy=multi-user.target
