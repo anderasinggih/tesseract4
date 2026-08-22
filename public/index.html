@@ -716,7 +716,7 @@
 
     <div class="form-group">
       <label>AIRSPACE (FIR)</label>
-      <select id="sector-select" class="form-input" onchange="claimSector()">
+      <select id="sector-select" class="form-input" onchange="onSectorDropdownChange()">
         <option value="sec-wiii">WIII - Jakarta FIR</option>
         <option value="sec-wsjc">WSJC - Singapore ACC</option>
         <option value="sec-rjjj">RJJJ - Tokyo ACC</option>
@@ -1922,6 +1922,23 @@
       };
     }
     connectWS();
+
+    function onSectorDropdownChange() {
+      const sectorId = document.getElementById('sector-select').value;
+      const SECTOR_DEFAULT_CALLSIGNS = {
+        'sec-wiii': 'JAKARTA_CTR',
+        'sec-wsjc': 'SINGAPORE_CTR',
+        'sec-rjjj': 'TOKYO_CTR',
+        'sec-egtt': 'LONDON_CTR',
+        'sec-kzny': 'NEWYORK_CTR',
+        'sec-ybbb': 'SYDNEY_CTR'
+      };
+      const callsignInput = document.getElementById('controller-callsign');
+      if (callsignInput && SECTOR_DEFAULT_CALLSIGNS[sectorId]) {
+        callsignInput.value = SECTOR_DEFAULT_CALLSIGNS[sectorId];
+      }
+      claimSector();
+    }
 
     function claimSector() {
       if (!ws || ws.readyState !== WebSocket.OPEN) return;
