@@ -371,37 +371,114 @@
       color: #555555;
     }
 
+    /* HUD Minimize Transition */
+    #sector-deck, #telemetry-deck {
+      transition: opacity 0.25s ease, transform 0.25s ease;
+    }
+    #sector-deck.hud-hidden, #telemetry-deck.hud-hidden {
+      opacity: 0;
+      pointer-events: none;
+      transform: scale(0.96);
+    }
+
+    /* HUD Toggle Button */
+    #btn-hud-toggle {
+      padding: 4px 10px;
+      font-size: 8.5px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      border-radius: 3px;
+      cursor: pointer;
+      border: 1px solid #444;
+      background: #1a1a1a;
+      color: #aaa;
+      text-transform: uppercase;
+      transition: all 0.15s;
+      white-space: nowrap;
+    }
+    #btn-hud-toggle:hover { background: #2a2a2a; color: #fff; border-color: #666; }
+    #btn-hud-toggle.hud-off { border-color: var(--accent-amber); color: var(--accent-amber); background: #1c1505; }
+
     /* Mobile Responsive */
-    @media (max-width: 900px) {
+    @media (max-width: 768px) {
       #top-bar {
         padding: 6px 8px;
+        flex-wrap: wrap;
+        gap: 4px;
+        top: 6px;
+        left: 6px;
+        right: 6px;
+        border-radius: 6px;
       }
 
-      .brand-title {
-        font-size: 10px;
+      .brand-box {
+        flex-wrap: wrap;
+        gap: 6px;
       }
+
+      .brand-title { font-size: 10px; }
+      .brand-tag { display: none; }
 
       .status-items {
         gap: 10px;
         font-size: 8px;
+        flex-wrap: wrap;
       }
+      .stat-lbl { font-size: 7px; }
+      .stat-val { font-size: 10px; }
 
+      /* Left panel: slide-up bottom sheet */
       #sector-deck {
-        top: 52px;
-        left: 6px;
-        right: 6px;
-        width: auto;
-        max-height: 42vh;
+        top: auto;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        width: 100%;
+        max-height: 52vh;
+        border-radius: 12px 12px 0 0;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+        padding: 16px 14px 20px;
+        border-left: none;
+        border-right: none;
+        border-bottom: none;
+        z-index: 20;
       }
 
+      /* Right panel: hidden on mobile by default, toggled via HUD */
       #telemetry-deck {
-        bottom: 6px;
-        top: auto;
-        left: 6px;
-        right: 6px;
-        width: auto;
-        max-height: 38vh;
+        display: none !important;
       }
+
+      /* Bigger touch targets */
+      .btn-action {
+        padding: 11px 8px;
+        font-size: 11px;
+      }
+      .form-input {
+        font-size: 13px;
+        padding: 10px 9px;
+      }
+      .form-group label { font-size: 10px; }
+      .deck-title { font-size: 11px; }
+
+      /* Mission brief smaller */
+      .mission-box { font-size: 9px; }
+
+      /* Radio stream shorter */
+      #radio-stream { height: 80px; font-size: 8.5px; }
+
+      /* 3D viewport smaller */
+      #view-3d-box { height: 120px; }
+
+      /* Map style buttons wrap */
+      .brand-box > div { flex-wrap: wrap; }
+    }
+
+    @media (max-width: 480px) {
+      .brand-title { font-size: 9px; letter-spacing: 1px; }
+      #sector-deck { max-height: 60vh; }
+      .status-items { display: none; }
     }
   </style>
 </head>
@@ -444,6 +521,8 @@
         <span class="stat-val" id="alerts-count">0</span>
       </div>
     </div>
+    <!-- HUD Minimize Toggle -->
+    <button id="btn-hud-toggle" onclick="toggleHUD()" title="Toggle HUD panels">HUD ON</button>
   </div>
 
   <!-- Left Tactical Controller Deck -->
@@ -691,6 +770,37 @@
     }
 
     let mapCockpitPOVEnabled = false;
+
+    // ─── HUD Minimize Toggle ───────────────────────────────────────────────
+    let hudVisible = true;
+    function toggleHUD() {
+      hudVisible = !hudVisible;
+      const btn = document.getElementById('btn-hud-toggle');
+      const panels = [
+        document.getElementById('sector-deck'),
+        document.getElementById('telemetry-deck')
+      ];
+      panels.forEach(p => {
+        if (!p) return;
+        if (hudVisible) {
+          p.classList.remove('hud-hidden');
+        } else {
+          p.classList.add('hud-hidden');
+        }
+      });
+      btn.textContent = hudVisible ? 'HUD ON' : 'HUD OFF';
+      btn.classList.toggle('hud-off', !hudVisible);
+    }
+
+    // Double-tap map to toggle HUD on mobile
+    let lastTapTime = 0;
+    document.addEventListener('touchend', function(e) {
+      const panels = document.getElementById('sector-deck');
+      if (panels && panels.contains(e.target)) return; // ignore taps inside panels
+      const now = Date.now();
+      if (now - lastTapTime < 350) toggleHUD();
+      lastTapTime = now;
+    }, { passive: true });
 
     function toggleMapCockpitPOV() {
       mapCockpitPOVEnabled = !mapCockpitPOVEnabled;
