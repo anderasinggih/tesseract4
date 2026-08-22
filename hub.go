@@ -251,6 +251,16 @@ func (h *ATCHub) updateKinematics(dt float64) {
 
 	// 1. Move and steer each aircraft
 	for callsign, ac := range h.aircraft {
+		// If aircraft is flying on standard route (not manually vectored by controller), auto-navigate along Great-Circle bearing
+		for _, apt := range GlobalMajorAirports {
+			if apt.ICAO == ac.Destination {
+				geodesicBearing := CalculateTrueBearing(ac.Coord, apt.Coord)
+				// Auto-steer along geodesic route
+				ac.TargetHeading = geodesicBearing
+				break
+			}
+		}
+
 		// Heading turn rate (approx 3 deg/sec standard rate 1 turn)
 		turnRate := 3.0 * dt
 		diffHeading := ac.TargetHeading - ac.Heading
