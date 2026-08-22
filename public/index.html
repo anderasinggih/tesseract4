@@ -1221,7 +1221,7 @@
           if (mapCockpitPOVEnabled) {
             map.easeTo({
               center: [ac.coord.lng, ac.coord.lat],
-              pitch: 85, // Shallow level horizon pitch (natural level cruising flight)
+              pitch: 150, // Shallow level horizon pitch (natural level cruising flight)
               bearing: ac.heading, // Point directly forward along the flight path
               zoom: 10.5, // Optimal crisp pilot zoom where tiles are 100% available everywhere
               duration: 200, // Smooth interpolation (zero jitter)
