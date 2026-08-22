@@ -228,6 +228,62 @@
       border-color: #777777;
     }
 
+    /* Modern Tactical Range Slider (Scalebar) */
+    input[type="range"] {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 100%;
+      height: 6px;
+      background: rgba(255, 255, 255, 0.15);
+      border-radius: 3px;
+      outline: none;
+      margin: 8px 0;
+      cursor: pointer;
+    }
+
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: #00ddff;
+      border: 2px solid #ffffff;
+      box-shadow: 0 0 8px rgba(0, 221, 255, 0.8);
+      cursor: pointer;
+      transition: transform 0.1s;
+    }
+
+    input[type="range"]::-webkit-slider-thumb:hover {
+      transform: scale(1.2);
+    }
+
+    input[type="range"]::-moz-range-thumb {
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: #00ddff;
+      border: 2px solid #ffffff;
+      box-shadow: 0 0 8px rgba(0, 221, 255, 0.8);
+      cursor: pointer;
+    }
+
+    .btn-turn {
+      padding: 4px 6px;
+      font-size: 8px;
+      font-weight: 700;
+      background: rgba(30, 30, 30, 0.8);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 3px;
+      color: #ffffff;
+      cursor: pointer;
+    }
+
+    .btn-turn:hover {
+      background: rgba(60, 60, 60, 0.9);
+      border-color: #00ddff;
+    }
+
     .btn-action {
       width: 100%;
       padding: 8px;
@@ -671,10 +727,19 @@
         </div>
 
         <div class="form-group">
-          <label>VECTOR HDG: <span id="hdg-display"
-              style="color: #ffffff; font-weight: 700;">090°</span></label>
-          <input type="range" id="input-heading" min="0" max="359" step="5" value="90" class="form-input"
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <label style="margin: 0;">VECTOR HDG: <span id="hdg-display" style="color: var(--accent-cyan); font-weight: 700;">090°</span></label>
+            <button type="button" class="btn-turn" style="background: rgba(0, 221, 255, 0.15); border-color: var(--accent-cyan); color: var(--accent-cyan);" onclick="steerDirectToDestination()">DIRECT DEST 🎯</button>
+          </div>
+          <input type="range" id="input-heading" min="0" max="359" step="1" value="90"
             oninput="updateHeadingPreview(this.value)" onchange="sendVectorHeading(this.value)">
+          <!-- Quick Turn Steer Buttons -->
+          <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; margin-top: 3px;">
+            <button type="button" class="btn-turn" onclick="adjustHeading(-10)">◀ -10°</button>
+            <button type="button" class="btn-turn" onclick="adjustHeading(-5)">◀ -5°</button>
+            <button type="button" class="btn-turn" onclick="adjustHeading(+5)">+5° ▶</button>
+            <button type="button" class="btn-turn" onclick="adjustHeading(+10)">+10° ▶</button>
+          </div>
         </div>
 
         <div class="form-group">
@@ -1428,6 +1493,40 @@
         callsign: selectedCallsign,
         heading: parseFloat(val)
       }));
+    }
+
+    function adjustHeading(delta) {
+      if (!selectedCallsign) return;
+      const slider = document.getElementById('input-heading');
+      let cur = parseInt(slider.value, 10) || 0;
+      let nextHdg = (cur + delta + 360) % 360;
+      slider.value = nextHdg;
+      updateHeadingPreview(nextHdg);
+      sendVectorHeading(nextHdg);
+    }
+
+    function steerDirectToDestination() {
+      if (!currentPayload || !selectedCallsign) return;
+      const ac = currentPayload.aircraft.find(a => a.callsign === selectedCallsign);
+      if (!ac || !currentPayload.airports) return;
+      const destApt = currentPayload.airports.find(a => a.icao === ac.destination);
+      if (!destApt) return;
+
+      // Compute exact direct bearing to destination airport
+      const lat1 = ac.coord.lat * (Math.PI / 180.0);
+      const lon1 = ac.coord.lng * (Math.PI / 180.0);
+      const lat2 = destApt.coord.lat * (Math.PI / 180.0);
+      const lon2 = destApt.coord.lng * (Math.PI / 180.0);
+      const dLon = lon2 - lon1;
+
+      const y = Math.sin(dLon) * Math.cos(lat2);
+      const x = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLon);
+      let directHdg = Math.round(Math.atan2(y, x) * (180.0 / Math.PI) + 360) % 360;
+
+      const slider = document.getElementById('input-heading');
+      slider.value = directHdg;
+      updateHeadingPreview(directHdg);
+      sendVectorHeading(directHdg);
     }
 
     function updateHeadingPreview(val) {
