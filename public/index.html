@@ -1988,29 +1988,36 @@
             // Draw Clean Airplane Silhouette Icon
             drawAirplaneIcon(pt.x, pt.y, ac.heading, acColor, planeSize, isSelected, false);
 
-            // Detailed Box Tag shows when Selected, Conflict Alert, or MAYDAY Emergency
-            if (isSelected || isConflict || isEmergency) {
-              const tagX = pt.x + 14;
-              const tagY = pt.y - 14;
+            // Detailed Box Tag shows when Selected or MAYDAY Emergency
+            if (isSelected || isEmergency) {
+              const tagX = pt.x + 12;
+              const tagY = pt.y - 12;
 
-              ctx.fillStyle = (isConflict || isEmergency) ? 'rgba(255, 34, 68, 0.95)' : 'rgba(10, 10, 10, 0.95)';
-              ctx.fillRect(tagX - 2, tagY - 9, 90, 30);
-              ctx.strokeStyle = (isConflict || isEmergency) ? '#ffffff' : '#ffffff';
-              ctx.strokeRect(tagX - 2, tagY - 9, 90, 30);
+              ctx.fillStyle = isEmergency ? 'rgba(255, 34, 68, 0.95)' : 'rgba(10, 10, 10, 0.9)';
+              ctx.fillRect(tagX - 2, tagY - 9, 86, 26);
+              ctx.strokeStyle = isEmergency ? '#ffffff' : '#444444';
+              ctx.strokeRect(tagX - 2, tagY - 9, 86, 26);
 
               ctx.fillStyle = '#ffffff';
-              ctx.font = '700 9px JetBrains Mono';
-              ctx.fillText(isEmergency ? `! ${ac.callsign} [7700]` : ac.callsign, tagX, tagY);
+              ctx.font = '700 8.5px JetBrains Mono';
+              ctx.fillText(isEmergency ? `! ${ac.callsign} 7700` : ac.callsign, tagX, tagY);
 
-              ctx.fillStyle = '#cccccc';
-              ctx.font = '8px JetBrains Mono';
-              ctx.fillText(`FL${Math.round(ac.altitude / 100)} ${Math.round(ac.speed)}K`, tagX, tagY + 9);
-              ctx.fillText(isEmergency ? `${ac.emergencyType}` : `${ac.origin}>${ac.destination}`, tagX, tagY + 17);
+              ctx.fillStyle = '#dddddd';
+              ctx.font = '7.5px JetBrains Mono';
+              ctx.fillText(`FL${Math.round(ac.altitude / 100)} ${Math.round(ac.speed)}K`, tagX, tagY + 8);
+              ctx.fillText(isEmergency ? `${ac.emergencyType}` : `${ac.origin}>${ac.destination}`, tagX, tagY + 15);
+            } else if (isConflict) {
+              // Subtle Conflict indicator
+              ctx.fillStyle = 'rgba(255, 34, 68, 0.9)';
+              ctx.fillRect(pt.x + 10, pt.y - 8, 48, 14);
+              ctx.fillStyle = '#ffffff';
+              ctx.font = '700 7.5px JetBrains Mono';
+              ctx.fillText(ac.callsign, pt.x + 12, pt.y + 2);
             } else {
               // Minimal Callsign underneath
               ctx.fillStyle = '#888888';
-              ctx.font = '500 8px JetBrains Mono';
-              ctx.fillText(ac.callsign, pt.x - 14, pt.y + 15);
+              ctx.font = '500 7.5px JetBrains Mono';
+              ctx.fillText(ac.callsign, pt.x - 14, pt.y + 14);
             }
           });
         }

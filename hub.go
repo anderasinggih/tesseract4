@@ -195,7 +195,7 @@ func (h *ATCHub) Run() {
 	respawnTicker := time.NewTicker(4 * time.Second)
 	defer respawnTicker.Stop()
 
-	emergencyTicker := time.NewTicker(25 * time.Second) // Dynamic in-flight emergencies
+	emergencyTicker := time.NewTicker(90 * time.Second) // Occasional in-flight emergency challenge
 	defer emergencyTicker.Stop()
 
 	lastTick := time.Now()
@@ -241,29 +241,35 @@ func (h *ATCHub) Run() {
 
 		case <-respawnTicker.C:
 			h.mu.Lock()
-			if len(h.aircraft) < 65 {
+			if len(h.aircraft) < 50 {
 				h.spawnCommercialFlight()
 			}
 			h.mu.Unlock()
 
 		case <-emergencyTicker.C:
 			h.mu.Lock()
-			// Randomly assign emergency to a flight
-			if len(h.aircraft) > 0 {
-				var targetAc *Aircraft
-				for _, ac := range h.aircraft {
-					if !ac.EmergencyState {
-						targetAc = ac
-						break
-					}
+			// Limit to maximum 1 active emergency at any time across the entire world
+			activeEmergencies := 0
+			for _, ac := range h.aircraft {
+				if ac.EmergencyState {
+					activeEmergencies++
 				}
-				if targetAc != nil {
+			}
+
+			if activeEmergencies == 0 && len(h.aircraft) > 0 {
+				// Pick one random flight
+				var candidateList []*Aircraft
+				for _, ac := range h.aircraft {
+					candidateList = append(candidateList, ac)
+				}
+				if len(candidateList) > 0 {
+					targetAc := candidateList[rand.Intn(len(candidateList))]
 					targetAc.EmergencyState = true
-					targetAc.Squawk = "7700" // International MAYDAY squawk
-					emergencyTypes := []string{"ENGINE_FAILURE", "MEDICAL", "CABIN_DEPRESS"}
+					targetAc.Squawk = "7700"
+					emergencyTypes := []string{"ENGINE_FAIL", "MED_EMERG", "CABIN_ALT"}
 					targetAc.EmergencyType = emergencyTypes[rand.Intn(len(emergencyTypes))]
-					targetAc.TargetAltitude = 10000 // Emergency descent to FL100
-					h.addLog("ALERT", targetAc.Callsign, fmt.Sprintf("MAYDAY 7700: %s reports %s! Requesting immediate priority descent to FL100!", targetAc.Callsign, targetAc.EmergencyType))
+					targetAc.TargetAltitude = 10000 // Priority emergency descent to FL100
+					h.addLog("ALERT", targetAc.Callsign, fmt.Sprintf("MAYDAY 7700: %s reports %s! Descending to FL100.", targetAc.Callsign, targetAc.EmergencyType))
 				}
 			}
 			h.mu.Unlock()
