@@ -855,8 +855,9 @@
             const scaleFactor = 9.0 / (maxDim || 1.0);
             loadedModel.scale.set(scaleFactor, scaleFactor, scaleFactor);
 
-            // Rotate orientation: 11803_Airplane model raw orientation fix -> Exactly 90 deg yaw rotation so nose points straight forward into the horizon
-            loadedModel.rotation.set(-Math.PI / 2, 0, Math.PI / 2);
+            // Rotate orientation: 3DS Max Z-up model -> Three.js Y-up level flight
+            // X=0: no pitch (eliminates nose-dive), Z=PI/2: yaw so nose faces forward along flight path
+            loadedModel.rotation.set(0, Math.PI, Math.PI / 2);
 
             // Ensure materials are visible and double-sided with realistic metalness
             loadedModel.traverse((child) => {
