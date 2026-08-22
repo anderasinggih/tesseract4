@@ -2564,7 +2564,33 @@
     function drawRadarScope() {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-      // 0. Render Authentic Real-Time Day / Night Solar Shadow
+      // In 3D POV Mode: Skip all 2D canvas overlays (no 2D route lines, no sector borders, no waypoints on sky/ground)
+      if (mapCockpitPOVEnabled) {
+        // Ultra-Smooth 60 FPS Camera Follow in POV Mode
+        if (targetCamLng !== null && currentCamLng !== null) {
+          const lerpFactor = 0.25;
+          currentCamLng += (targetCamLng - currentCamLng) * lerpFactor;
+          currentCamLat += (targetCamLat - currentCamLat) * lerpFactor;
+
+          let diffHdg = (targetCamHeading - currentCamHeading + 540) % 360 - 180;
+          currentCamHeading += diffHdg * lerpFactor;
+
+          map.jumpTo({
+            center: [currentCamLng, currentCamLat],
+            zoom: povZoomLevel,
+            bearing: currentCamHeading,
+            pitch: 75
+          });
+        }
+
+        // Draw Tactical Airborne Mini-Radar in POV Mode
+        drawAnalogRadarScope();
+
+        requestAnimationFrame(drawRadarScope);
+        return;
+      }
+
+      // ─── 2D Radar Scope Mode Overlays (Active in Top-Down 2D Mode) ────────
       drawDayNightTerminator();
 
       if (currentPayload) {
