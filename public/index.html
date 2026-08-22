@@ -1430,10 +1430,9 @@
         Cesium.Ion.defaultAccessToken = ''; // Offline / public raster mode
 
         cesiumViewer = new Cesium.Viewer('cesium-container', {
-          imageryProvider: new Cesium.UrlTemplateImageryProvider({
-            url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-            maximumLevel: 19,
-            credit: '© ESRI World Imagery'
+          imageryProvider: new Cesium.ArcGisMapServerImageryProvider({
+            url: 'https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer',
+            enablePickFeatures: false
           }),
           animation: false,
           timeline: false,
@@ -1451,10 +1450,10 @@
         });
 
         // Atmospheric & Globe visual fidelity
-        cesiumViewer.scene.globe.enableLighting = true;
-        cesiumViewer.scene.globe.atmosphereLightIntensity = 1.8;
+        cesiumViewer.scene.globe.baseColor = Cesium.Color.fromCssColorString('#051520');
+        cesiumViewer.scene.globe.enableLighting = false; // Keep high-visibility satellite surface
         cesiumViewer.scene.fog.enabled = true;
-        cesiumViewer.scene.fog.density = 0.0001;
+        cesiumViewer.scene.fog.density = 0.00008;
         cesiumViewer.scene.screenSpaceCameraController.enableTilt = true;
         cesiumViewer.scene.screenSpaceCameraController.enableLook = true;
 
@@ -2774,16 +2773,17 @@
               const altMeters = Math.max(1000, (ac.altitude || 35000) * 0.3048);
               const camHeadingRad = Cesium.Math.toRadians(currentCamHeading);
               
-              // Calculate camera eye position behind and slightly above the aircraft
-              const followDistance = 350.0 * Math.pow(2, (10.5 - povZoomLevel) * 0.4);
+              // Calculate camera eye position behind and above the aircraft
+              const followDistance = 450.0 * Math.pow(2, (10.5 - povZoomLevel) * 0.5);
+              const eyeElevation = 120.0 * Math.pow(2, (10.5 - povZoomLevel) * 0.4);
               const eyeLat = currentCamLat - (Math.cos(camHeadingRad) * (followDistance / 111320.0));
               const eyeLng = currentCamLng - (Math.sin(camHeadingRad) * (followDistance / (111320.0 * Math.cos(currentCamLat * Math.PI / 180.0))));
 
               cesiumViewer.camera.setView({
-                destination: Cesium.Cartesian3.fromDegrees(eyeLng, eyeLat, altMeters + 45.0),
+                destination: Cesium.Cartesian3.fromDegrees(eyeLng, eyeLat, altMeters + eyeElevation),
                 orientation: {
                   heading: camHeadingRad,
-                  pitch: Cesium.Math.toRadians(-2.5), // 100% Level Horizontal forward gaze into the horizon
+                  pitch: Cesium.Math.toRadians(-18.0), // Natural cockpit chase sightline overlooking horizon & terrain
                   roll: 0.0
                 }
               });
