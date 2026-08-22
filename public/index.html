@@ -655,11 +655,12 @@
         <!-- POV Toggle -->
         <button id="btn-map-pov" class="btn-action btn-amber btn-nav-compact" style="padding: 4px 8px; font-size: 8.5px;"
           onclick="toggleMapCockpitPOV()">POV</button>
-        <!-- POV Interactive Zoom Level Buttons -->
+        <!-- POV Interactive Zoom & 360 Orbit Controls -->
         <div id="pov-zoom-controls" style="display: none; gap: 3px; align-items: center;">
           <button class="btn-action btn-nav-compact" style="padding: 4px 6px; font-size: 8.5px; background: rgba(30,30,30,0.8); border-color: #666;" onclick="adjustPOVZoom(-0.5)" title="Zoom Out (Wider View)">-</button>
           <span id="pov-zoom-display" style="font-size: 8px; font-weight: 800; color: var(--accent-cyan); min-width: 28px; text-align: center;">10.5x</span>
           <button class="btn-action btn-nav-compact" style="padding: 4px 6px; font-size: 8.5px; background: rgba(30,30,30,0.8); border-color: #666;" onclick="adjustPOVZoom(+0.5)" title="Zoom In (Closer View)">+</button>
+          <button class="btn-action btn-nav-compact" style="padding: 4px 6px; font-size: 8px; background: rgba(30,30,30,0.8); border-color: #555; color: #aaa;" onclick="resetPOVOrbit()" title="Reset 360 Orbit View">RESET CAM</button>
         </div>
       </div>
     </div>
@@ -1377,14 +1378,67 @@
       }
     }
 
-    // Interactive Mouse Wheel Zoom when in POV Mode
-    window.addEventListener('wheel', (e) => {
-      if (mapCockpitPOVEnabled) {
-        e.preventDefault();
-        const delta = e.deltaY < 0 ? +0.3 : -0.3;
-        adjustPOVZoom(delta);
+    // 360-Degree Interactive Orbit Camera Controls in POV Mode
+    let orbitAzimuth = 0;   // Horizontal orbit angle in degrees (-180 to 180)
+    let orbitElevation = 0; // Vertical pitch angle (-40 to 60 deg)
+    let isOrbitDragging = false;
+    let orbitLastMouseX = 0;
+    let orbitLastMouseY = 0;
+
+    window.addEventListener('mousedown', (e) => {
+      if (mapCockpitPOVEnabled && (e.target.id === 'threejs-overlay' || e.target.id === 'map' || e.target.tagName === 'CANVAS')) {
+        isOrbitDragging = true;
+        orbitLastMouseX = e.clientX;
+        orbitLastMouseY = e.clientY;
       }
-    }, { passive: false });
+    });
+
+    window.addEventListener('mousemove', (e) => {
+      if (isOrbitDragging && mapCockpitPOVEnabled) {
+        const dx = e.clientX - orbitLastMouseX;
+        const dy = e.clientY - orbitLastMouseY;
+        orbitLastMouseX = e.clientX;
+        orbitLastMouseY = e.clientY;
+
+        orbitAzimuth += dx * 0.45; // 360-degree continuous rotation
+        orbitElevation = Math.max(-35, Math.min(65, orbitElevation - dy * 0.35));
+      }
+    });
+
+    window.addEventListener('mouseup', () => {
+      isOrbitDragging = false;
+    });
+
+    // Touch support for mobile 360 orbit
+    window.addEventListener('touchstart', (e) => {
+      if (mapCockpitPOVEnabled && e.touches.length === 1) {
+        isOrbitDragging = true;
+        orbitLastMouseX = e.touches[0].clientX;
+        orbitLastMouseY = e.touches[0].clientY;
+      }
+    }, { passive: true });
+
+    window.addEventListener('touchmove', (e) => {
+      if (isOrbitDragging && mapCockpitPOVEnabled && e.touches.length === 1) {
+        const dx = e.touches[0].clientX - orbitLastMouseX;
+        const dy = e.touches[0].clientY - orbitLastMouseY;
+        orbitLastMouseX = e.touches[0].clientX;
+        orbitLastMouseY = e.touches[0].clientY;
+
+        orbitAzimuth += dx * 0.45;
+        orbitElevation = Math.max(-35, Math.min(65, orbitElevation - dy * 0.35));
+      }
+    }, { passive: true });
+
+    window.addEventListener('touchend', () => {
+      isOrbitDragging = false;
+    });
+
+    // Reset Orbit View to Straight Chase
+    function resetPOVOrbit() {
+      orbitAzimuth = 0;
+      orbitElevation = 0;
+    }
 
     function toggleMapCockpitPOV() {
       mapCockpitPOVEnabled = !mapCockpitPOVEnabled;
@@ -2619,14 +2673,31 @@
           // Smooth shortest-arc compass heading interpolation
           let diffHdg = (targetCamHeading - currentCamHeading + 540) % 360 - 180;
           currentCamHeading += diffHdg * hdgLerp;
-          currentCamHeading = (currentCamHeading + 360) % 360;
+          // True 360-Degree Camera Sightline (Flight Heading + Orbit Drag Azimuth)
+          const finalCamBearing = (currentCamHeading + orbitAzimuth + 360) % 360;
+          const finalCamPitch = Math.max(15, Math.min(85, 75 - orbitElevation));
 
           map.jumpTo({
             center: [currentCamLng, currentCamLat],
             zoom: povZoomLevel,
-            bearing: currentCamHeading,
-            pitch: 75
+            bearing: finalCamBearing,
+            pitch: finalCamPitch
           });
+        }
+
+        // Update 3D Three.js Orbit Camera in space
+        if (fullThreeCamera) {
+          const orbitRad = (orbitAzimuth * Math.PI) / 180.0;
+          const elevRad = (orbitElevation * Math.PI) / 180.0;
+          const dist = 14.0;
+
+          // Spherical Orbit Coordinates around Plane Origin (0, 0, 0)
+          const camX = Math.sin(orbitRad) * Math.cos(elevRad) * dist;
+          const camY = 1.8 + Math.sin(elevRad) * dist * 0.7;
+          const camZ = Math.cos(orbitRad) * Math.cos(elevRad) * dist;
+
+          fullThreeCamera.position.set(camX, camY, camZ);
+          fullThreeCamera.lookAt(0, 0, 0);
         }
 
         // Draw Tactical Airborne Mini-Radar in POV Mode
