@@ -3,6 +3,7 @@ name: Deploy to aaPanel VPS
 on:
   push:
     branches: [ main ]
+  workflow_dispatch:
 
 jobs:
   deploy:
@@ -18,10 +19,12 @@ jobs:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USERNAME }}
           key: ${{ secrets.VPS_SSH_KEY }}
+          password: ${{ secrets.VPS_PASSWORD }}
           port: ${{ secrets.VPS_PORT || 22 }}
           script: |
             cd /www/wwwroot/tesseract4
             git pull origin main
             export PATH=$PATH:/usr/local/go/bin
             go build -o tesseract .
-            sudo systemctl restart tesseract
+            sudo systemctl restart tesseract || true
+            sudo systemctl status tesseract --no-pager || true
