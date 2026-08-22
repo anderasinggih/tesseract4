@@ -89,8 +89,8 @@ func NewATCHub() *ATCHub {
 		h.sectors[sec.ID] = &secCopy
 	}
 
-	// Pre-spawn initial commercial flights across all sectors (Dense global traffic)
-	for i := 0; i < 75; i++ {
+	// Pre-spawn initial commercial flights across all sectors (Dense global traffic: 150 flights)
+	for i := 0; i < 150; i++ {
 		h.spawnCommercialFlight()
 	}
 
@@ -121,9 +121,13 @@ func (h *ATCHub) spawnCommercialFlight() {
 	sched := GlobalOfficialFlightSchedules[rand.Intn(len(GlobalOfficialFlightSchedules))]
 	callsign := sched.Callsign
 
-	// Avoid duplicate active flights
+	// If callsign exists, generate unique flight suffix (e.g. GIA880B, SIA318X) to allow dense multi-flight traffic
 	if _, exists := h.aircraft[callsign]; exists {
-		return
+		suffixes := []string{"A", "B", "C", "D", "X", "Y", "Z", "1", "2"}
+		callsign = fmt.Sprintf("%s%s", sched.Callsign, suffixes[rand.Intn(len(suffixes))])
+		if _, exists := h.aircraft[callsign]; exists {
+			return
+		}
 	}
 
 	// Lookup official origin and destination airports
@@ -241,7 +245,7 @@ func (h *ATCHub) Run() {
 
 		case <-respawnTicker.C:
 			h.mu.Lock()
-			if len(h.aircraft) < 50 {
+			if len(h.aircraft) < 150 {
 				h.spawnCommercialFlight()
 			}
 			h.mu.Unlock()
