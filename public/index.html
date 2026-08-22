@@ -3227,28 +3227,17 @@
           const dt = Math.min((now - lastFrameTime) / 1000, 0.1);
           lastFrameTime = now;
 
-          // ── Local prediction feed-forward (zero perceived input latency) ──
-          // Mirror of the server coordinated-turn model: bank ramps at 7°/s,
-          // ROT = 1091·tan(bank)/TAS. Server packets reconcile softly every
-          // ~16ms, so rotation starts the SAME frame the stick goes down.
-          if (targetCamHeading === null) targetCamHeading = currentCamHeading;
-          const rollCmd = steerDir !== 0 ? steerDir * 25 : 0;
-          predRoll += Math.max(-120 * dt, Math.min(120 * dt, rollCmd - predRoll));
-          predRoll += (lastKnownRoll - predRoll) * (1 - Math.exp(-15 * dt)); // authority blend
-          const rotDir = steerDir !== 0 ? (steerDir > 0 ? 25.0 : -25.0) : (1091 * Math.tan(predRoll * Math.PI / 180) / Math.max(targetCamSpeed || 450, 120) * 15.0);
-          targetCamHeading = normDeg(targetCamHeading + rotDir * dt);
-
           // Frame-rate independent damping — responsive bearing follow so
           // WASD steering reads instantly on the rotating map horizon
           const posAlpha = 1 - Math.exp(-12 * dt);
-          const hdgAlpha = 1 - Math.exp(-20 * dt);
+          const hdgAlpha = 1 - Math.exp(-18 * dt);
 
           currentCamLng += (targetCamLng - currentCamLng) * posAlpha;
           currentCamLat += (targetCamLat - currentCamLat) * posAlpha;
 
-          // Shortest-path compass heading interpolation
+          // Shortest-path compass heading interpolation (direct smooth tracking)
           let diffHdg = (targetCamHeading - currentCamHeading + 540) % 360 - 180;
-          currentCamHeading += diffHdg * hdgAlpha;
+          currentCamHeading = normDeg(currentCamHeading + diffHdg * hdgAlpha);
 
           // Chase-cam trail anchor: center the map slightly BEHIND the tail so the
           // wide realistic turn arc reads as lateral world motion across the screen
