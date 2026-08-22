@@ -646,6 +646,55 @@
   <div id="threejs-overlay"></div>
   <canvas id="canvas-overlay"></canvas>
 
+  <!-- Virtual Joystick Overlay (iPad / Touch POV Controls) -->
+  <div id="pov-joystick-overlay" style="display:none; position:fixed; bottom:0; left:0; right:0; height:220px; pointer-events:none; z-index:9999;">
+    <!-- Left: Analog Thumbstick (Heading X, Altitude Y) -->
+    <div id="joy-base" style="
+      position:absolute; left:50px; bottom:40px;
+      width:130px; height:130px;
+      border-radius:50%;
+      background:rgba(255,255,255,0.06);
+      border:2px solid rgba(255,255,255,0.18);
+      pointer-events:all;
+      touch-action:none;
+    ">
+      <div id="joy-thumb" style="
+        position:absolute;
+        width:50px; height:50px;
+        border-radius:50%;
+        background:rgba(255,255,255,0.25);
+        border:2px solid rgba(255,255,255,0.5);
+        top:50%; left:50%;
+        transform:translate(-50%,-50%);
+        pointer-events:none;
+        transition:background 0.1s;
+      "></div>
+      <!-- labels -->
+      <div style="position:absolute;top:-18px;left:50%;transform:translateX(-50%);font-size:9px;color:rgba(255,255,255,0.3);letter-spacing:1px;font-family:monospace;">CLIMB</div>
+      <div style="position:absolute;bottom:-18px;left:50%;transform:translateX(-50%);font-size:9px;color:rgba(255,255,255,0.3);letter-spacing:1px;font-family:monospace;">DESCEND</div>
+      <div style="position:absolute;left:-20px;top:50%;transform:translateY(-50%);font-size:9px;color:rgba(255,255,255,0.3);letter-spacing:1px;font-family:monospace;">L</div>
+      <div style="position:absolute;right:-20px;top:50%;transform:translateY(-50%);font-size:9px;color:rgba(255,255,255,0.3);letter-spacing:1px;font-family:monospace;">R</div>
+    </div>
+
+    <!-- Right: Altitude step buttons -->
+    <div style="position:absolute; right:50px; bottom:40px; display:flex; flex-direction:column; gap:10px; pointer-events:all;">
+      <button id="joy-climb-btn" ontouchstart="joyBtnStart('climb')" ontouchend="joyBtnEnd()" style="
+        width:60px; height:60px; border-radius:50%;
+        background:rgba(255,255,255,0.08); border:2px solid rgba(255,255,255,0.2);
+        color:#ffffff; font-size:22px; font-weight:700;
+        display:flex; align-items:center; justify-content:center;
+        cursor:pointer; touch-action:none; user-select:none;
+      ">▲</button>
+      <button id="joy-desc-btn" ontouchstart="joyBtnStart('desc')" ontouchend="joyBtnEnd()" style="
+        width:60px; height:60px; border-radius:50%;
+        background:rgba(255,255,255,0.08); border:2px solid rgba(255,255,255,0.2);
+        color:#ffffff; font-size:22px; font-weight:700;
+        display:flex; align-items:center; justify-content:center;
+        cursor:pointer; touch-action:none; user-select:none;
+      ">▼</button>
+    </div>
+  </div>
+
   <!-- Top Bar -->
   <div id="top-bar">
     <div class="brand-box">
@@ -1504,6 +1553,88 @@
     });
     // ─────────────────────────────────────────────────────────────────────────
 
+    // ── Virtual Joystick (Touch / iPad POV Controls) ─────────────────────────
+    (function initVirtualJoystick() {
+      const base    = document.getElementById('joy-base');
+      const thumb   = document.getElementById('joy-thumb');
+      if (!base || !thumb) return;
+
+      const RADIUS    = 65;   // half of 130px base
+      const DEAD_ZONE = 0.15; // 15% dead zone
+      const REPEAT_MS = 300;  // ms between repeated commands while held
+
+      let joyActive   = false;
+      let joyOriginX  = 0, joyOriginY  = 0;
+      let joyDX       = 0, joyDY       = 0;
+      let joyInterval = null;
+
+      function dispatchJoy() {
+        if (!mapCockpitPOVEnabled) return;
+        const nx = joyDX / RADIUS; // -1..+1
+        const ny = joyDY / RADIUS; // -1..+1 (up = negative)
+        if (Math.abs(nx) > DEAD_ZONE) {
+          const hdgStep = nx > 0 ? +5 : -5;
+          adjustHeading(hdgStep);
+        }
+        if (Math.abs(ny) > DEAD_ZONE) {
+          const altStep = ny < 0 ? +1000 : -1000; // drag up = climb
+          adjustAltitude(altStep);
+        }
+      }
+
+      function setThumb(dx, dy) {
+        const mag  = Math.sqrt(dx * dx + dy * dy);
+        const clamp = Math.min(mag, RADIUS);
+        const angle = Math.atan2(dy, dx);
+        joyDX = Math.cos(angle) * clamp;
+        joyDY = Math.sin(angle) * clamp;
+        thumb.style.transform = `translate(calc(-50% + ${joyDX}px), calc(-50% + ${joyDY}px))`;
+        thumb.style.background = 'rgba(255,255,255,0.45)';
+      }
+
+      function resetThumb() {
+        joyDX = 0; joyDY = 0;
+        thumb.style.transform = 'translate(-50%, -50%)';
+        thumb.style.background = 'rgba(255,255,255,0.25)';
+        if (joyInterval) { clearInterval(joyInterval); joyInterval = null; }
+      }
+
+      base.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        const rect = base.getBoundingClientRect();
+        joyOriginX = rect.left + rect.width  / 2;
+        joyOriginY = rect.top  + rect.height / 2;
+        joyActive  = true;
+        const t = e.touches[0];
+        setThumb(t.clientX - joyOriginX, t.clientY - joyOriginY);
+        dispatchJoy();
+        if (!joyInterval) joyInterval = setInterval(dispatchJoy, REPEAT_MS);
+      }, { passive: false });
+
+      base.addEventListener('touchmove', (e) => {
+        e.preventDefault();
+        if (!joyActive) return;
+        const t = e.touches[0];
+        setThumb(t.clientX - joyOriginX, t.clientY - joyOriginY);
+      }, { passive: false });
+
+      base.addEventListener('touchend',    () => { joyActive = false; resetThumb(); });
+      base.addEventListener('touchcancel', () => { joyActive = false; resetThumb(); });
+    })();
+
+    // Right-side altitude tap buttons
+    let joyBtnInterval = null;
+    function joyBtnStart(dir) {
+      const fn = dir === 'climb' ? () => adjustAltitude(+1000) : () => adjustAltitude(-1000);
+      fn();
+      if (joyBtnInterval) clearInterval(joyBtnInterval);
+      joyBtnInterval = setInterval(fn, 300);
+    }
+    function joyBtnEnd() {
+      if (joyBtnInterval) { clearInterval(joyBtnInterval); joyBtnInterval = null; }
+    }
+    // ─────────────────────────────────────────────────────────────────────────
+
     function initBabylonSimulator() {
       const canvasEl = document.getElementById('babylon-canvas');
       if (!canvasEl || typeof BABYLON === 'undefined' || babylonEngine) return;
@@ -1574,6 +1705,9 @@
         if (analogRadarBox) analogRadarBox.style.display = 'block';
         if (zoomControls) zoomControls.style.display = 'flex';
         if (mapContainer) mapContainer.style.display = 'block';
+        // Show touch joystick on touch-capable devices
+        const joyOverlay = document.getElementById('pov-joystick-overlay');
+        if (joyOverlay && navigator.maxTouchPoints > 0) joyOverlay.style.display = 'block';
 
         // Start Realistic Jet Turbofan Sound Engine
         startJetEngineSound();
@@ -1614,6 +1748,8 @@
         if (analogRadarBox) analogRadarBox.style.display = 'none';
         if (zoomControls) zoomControls.style.display = 'none';
         if (mapContainer) mapContainer.style.display = 'block';
+        const joyOverlay = document.getElementById('pov-joystick-overlay');
+        if (joyOverlay) joyOverlay.style.display = 'none';
 
         // Stop Jet Engine Sound Engine
         stopJetEngineSound();
