@@ -662,16 +662,8 @@
         <!-- POV Toggle -->
         <button id="btn-map-pov" class="btn-action btn-amber btn-nav-compact"
           style="padding: 4px 8px; font-size: 8.5px;" onclick="toggleMapCockpitPOV()">POV</button>
-        <!-- POV Interactive Zoom Level & Outline Toggle -->
+        <!-- POV Outline Toggle -->
         <div id="pov-zoom-controls" style="display: none; gap: 4px; align-items: center;">
-          <button class="btn-action btn-nav-compact"
-            style="padding: 4px 6px; font-size: 8.5px; background: rgba(30,30,30,0.8); border-color: #666;"
-            onclick="adjustPOVZoom(-0.5)" title="Zoom Out (Wider View)">-</button>
-          <span id="pov-zoom-display"
-            style="font-size: 8px; font-weight: 800; color: var(--accent-cyan); min-width: 28px; text-align: center;">10.5x</span>
-          <button class="btn-action btn-nav-compact"
-            style="padding: 4px 6px; font-size: 8.5px; background: rgba(30,30,30,0.8); border-color: #666;"
-            onclick="adjustPOVZoom(+0.5)" title="Zoom In (Closer View)">+</button>
           <button id="btn-traffic-outline" class="btn-action btn-nav-compact"
             style="padding: 4px 7px; font-size: 8.5px; background: rgba(30,30,30,0.8); border-color: #555; color: #888;"
             onclick="toggleTrafficOutline()" title="Toggle Traffic Aircraft High-Visibility Outline">OUTLINE</button>
@@ -1438,7 +1430,7 @@
       if (toastTimeout) clearTimeout(toastTimeout);
     }
 
-    let povZoomLevel = 10.5; // Default POV Zoom (range: 6.0 to 11.0)
+    let povZoomLevel = 11.0; // Default POV Map Zoom (fixed, 3D scene is scale-independent)
 
     function adjustPOVZoom(delta) {
       povZoomLevel = Math.max(6.0, Math.min(11.0, Math.round((povZoomLevel + delta) * 10) / 10));
