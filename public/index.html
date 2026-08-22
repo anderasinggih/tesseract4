@@ -3,7 +3,8 @@
 
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="viewport"
+    content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="mobile-web-app-capable" content="yes">
@@ -54,7 +55,8 @@
     }
 
     /* Keep text selection enabled for input fields only */
-    input, textarea {
+    input,
+    textarea {
       -webkit-user-select: text;
       -moz-user-select: text;
       -ms-user-select: text;
@@ -75,7 +77,9 @@
       user-select: none;
     }
 
-    #map-container, #threejs-overlay, #canvas-overlay {
+    #map-container,
+    #threejs-overlay,
+    #canvas-overlay {
       position: absolute;
       top: 0;
       left: 0;
@@ -92,12 +96,14 @@
 
     #canvas-overlay {
       pointer-events: none;
-      z-index: 2; /* 2D Map Flight Routes & Airport Badges rendered UNDERNEATH 3D Aircraft */
+      z-index: 2;
+      /* 2D Map Flight Routes & Airport Badges rendered UNDERNEATH 3D Aircraft */
     }
 
     #threejs-overlay {
       pointer-events: none;
-      z-index: 3; /* 3D Aircraft Models Rendered ON TOP of Flight Lines */
+      z-index: 3;
+      /* 3D Aircraft Models Rendered ON TOP of Flight Lines */
       display: none;
     }
 
@@ -489,6 +495,7 @@
 
     /* Mobile Responsive Overhaul (Portrait & Landscape) */
     @media (max-width: 900px) {
+
       /* Sleek Translucent Frosted Glass Top Bar */
       #top-bar {
         padding: 4px 6px;
@@ -540,7 +547,7 @@
       }
 
       /* Compact mobile action buttons */
-      .brand-box > div {
+      .brand-box>div {
         display: flex;
         gap: 2px;
         margin-left: 2px !important;
@@ -653,14 +660,21 @@
           style="padding: 4px 8px; font-size: 8.5px; background: rgba(30,30,30,0.7); border-color: #555;"
           onclick="toggleMapStyle()">SAT</button>
         <!-- POV Toggle -->
-        <button id="btn-map-pov" class="btn-action btn-amber btn-nav-compact" style="padding: 4px 8px; font-size: 8.5px;"
-          onclick="toggleMapCockpitPOV()">POV</button>
+        <button id="btn-map-pov" class="btn-action btn-amber btn-nav-compact"
+          style="padding: 4px 8px; font-size: 8.5px;" onclick="toggleMapCockpitPOV()">POV</button>
         <!-- POV Interactive Zoom Level & Outline Toggle -->
         <div id="pov-zoom-controls" style="display: none; gap: 4px; align-items: center;">
-          <button class="btn-action btn-nav-compact" style="padding: 4px 6px; font-size: 8.5px; background: rgba(30,30,30,0.8); border-color: #666;" onclick="adjustPOVZoom(-0.5)" title="Zoom Out (Wider View)">-</button>
-          <span id="pov-zoom-display" style="font-size: 8px; font-weight: 800; color: var(--accent-cyan); min-width: 28px; text-align: center;">10.5x</span>
-          <button class="btn-action btn-nav-compact" style="padding: 4px 6px; font-size: 8.5px; background: rgba(30,30,30,0.8); border-color: #666;" onclick="adjustPOVZoom(+0.5)" title="Zoom In (Closer View)">+</button>
-          <button id="btn-traffic-outline" class="btn-action btn-nav-compact" style="padding: 4px 7px; font-size: 8.5px; background: rgba(30,30,30,0.8); border-color: #555; color: #888;" onclick="toggleTrafficOutline()" title="Toggle Traffic Aircraft High-Visibility Outline">OUTLINE</button>
+          <button class="btn-action btn-nav-compact"
+            style="padding: 4px 6px; font-size: 8.5px; background: rgba(30,30,30,0.8); border-color: #666;"
+            onclick="adjustPOVZoom(-0.5)" title="Zoom Out (Wider View)">-</button>
+          <span id="pov-zoom-display"
+            style="font-size: 8px; font-weight: 800; color: var(--accent-cyan); min-width: 28px; text-align: center;">10.5x</span>
+          <button class="btn-action btn-nav-compact"
+            style="padding: 4px 6px; font-size: 8.5px; background: rgba(30,30,30,0.8); border-color: #666;"
+            onclick="adjustPOVZoom(+0.5)" title="Zoom In (Closer View)">+</button>
+          <button id="btn-traffic-outline" class="btn-action btn-nav-compact"
+            style="padding: 4px 7px; font-size: 8.5px; background: rgba(30,30,30,0.8); border-color: #555; color: #888;"
+            onclick="toggleTrafficOutline()" title="Toggle Traffic Aircraft High-Visibility Outline">OUTLINE</button>
         </div>
       </div>
     </div>
@@ -694,14 +708,19 @@
     </div>
     <div style="display: flex; gap: 3px; align-items: center;">
       <!-- Mobile Fullscreen Button -->
-      <button id="btn-fullscreen" class="btn-action btn-nav-compact" style="padding: 4px 8px; font-size: 8px; background: rgba(20,20,20,0.7); border-color: #444;" onclick="toggleFullScreen()" title="Enter/Exit Fullscreen">FS</button>
+      <button id="btn-fullscreen" class="btn-action btn-nav-compact"
+        style="padding: 4px 8px; font-size: 8px; background: rgba(20,20,20,0.7); border-color: #444;"
+        onclick="toggleFullScreen()" title="Enter/Exit Fullscreen">FS</button>
       <!-- HUD Minimize Toggle -->
-      <button id="btn-hud-toggle" class="btn-nav-compact" onclick="toggleHUD()" title="Toggle HUD panels">HUD ON</button>
+      <button id="btn-hud-toggle" class="btn-nav-compact" onclick="toggleHUD()" title="Toggle HUD panels">HUD
+        ON</button>
     </div>
   </div>
 
   <!-- Tactical Master Warning & Mission Alert Toast Banner (Top Center) -->
-  <div id="tactical-toast" style="display: none; position: fixed; top: 62px; left: 50%; transform: translateX(-50%); z-index: 9999; padding: 8px 16px; border-radius: 4px; font-family: 'JetBrains Mono', monospace; font-size: 10.5px; font-weight: 700; letter-spacing: 0.5px; box-shadow: 0 4px 20px rgba(0,0,0,0.8); transition: all 0.25s ease; cursor: pointer;" onclick="dismissTacticalToast()">
+  <div id="tactical-toast"
+    style="display: none; position: fixed; top: 62px; left: 50%; transform: translateX(-50%); z-index: 9999; padding: 8px 16px; border-radius: 4px; font-family: 'JetBrains Mono', monospace; font-size: 10.5px; font-weight: 700; letter-spacing: 0.5px; box-shadow: 0 4px 20px rgba(0,0,0,0.8); transition: all 0.25s ease; cursor: pointer;"
+    onclick="dismissTacticalToast()">
     <div style="display: flex; align-items: center; gap: 10px;">
       <span id="toast-icon" style="font-size: 12px;">!</span>
       <span id="toast-text">MAYDAY 7700 ALERT</span>
@@ -754,8 +773,11 @@
 
         <div class="form-group">
           <div style="display: flex; justify-content: space-between; align-items: center;">
-            <label style="margin: 0;">VECTOR HDG: <span id="hdg-display" style="color: var(--accent-cyan); font-weight: 700;">090°</span></label>
-            <button type="button" class="btn-turn" style="background: rgba(0, 221, 255, 0.15); border-color: var(--accent-cyan); color: var(--accent-cyan);" onclick="steerDirectToDestination()">NAV DIRECT</button>
+            <label style="margin: 0;">VECTOR HDG: <span id="hdg-display"
+                style="color: var(--accent-cyan); font-weight: 700;">090°</span></label>
+            <button type="button" class="btn-turn"
+              style="background: rgba(0, 221, 255, 0.15); border-color: var(--accent-cyan); color: var(--accent-cyan);"
+              onclick="steerDirectToDestination()">NAV DIRECT</button>
           </div>
           <input type="range" id="input-heading" min="0" max="359" step="1" value="90"
             oninput="updateHeadingPreview(this.value)" onchange="sendVectorHeading(this.value)">
@@ -812,11 +834,14 @@
   <div id="telemetry-deck" class="glass-deck">
     <!-- Tactical Analog Airborne Radar Scope (Active in POV Mode) -->
     <div id="view-3d-box" style="display: none;">
-      <div id="view-3d-overlay" style="display: flex; justify-content: space-between; align-items: center; padding: 4px 8px; background: rgba(5, 15, 10, 0.85); border-bottom: 1px solid rgba(0, 230, 118, 0.2);">
-        <span id="cam-callsign" style="color: var(--accent-green); font-weight: 700; font-size: 8.5px;">ANALOG AIRBORNE RADAR // 40NM</span>
+      <div id="view-3d-overlay"
+        style="display: flex; justify-content: space-between; align-items: center; padding: 4px 8px; background: rgba(5, 15, 10, 0.85); border-bottom: 1px solid rgba(0, 230, 118, 0.2);">
+        <span id="cam-callsign" style="color: var(--accent-green); font-weight: 700; font-size: 8.5px;">ANALOG AIRBORNE
+          RADAR // 40NM</span>
         <span id="cam-telemetry" style="color: #88ff88; font-size: 8px;">SWEEP 60RPM</span>
       </div>
-      <canvas id="analog-radar-canvas" width="348" height="180" style="display: block; width: 100%; height: 180px; background: #030a06;"></canvas>
+      <canvas id="analog-radar-canvas" width="348" height="180"
+        style="display: block; width: 100%; height: 180px; background: #030a06;"></canvas>
     </div>
 
     <!-- Inbound Handoff Alert Banner -->
@@ -843,27 +868,36 @@
 
     <!-- Active Flight Boarding Pass Ticket (Clean Monochrome Black & White) -->
     <div id="flight-strip-box" style="margin-top: 8px; display: none;">
-      <div style="background: #080808; border: 1px solid #333333; border-radius: 6px; overflow: hidden; position: relative;">
+      <div
+        style="background: #080808; border: 1px solid #333333; border-radius: 6px; overflow: hidden; position: relative;">
         <!-- Ticket Header Bar -->
-        <div style="background: #141414; border-bottom: 1px dashed #333333; padding: 6px 10px; display: flex; justify-content: space-between; align-items: center;">
+        <div
+          style="background: #141414; border-bottom: 1px dashed #333333; padding: 6px 10px; display: flex; justify-content: space-between; align-items: center;">
           <div>
-            <div style="font-size: 7.5px; font-weight: 700; color: #888888; letter-spacing: 1px; text-transform: uppercase;">PASSENGER TICKET // FLIGHT DATA</div>
-            <div id="fr24-airline" style="font-size: 11.5px; font-weight: 800; color: #ffffff; letter-spacing: 0.5px;">GARUDA INDONESIA</div>
+            <div
+              style="font-size: 7.5px; font-weight: 700; color: #888888; letter-spacing: 1px; text-transform: uppercase;">
+              PASSENGER TICKET // FLIGHT DATA</div>
+            <div id="fr24-airline" style="font-size: 11.5px; font-weight: 800; color: #ffffff; letter-spacing: 0.5px;">
+              GARUDA INDONESIA</div>
           </div>
           <div style="text-align: right;">
-            <span id="fr24-callsign" style="font-size: 13px; font-weight: 900; color: #ffffff; letter-spacing: 0.5px;">GA880</span>
+            <span id="fr24-callsign"
+              style="font-size: 13px; font-weight: 900; color: #ffffff; letter-spacing: 0.5px;">GA880</span>
             <div id="fr24-squawk" style="font-size: 7.5px; color: #888888;">SQWK 4521</div>
           </div>
         </div>
 
         <!-- Main Route Body -->
-        <div style="padding: 10px 12px; display: grid; grid-template-columns: 1fr auto 1fr; gap: 8px; align-items: center; background: #0c0c0c;">
+        <div
+          style="padding: 10px 12px; display: grid; grid-template-columns: 1fr auto 1fr; gap: 8px; align-items: center; background: #0c0c0c;">
           <!-- Origin Departure -->
           <div>
             <div style="font-size: 7px; color: #666666; font-weight: 700; text-transform: uppercase;">DEPARTURE</div>
-            <div id="fr24-orig-iata" style="font-size: 22px; font-weight: 900; color: #ffffff; line-height: 1.1;">CGK</div>
+            <div id="fr24-orig-iata" style="font-size: 22px; font-weight: 900; color: #ffffff; line-height: 1.1;">CGK
+            </div>
             <div id="fr24-orig-city" style="font-size: 8.5px; color: #aaaaaa; font-weight: 600;">Jakarta, ID</div>
-            <div id="fr24-dep-time" style="font-size: 8.5px; font-weight: 700; color: #ffffff; margin-top: 4px;">10:45 UTC</div>
+            <div id="fr24-dep-time" style="font-size: 8.5px; font-weight: 700; color: #ffffff; margin-top: 4px;">10:45
+              UTC</div>
             <div id="fr24-dep-date" style="font-size: 7.5px; color: #777777;">22 AUG 2026</div>
           </div>
 
@@ -872,10 +906,14 @@
             <div id="fr24-duration" style="font-size: 8.5px; font-weight: 700; color: #ffffff;">7h 35m</div>
             <div style="display: flex; align-items: center; justify-content: center; gap: 4px; margin: 3px 0;">
               <div style="width: 14px; height: 1px; background: #444444;"></div>
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="#ffffff"><path d="M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z"/></svg>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="#ffffff">
+                <path
+                  d="M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z" />
+              </svg>
               <div style="width: 14px; height: 1px; background: #444444;"></div>
             </div>
-            <div style="width: 60px; height: 3px; background: #222222; border-radius: 2px; margin: 0 auto; overflow: hidden;">
+            <div
+              style="width: 60px; height: 3px; background: #222222; border-radius: 2px; margin: 0 auto; overflow: hidden;">
               <div id="fr24-progress-bar" style="width: 58%; height: 100%; background: #ffffff;"></div>
             </div>
             <div id="fr24-remaining" style="font-size: 7.5px; color: #aaaaaa; margin-top: 2px;">3h 10m left</div>
@@ -884,25 +922,33 @@
           <!-- Destination Arrival -->
           <div style="text-align: right;">
             <div style="font-size: 7px; color: #666666; font-weight: 700; text-transform: uppercase;">ARRIVAL</div>
-            <div id="fr24-dest-iata" style="font-size: 22px; font-weight: 900; color: #ffffff; line-height: 1.1;">NRT</div>
+            <div id="fr24-dest-iata" style="font-size: 22px; font-weight: 900; color: #ffffff; line-height: 1.1;">NRT
+            </div>
             <div id="fr24-dest-city" style="font-size: 8.5px; color: #aaaaaa; font-weight: 600;">Tokyo Narita, JP</div>
-            <div id="fr24-arr-time" style="font-size: 8.5px; font-weight: 700; color: #ffffff; margin-top: 4px;">19:20 UTC</div>
+            <div id="fr24-arr-time" style="font-size: 8.5px; font-weight: 700; color: #ffffff; margin-top: 4px;">19:20
+              UTC</div>
             <div id="fr24-arr-date" style="font-size: 7.5px; color: #777777;">22 AUG 2026</div>
           </div>
         </div>
 
         <!-- Ticket Perforation Cutout Line -->
         <div style="position: relative; height: 1px; border-bottom: 1px dashed #333333; margin: 0 4px;">
-          <div style="position: absolute; left: -9px; top: -5px; width: 10px; height: 10px; border-radius: 50%; background: #000000; border: 1px solid #333333;"></div>
-          <div style="position: absolute; right: -9px; top: -5px; width: 10px; height: 10px; border-radius: 50%; background: #000000; border: 1px solid #333333;"></div>
+          <div
+            style="position: absolute; left: -9px; top: -5px; width: 10px; height: 10px; border-radius: 50%; background: #000000; border: 1px solid #333333;">
+          </div>
+          <div
+            style="position: absolute; right: -9px; top: -5px; width: 10px; height: 10px; border-radius: 50%; background: #000000; border: 1px solid #333333;">
+          </div>
         </div>
 
         <!-- Bottom Telemetry & Barcode Footer -->
-        <div style="padding: 6px 10px; background: #111111; display: flex; justify-content: space-between; align-items: center;">
+        <div
+          style="padding: 6px 10px; background: #111111; display: flex; justify-content: space-between; align-items: center;">
           <div>
             <div id="fr24-aircraft" style="font-size: 9px; font-weight: 800; color: #ffffff;">BOEING 777-300ER</div>
             <div style="font-size: 8px; color: #aaaaaa; margin-top: 1px;">
-              <span id="fr24-alt">37,000 FT</span> &bull; <span id="fr24-spd">480 KTS</span> &bull; <span id="fr24-dist">1,420 NM</span>
+              <span id="fr24-alt">37,000 FT</span> &bull; <span id="fr24-spd">480 KTS</span> &bull; <span
+                id="fr24-dist">1,420 NM</span>
             </div>
           </div>
           <!-- Clean Monochrome Barcode -->
@@ -1131,7 +1177,7 @@
         jetEngineGain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.6);
         setTimeout(() => {
           if (jetNoiseNode) {
-            try { jetNoiseNode.stop(); } catch (e) {}
+            try { jetNoiseNode.stop(); } catch (e) { }
             jetNoiseNode.disconnect();
             jetNoiseNode = null;
           }
@@ -1616,6 +1662,14 @@
         fullPlaneGroup = new THREE.Group();
         fullThreeScene.add(fullPlaneGroup);
 
+        // Subgroup for the airplane mesh
+        window.fullPlaneMeshGroup = new THREE.Group();
+        fullPlaneGroup.add(window.fullPlaneMeshGroup);
+
+        // Subgroup for the Floor Grid & Polar Range Rings (stays permanent and rotates with fullPlaneGroup)
+        window.fullFloorGroup = new THREE.Group();
+        fullPlaneGroup.add(window.fullFloorGroup);
+
         // Instant Procedural Jet Airliner Fallback for Fullscreen Overlay (Zero-wait render)
         const fallbackBodyGeo = new THREE.CylinderGeometry(0.7, 0.45, 12, 32);
         fallbackBodyGeo.rotateX(Math.PI / 2);
@@ -1639,7 +1693,7 @@
 
         fallbackPlaneGroup.scale.set(0.6, 0.6, 0.6);
         fallbackPlaneGroup.position.set(0, -1.2, 0);
-        fullPlaneGroup.add(fallbackPlaneGroup);
+        window.fullPlaneMeshGroup.add(fallbackPlaneGroup);
 
         // Group to hold nearby surrounding 3D aircraft models in visual range (< 50 NM)
         window.trafficAircraftGroup = new THREE.Group();
@@ -1648,14 +1702,14 @@
         window.trafficPlaneScaleFactor = 1.0;
 
         // Tactical 3D HUD Flight Level Floor Grid (Visual Diagnostic Reference Plane)
-        // Perfectly parallel with ground terrain at 85° pitch
-        const flightFloorGrid = new THREE.GridHelper(400, 80, 0x00ff88, 0x004422);
+        // High-contrast bright green tactical floor grid
+        const flightFloorGrid = new THREE.GridHelper(500, 100, 0x00ff88, 0x006633);
         flightFloorGrid.position.set(0, -1.8, -10);
-        fullThreeScene.add(flightFloorGrid);
+        window.fullFloorGroup.add(flightFloorGrid);
         window.flightFloorGrid = flightFloorGrid;
 
         // Add Polar Reference Rings (5 NM, 10 NM, 20 NM rings around player aircraft)
-        const ringMat = new THREE.LineBasicMaterial({ color: 0x00e5ff, transparent: true, opacity: 0.4 });
+        const ringMat = new THREE.LineBasicMaterial({ color: 0x00e5ff, transparent: true, opacity: 0.6 });
         [15, 30, 60].forEach(radius => {
           const ringGeo = new THREE.BufferGeometry();
           const points = [];
@@ -1665,7 +1719,7 @@
           }
           ringGeo.setFromPoints(points);
           const ringLine = new THREE.Line(ringGeo, ringMat);
-          fullThreeScene.add(ringLine);
+          window.fullFloorGroup.add(ringLine);
         });
 
         const update3DOverlaySize = () => {
@@ -1830,14 +1884,14 @@
             planeGroup.add(loadedModel);
 
             // Clone to Fullscreen 3D Map Overlay
-            if (fullPlaneGroup) {
-              while (fullPlaneGroup.children.length > 0) {
-                fullPlaneGroup.remove(fullPlaneGroup.children[0]);
+            if (window.fullPlaneMeshGroup) {
+              while (window.fullPlaneMeshGroup.children.length > 0) {
+                window.fullPlaneMeshGroup.remove(window.fullPlaneMeshGroup.children[0]);
               }
               const fullModel = loadedModel.clone();
               fullModel.scale.set(scaleFactor * 1.5, scaleFactor * 1.5, scaleFactor * 1.5);
               fullModel.position.set(0, 0, 0); // Directly centered on origin
-              fullPlaneGroup.add(fullModel);
+              window.fullPlaneMeshGroup.add(fullModel);
 
               // Save template for surrounding traffic rendering
               window.trafficPlaneModelTemplate = loadedModel.clone();
@@ -1928,10 +1982,15 @@
               if (typeof currentPlaneBankRoll === 'undefined') window.currentPlaneBankRoll = 0;
               window.currentPlaneBankRoll += (targetBankRoll - window.currentPlaneBankRoll) * 0.08;
 
-              // Level cruise in ground terrain frame (no artificial +0.28 pitch tilt so plane flies 100% parallel with map terrain)
-              fullPlaneGroup.rotation.x = pitchOffset;
-              fullPlaneGroup.rotation.y = 0;
-              fullPlaneGroup.rotation.z = window.currentPlaneBankRoll + Math.sin(Date.now() * 0.001) * 0.008; // Fluid aerodynamic roll
+              // ─── USER CALIBRATION ROTATION (Ubah nilai di sini) ───
+              // Ganti angka di bawah ini untuk merotasi pesawat & floor grid bersamaan:
+              const USER_CALIBRATION_PITCH_X = 19.3; // Rotasi X: Pitch (Dongak + / Nunduk -)
+              const USER_CALIBRATION_YAW_Y = 0.0; // Rotasi Y: Yaw / Heading (Putar Kiri - / Kanan +)
+              const USER_CALIBRATION_ROLL_Z = 0.0; // Rotasi Z: Roll / Miring Sayap
+
+              fullPlaneGroup.rotation.x = pitchOffset + USER_CALIBRATION_PITCH_X;
+              fullPlaneGroup.rotation.y = USER_CALIBRATION_YAW_Y;
+              fullPlaneGroup.rotation.z = window.currentPlaneBankRoll + USER_CALIBRATION_ROLL_Z + Math.sin(Date.now() * 0.001) * 0.008;
               fullPlaneGroup.position.set(0, 0, 0); // 100% Dead Center on screen
 
               // Perspective scale tied 1:1 proportionally to real map zoom level
@@ -1993,10 +2052,10 @@
                     trafficContainer.position.set(relX, relY, relZ);
 
                     // Pitch: same +0.28 level-cruise attitude as player aircraft (+ climb/descent offsets)
-                    const otherIsClimbing   = otherAc.targetAltitude > otherAc.altitude + 300;
+                    const otherIsClimbing = otherAc.targetAltitude > otherAc.altitude + 300;
                     const otherIsDescending = otherAc.targetAltitude < otherAc.altitude - 300;
                     let otherPitchOffset = 0;
-                    if (otherIsClimbing)   otherPitchOffset = +0.06;
+                    if (otherIsClimbing) otherPitchOffset = +0.06;
                     if (otherIsDescending) otherPitchOffset = -0.06;
 
                     // Heading math:
@@ -2380,9 +2439,9 @@
             const lat2 = destApt.coord.lat * rad, lon2 = destApt.coord.lng * rad;
             const latC = ac.coord.lat * rad, lonC = ac.coord.lng * rad;
 
-            const dTot = 3440.065 * 2 * Math.asin(Math.sqrt(Math.sin((lat2-lat1)/2)**2 + Math.cos(lat1)*Math.cos(lat2)*Math.sin((lon2-lon1)/2)**2));
-            const dFlown = 3440.065 * 2 * Math.asin(Math.sqrt(Math.sin((latC-lat1)/2)**2 + Math.cos(lat1)*Math.cos(latC)*Math.sin((lonC-lon1)/2)**2));
-            const dRem = 3440.065 * 2 * Math.asin(Math.sqrt(Math.sin((lat2-latC)/2)**2 + Math.cos(latC)*Math.cos(lat2)*Math.sin((lon2-lonC)/2)**2));
+            const dTot = 3440.065 * 2 * Math.asin(Math.sqrt(Math.sin((lat2 - lat1) / 2) ** 2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin((lon2 - lon1) / 2) ** 2));
+            const dFlown = 3440.065 * 2 * Math.asin(Math.sqrt(Math.sin((latC - lat1) / 2) ** 2 + Math.cos(lat1) * Math.cos(latC) * Math.sin((lonC - lon1) / 2) ** 2));
+            const dRem = 3440.065 * 2 * Math.asin(Math.sqrt(Math.sin((lat2 - latC) / 2) ** 2 + Math.cos(latC) * Math.cos(lat2) * Math.sin((lon2 - lonC) / 2) ** 2));
 
             totalDistNM = Math.max(100, Math.round(dTot));
             flownDistNM = Math.max(10, Math.round(dFlown));
@@ -2403,7 +2462,7 @@
 
           const formatUtcTime = (d) => `${String(d.getUTCHours()).padStart(2, '0')}:${String(d.getUTCMinutes()).padStart(2, '0')} UTC`;
           const formatUtcDate = (d) => {
-            const months = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
+            const months = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
             return `${d.getUTCDate()} ${months[d.getUTCMonth()]} ${d.getUTCFullYear()}`;
           };
 
@@ -2416,47 +2475,47 @@
           // Dynamic Airline & IATA Callsign Resolution
           const AIRLINE_MAP = {
             "GIA": { name: "GARUDA INDONESIA", iata: "GA" },
-            "GA":  { name: "GARUDA INDONESIA", iata: "GA" },
+            "GA": { name: "GARUDA INDONESIA", iata: "GA" },
             "SIA": { name: "SINGAPORE AIRLINES", iata: "SQ" },
-            "SQ":  { name: "SINGAPORE AIRLINES", iata: "SQ" },
+            "SQ": { name: "SINGAPORE AIRLINES", iata: "SQ" },
             "MAS": { name: "MALAYSIA AIRLINES", iata: "MH" },
-            "MH":  { name: "MALAYSIA AIRLINES", iata: "MH" },
+            "MH": { name: "MALAYSIA AIRLINES", iata: "MH" },
             "ANA": { name: "ALL NIPPON AIRWAYS", iata: "NH" },
-            "NH":  { name: "ALL NIPPON AIRWAYS", iata: "NH" },
+            "NH": { name: "ALL NIPPON AIRWAYS", iata: "NH" },
             "JAL": { name: "JAPAN AIRLINES", iata: "JL" },
-            "JL":  { name: "JAPAN AIRLINES", iata: "JL" },
+            "JL": { name: "JAPAN AIRLINES", iata: "JL" },
             "QFA": { name: "QANTAS AIRWAYS", iata: "QF" },
-            "QF":  { name: "QANTAS AIRWAYS", iata: "QF" },
+            "QF": { name: "QANTAS AIRWAYS", iata: "QF" },
             "BAW": { name: "BRITISH AIRWAYS", iata: "BA" },
-            "BA":  { name: "BRITISH AIRWAYS", iata: "BA" },
+            "BA": { name: "BRITISH AIRWAYS", iata: "BA" },
             "UAE": { name: "EMIRATES", iata: "EK" },
-            "EK":  { name: "EMIRATES", iata: "EK" },
+            "EK": { name: "EMIRATES", iata: "EK" },
             "QTR": { name: "QATAR AIRWAYS", iata: "QR" },
-            "QR":  { name: "QATAR AIRWAYS", iata: "QR" },
+            "QR": { name: "QATAR AIRWAYS", iata: "QR" },
             "CPA": { name: "CATHAY PACIFIC", iata: "CX" },
-            "CX":  { name: "CATHAY PACIFIC", iata: "CX" },
+            "CX": { name: "CATHAY PACIFIC", iata: "CX" },
             "DLH": { name: "LUFTHANSA", iata: "LH" },
-            "LH":  { name: "LUFTHANSA", iata: "LH" },
+            "LH": { name: "LUFTHANSA", iata: "LH" },
             "AFR": { name: "AIR FRANCE", iata: "AF" },
-            "AF":  { name: "AIR FRANCE", iata: "AF" },
+            "AF": { name: "AIR FRANCE", iata: "AF" },
             "KLM": { name: "KLM ROYAL DUTCH AIRLINES", iata: "KL" },
-            "KL":  { name: "KLM ROYAL DUTCH AIRLINES", iata: "KL" },
+            "KL": { name: "KLM ROYAL DUTCH AIRLINES", iata: "KL" },
             "THA": { name: "THAI AIRWAYS", iata: "TG" },
-            "TG":  { name: "THAI AIRWAYS", iata: "TG" },
+            "TG": { name: "THAI AIRWAYS", iata: "TG" },
             "KAL": { name: "KOREAN AIR", iata: "KE" },
-            "KE":  { name: "KOREAN AIR", iata: "KE" },
+            "KE": { name: "KOREAN AIR", iata: "KE" },
             "EVA": { name: "EVA AIR", iata: "BR" },
-            "BR":  { name: "EVA AIR", iata: "BR" },
+            "BR": { name: "EVA AIR", iata: "BR" },
             "PAL": { name: "PHILIPPINE AIRLINES", iata: "PR" },
-            "PR":  { name: "PHILIPPINE AIRLINES", iata: "PR" },
+            "PR": { name: "PHILIPPINE AIRLINES", iata: "PR" },
             "HVN": { name: "VIETNAM AIRLINES", iata: "VN" },
-            "VN":  { name: "VIETNAM AIRLINES", iata: "VN" },
+            "VN": { name: "VIETNAM AIRLINES", iata: "VN" },
             "AAL": { name: "AMERICAN AIRLINES", iata: "AA" },
-            "AA":  { name: "AMERICAN AIRLINES", iata: "AA" },
+            "AA": { name: "AMERICAN AIRLINES", iata: "AA" },
             "UAL": { name: "UNITED AIRLINES", iata: "UA" },
-            "UA":  { name: "UNITED AIRLINES", iata: "UA" },
+            "UA": { name: "UNITED AIRLINES", iata: "UA" },
             "DAL": { name: "DELTA AIR LINES", iata: "DL" },
-            "DL":  { name: "DELTA AIR LINES", iata: "DL" },
+            "DL": { name: "DELTA AIR LINES", iata: "DL" },
             "BTK": { name: "BATIK AIR", iata: "ID" },
             "LNI": { name: "LION AIR", iata: "JT" },
             "CTV": { name: "CITILINK", iata: "QG" },
@@ -2526,7 +2585,7 @@
           if (frProgressBar) frProgressBar.style.width = `${progressPct}%`;
 
           const frAlt = document.getElementById('fr24-alt');
-          if (frAlt) frAlt.innerText = `${Math.round(ac.altitude).toLocaleString()} FT (FL${Math.round(ac.altitude/100)})`;
+          if (frAlt) frAlt.innerText = `${Math.round(ac.altitude).toLocaleString()} FT (FL${Math.round(ac.altitude / 100)})`;
 
           const frSpd = document.getElementById('fr24-spd');
           if (frSpd) frSpd.innerText = `${Math.round(ac.speed)} KTS (${Math.round(ac.speed * 1.852)} KM/H)`;
