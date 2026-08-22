@@ -1016,27 +1016,6 @@
       if (btn) btn.textContent = document.fullscreenElement ? 'EXIT FS' : 'FS';
     });
 
-    // ─── Tactical Web Audio Aviation Sound Engine (Expanded SFX Suite) ────────
-    let audioCtx = null;
-    let jetEngineGain = null;
-    let jetNoiseNode = null;
-    let jetTurbineOsc = null;
-
-    function initAudioEngine() {
-      if (audioCtx) return;
-      try {
-        const AudioContext = window.AudioContext || window.webkitAudioContext;
-        audioCtx = new AudioContext();
-      } catch (e) {
-        console.warn("Web Audio API not supported", e);
-      }
-    }
-
-    // 1. Studio-Grade Boeing/Airbus Jet Turbofan Cabin Sound (Deep Sub-Bass Rumble + Ambient Wind Whine)
-    function startJetEngineSound() {
-      initAudioEngine();
-      if (!audioCtx) return;
-      if (audioCtx.state === 'suspended') {
     // ─── Tactical Aviation Sound Design (Clean, Minimalist, Modern) ────────
     let audioCtx = null;
     let jetEngineGain = null;
