@@ -3014,6 +3014,190 @@
       ctx.restore();
     }
 
+    // ── POV Compass Instruments ─────────────────────────────────────────────
+    const COMPASS_8 = { 0: 'N', 45: 'NE', 90: 'E', 135: 'SE', 180: 'S', 225: 'SW', 270: 'W', 315: 'NW' };
+    function normDeg(d) { return ((d % 360) + 360) % 360; }
+
+    // PUBG-style rolling compass tape (top-center, slides with heading)
+    function drawCompassTape() {
+      if (!mapCockpitPOVEnabled || currentCamHeading === null) return;
+      const w = canvas.width;
+      const cx = Math.round(w / 2);
+      const tapeW = Math.min(Math.max(w * 0.44, 340), 660);
+      const halfW = tapeW / 2;
+      const y0 = 74;
+      const tapeH = 46;
+      const hdg = currentCamHeading;
+
+      ctx.save();
+
+      // Glass ribbon background fading at both ends
+      const grad = ctx.createLinearGradient(cx - halfW, 0, cx + halfW, 0);
+      grad.addColorStop(0, 'rgba(5,8,12,0)');
+      grad.addColorStop(0.14, 'rgba(5,8,12,0.72)');
+      grad.addColorStop(0.86, 'rgba(5,8,12,0.72)');
+      grad.addColorStop(1, 'rgba(5,8,12,0)');
+      ctx.fillStyle = grad;
+      ctx.fillRect(cx - halfW, y0, tapeW, tapeH);
+      ctx.strokeStyle = 'rgba(255,255,255,0.16)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(cx - halfW * 0.86, y0 + 0.5); ctx.lineTo(cx + halfW * 0.86, y0 + 0.5);
+      ctx.moveTo(cx - halfW * 0.86, y0 + tapeH - 0.5); ctx.lineTo(cx + halfW * 0.86, y0 + tapeH - 0.5);
+      ctx.stroke();
+
+      // Sliding tick strip — ±50° visible span
+      const pxPerDeg = tapeW / 100;
+      const start = Math.ceil((hdg - 52) / 5) * 5;
+      const end = Math.floor((hdg + 52) / 5) * 5;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+
+      for (let m = start; m <= end; m += 5) {
+        const x = cx + (m - hdg) * pxPerDeg;
+        if (x < cx - halfW || x > cx + halfW) continue;
+        const deg = normDeg(m);
+        const cardinal = COMPASS_8[deg];
+        const major = deg % 15 === 0;
+
+        // Tick mark
+        ctx.strokeStyle = cardinal ? 'rgba(255,255,255,0.9)' : (major ? 'rgba(255,255,255,0.55)' : 'rgba(255,255,255,0.28)');
+        ctx.lineWidth = cardinal ? 2 : 1;
+        ctx.beginPath();
+        ctx.moveTo(x, y0 + tapeH - 6);
+        ctx.lineTo(x, y0 + tapeH - (cardinal ? 20 : major ? 15 : 10));
+        ctx.stroke();
+
+        // Label above tick
+        if (cardinal) {
+          ctx.fillStyle = deg === 0 ? '#ffcc44' : '#ffffff';
+          ctx.font = `700 ${deg % 90 === 0 ? 14 : 11}px "JetBrains Mono", monospace`;
+          ctx.fillText(cardinal, x, y0 + 13);
+        } else if (deg % 30 === 0) {
+          ctx.fillStyle = 'rgba(255,255,255,0.75)';
+          ctx.font = '600 9px "JetBrains Mono", monospace';
+          ctx.fillText(String(deg), x, y0 + 13);
+        }
+      }
+
+      // Destination bearing marker (cyan chevron on the tape)
+      if (currentPayload && selectedCallsign && currentPayload.airports && currentPayload.aircraft) {
+        const acSel = currentPayload.aircraft.find(a => a.callsign === selectedCallsign);
+        const destApt = acSel && currentPayload.airports.find(a => a.icao === acSel.destination);
+        if (destApt) {
+          const lat1 = acSel.coord.lat * Math.PI / 180, lon1 = acSel.coord.lng * Math.PI / 180;
+          const lat2 = destApt.coord.lat * Math.PI / 180, lon2 = destApt.coord.lng * Math.PI / 180;
+          const dLon = lon2 - lon1;
+          const yb = Math.sin(dLon) * Math.cos(lat2);
+          const xb = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLon);
+          let brg = Math.atan2(yb, xb) * 180 / Math.PI;
+          let rel = ((brg - hdg + 540) % 360) - 180;
+          const clamped = Math.max(-48, Math.min(48, rel));
+          const mx = cx + clamped * pxPerDeg;
+          ctx.fillStyle = rel === clamped ? '#00e5ff' : 'rgba(0,229,255,0.45)';
+          ctx.beginPath();
+          ctx.moveTo(mx, y0 + 4);
+          ctx.lineTo(mx - 5, y0 - 3);
+          ctx.lineTo(mx + 5, y0 - 3);
+          ctx.closePath();
+          ctx.fill();
+        }
+      }
+
+      // Center caret + digital heading readout
+      ctx.fillStyle = '#ffcc44';
+      ctx.beginPath();
+      ctx.moveTo(cx, y0 + tapeH - 2);
+      ctx.lineTo(cx - 6, y0 + tapeH + 7);
+      ctx.lineTo(cx + 6, y0 + tapeH + 7);
+      ctx.closePath();
+      ctx.fill();
+
+      const boxW = 58, boxH = 20;
+      const bx = cx - boxW / 2, by = y0 + tapeH + 9;
+      ctx.fillStyle = 'rgba(5,8,12,0.85)';
+      ctx.strokeStyle = 'rgba(255,204,68,0.65)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.roundRect(bx, by, boxW, boxH, 3);
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = '#ffcc44';
+      ctx.font = '700 12px "JetBrains Mono", monospace';
+      ctx.fillText(`${String(Math.round(normDeg(hdg))).padStart(3, '0')}°`, cx, by + boxH / 2 + 0.5);
+
+      ctx.restore();
+    }
+
+    // Classic round compass rose (bottom-center, ring rotates / pointer fixed up)
+    function drawRoundCompass() {
+      if (!mapCockpitPOVEnabled || currentCamHeading === null) return;
+      const r = 46;
+      const cx = Math.round(canvas.width / 2);
+      const cy = canvas.height - 118;
+      const hdg = currentCamHeading;
+
+      ctx.save();
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+
+      // Glass face
+      ctx.fillStyle = 'rgba(5,8,12,0.55)';
+      ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = 'rgba(255,255,255,0.25)';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+      ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+      ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.arc(cx, cy, r - 9, 0, Math.PI * 2); ctx.stroke();
+
+      // Rotating dial marks & cardinal letters
+      for (let deg = 0; deg < 360; deg += 30) {
+        const a = (deg - hdg) * Math.PI / 180;
+        const sx = Math.sin(a), sy = -Math.cos(a);
+        const cardinal = COMPASS_8[deg];
+        ctx.strokeStyle = cardinal ? 'rgba(255,255,255,0.85)' : 'rgba(255,255,255,0.35)';
+        ctx.lineWidth = cardinal ? 2 : 1;
+        ctx.beginPath();
+        ctx.moveTo(cx + sx * (r - 3), cy + sy * (r - 3));
+        ctx.lineTo(cx + sx * (r - (cardinal ? 12 : 8)), cy + sy * (r - (cardinal ? 12 : 8)));
+        ctx.stroke();
+
+        if (cardinal) {
+          const lx = cx + sx * (r - 21), ly = cy + sy * (r - 21);
+          ctx.fillStyle = deg === 0 ? '#ff5566' : '#ffffff';
+          ctx.font = `700 ${deg % 90 === 0 ? 11 : 9}px "JetBrains Mono", monospace`;
+          ctx.fillText(cardinal, lx, ly);
+        }
+      }
+
+      // Fixed aircraft symbol at center pointing up
+      ctx.strokeStyle = '#00e5ff';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(cx, cy - 14); ctx.lineTo(cx, cy + 10);
+      ctx.moveTo(cx - 8, cy + 2); ctx.lineTo(cx + 8, cy + 2);
+      ctx.moveTo(cx - 5, cy + 9); ctx.lineTo(cx + 5, cy + 9);
+      ctx.stroke();
+
+      // Lubber line index at top
+      ctx.fillStyle = '#ffcc44';
+      ctx.beginPath();
+      ctx.moveTo(cx, cy - r - 6);
+      ctx.lineTo(cx - 5, cy - r - 14);
+      ctx.lineTo(cx + 5, cy - r - 14);
+      ctx.closePath();
+      ctx.fill();
+
+      // Digital readout under the dial
+      ctx.fillStyle = 'rgba(255,255,255,0.85)';
+      ctx.font = '700 10px "JetBrains Mono", monospace';
+      ctx.fillText(`HDG ${String(Math.round(normDeg(hdg))).padStart(3, '0')}°`, cx, cy + r + 14);
+
+      ctx.restore();
+    }
+    // ─────────────────────────────────────────────────────────────────────────
+
     // 6. Radar Canvas 60 FPS Drawing Loop (Black/White & Day/Night Solar Terminator)
     function drawRadarScope() {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -3046,6 +3230,10 @@
             pitch: 85
           });
         }
+
+        // Compass instruments (rolling tape + classic rose), synced to this frame's bearing
+        drawCompassTape();
+        drawRoundCompass();
 
         // Render Forward Destination Flight Route in POV Mode (Clean glowing corridor to destination)
         if (currentPayload && currentPayload.aircraft && selectedCallsign && currentPayload.airports) {
