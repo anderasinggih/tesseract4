@@ -705,8 +705,8 @@
       if (fullOverlayContainer) {
         fullThreeScene = new THREE.Scene();
         fullThreeCamera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
-        fullThreeCamera.position.set(0, 3.2, 14.5); // Slightly lower and further back
-        fullThreeCamera.lookAt(0, 0.8, -12); // Look up toward horizon/sky (not diving into ground)
+        fullThreeCamera.position.set(0, 5.8, 16.0); // Elevated higher above the plane for grand third-person pilot perspective
+        fullThreeCamera.lookAt(0, 1.8, -10); // Look forward-upward across the wings to the horizon
 
         fullThreeRenderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
         fullThreeRenderer.setSize(window.innerWidth, window.innerHeight);
@@ -1168,7 +1168,7 @@
           if (mapCockpitPOVEnabled) {
             map.easeTo({
               center: [ac.coord.lng, ac.coord.lat],
-              pitch: 58, // Elevated forward view looking up toward the horizon
+              pitch: 48, // Elevated comfortable flight perspective (broad forward view)
               bearing: ac.heading, // Point directly forward along the flight path
               zoom: 10.5, // Optimal crisp pilot zoom where tiles are 100% available everywhere
               duration: 200, // Smooth interpolation (zero jitter)
