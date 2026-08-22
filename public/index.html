@@ -2011,9 +2011,20 @@
                     const relX = Math.sin(relAngleRad) * sceneDist;
                     const relZ = -Math.cos(relAngleRad) * sceneDist;
 
+                    // Camera pitch compensation:
+                    // Camera is at (0, 1.22, 13.95) looking at (0,0,0) → ~5° downward tilt.
+                    // Without this, objects along -Z appear BELOW player on screen.
+                    // Compensate by lifting Y proportional to forward depth (-relZ * tan(pitch)).
+                    const CAM_Y = 1.22, CAM_Z = 13.95;
+                    const cameraPitchRad = Math.atan2(CAM_Y, CAM_Z); // ~0.0873 rad ≈ 5°
+                    const pitchCompY = -relZ * Math.tan(cameraPitchRad);
+
                     // Authentic 3D flight altitude delta (1000 ft = 1.8 units) so altitude difference is immediately visible
                     const altDeltaFt = (otherAc.altitude - ac.altitude);
-                    const relY = (altDeltaFt / 1000.0) * 1.8 * currentActualScale;
+                    const altY = (altDeltaFt / 1000.0) * 1.8 * currentActualScale;
+
+                    // Final Y = pitch lift (perspective horizon) + altitude offset
+                    const relY = pitchCompY + altY;
 
                     // Container positioned in camera coordinate frame
                     const trafficContainer = new THREE.Group();
