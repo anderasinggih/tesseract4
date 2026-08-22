@@ -3,11 +3,14 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>GLOBAL ATC RADAR // SECTOR HANDOFF OPS</title>
+  <title>GLOBAL ATC RADAR // TACTICAL AIRSPACE CONTROL</title>
   
   <!-- MapLibre GL JS & CSS -->
   <link href="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css" rel="stylesheet" />
   <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
+
+  <!-- Three.js for 3D Cockpit / Plane Chase Camera View -->
+  <script src="https://unpkg.com/three@0.160.0/build/three.min.js"></script>
   
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -15,15 +18,15 @@
 
   <style>
     :root {
-      --radar-bg: #070a0e;
-      --panel-bg: rgba(10, 15, 23, 0.94);
-      --border-color: rgba(255, 255, 255, 0.12);
-      --radar-green: #00e676;
-      --radar-amber: #ffb703;
-      --radar-cyan: #00b4d8;
-      --radar-red: #ff2a5f;
-      --text-muted: #8290a5;
-      --text-main: #e2e8f0;
+      --bg-black: #000000;
+      --panel-bg: rgba(10, 10, 10, 0.95);
+      --border-line: #222222;
+      --text-pure: #ffffff;
+      --text-dim: #777777;
+      --accent-green: #00ff66;
+      --accent-amber: #ffaa00;
+      --accent-red: #ff2244;
+      --accent-cyan: #00ddff;
     }
 
     * {
@@ -38,8 +41,8 @@
       width: 100%;
       height: 100%;
       overflow: hidden;
-      background: var(--radar-bg);
-      color: var(--text-main);
+      background: var(--bg-black);
+      color: var(--text-pure);
     }
 
     #map-container {
@@ -49,7 +52,7 @@
       width: 100vw;
       height: 100vh;
       z-index: 1;
-      background: #040608;
+      background: #000000;
     }
 
     #canvas-overlay {
@@ -62,94 +65,117 @@
       z-index: 2;
     }
 
-    /* Top Bar Header */
+    /* Top Navigation Bar */
     #top-bar {
       position: absolute;
-      top: 10px;
-      left: 10px;
-      right: 10px;
+      top: 12px;
+      left: 12px;
+      right: 12px;
       display: flex;
       justify-content: space-between;
       align-items: center;
-      padding: 8px 14px;
+      padding: 10px 16px;
       background: var(--panel-bg);
-      border: 1px solid var(--border-color);
+      border: 1px solid var(--border-line);
       border-radius: 4px;
-      backdrop-filter: blur(10px);
+      backdrop-filter: blur(8px);
       z-index: 10;
+    }
+
+    .brand-box {
+      display: flex;
+      align-items: center;
+      gap: 10px;
     }
 
     .brand-title {
       font-size: 12px;
       font-weight: 800;
-      letter-spacing: 1px;
-      color: #fff;
-      display: flex;
-      align-items: center;
-      gap: 8px;
+      letter-spacing: 1.5px;
+      color: #ffffff;
     }
 
-    .radar-pulse {
-      width: 7px;
-      height: 7px;
-      background: var(--radar-green);
-      border-radius: 50%;
+    .brand-tag {
+      font-size: 9px;
+      padding: 2px 6px;
+      background: #1a1a1a;
+      border: 1px solid #333333;
+      border-radius: 2px;
+      color: var(--text-dim);
     }
 
-    .metrics-bar {
+    .status-items {
       display: flex;
-      gap: 20px;
+      gap: 24px;
       font-size: 11px;
     }
 
-    .metric-badge {
+    .stat-badge {
       display: flex;
       flex-direction: column;
       align-items: flex-end;
     }
 
-    .metric-title {
-      color: var(--text-muted);
-      font-size: 9px;
+    .stat-lbl {
+      color: var(--text-dim);
+      font-size: 8.5px;
       text-transform: uppercase;
+      letter-spacing: 0.5px;
     }
 
-    .metric-val {
+    .stat-val {
       font-weight: 700;
       font-size: 12px;
+      color: #ffffff;
     }
 
-    /* Structured Panels */
-    .glass-panel {
+    /* Glass Panels */
+    .glass-deck {
       position: absolute;
       background: var(--panel-bg);
-      border: 1px solid var(--border-color);
+      border: 1px solid var(--border-line);
       border-radius: 4px;
-      backdrop-filter: blur(10px);
+      backdrop-filter: blur(8px);
       z-index: 10;
-      padding: 12px;
+      padding: 14px;
     }
 
-    /* Left Sector & Controller Deck */
+    /* Left Controller Deck */
     #sector-deck {
-      top: 60px;
-      left: 10px;
-      width: 300px;
-      max-height: calc(100vh - 72px);
+      top: 66px;
+      left: 12px;
+      width: 320px;
+      max-height: calc(100vh - 80px);
       overflow-y: auto;
     }
 
-    .panel-header {
-      font-size: 11px;
-      font-weight: 700;
+    .deck-title {
+      font-size: 10.5px;
+      font-weight: 800;
       letter-spacing: 1px;
       text-transform: uppercase;
-      color: var(--text-main);
-      margin-bottom: 10px;
-      border-bottom: 1px solid var(--border-color);
-      padding-bottom: 5px;
+      color: #ffffff;
+      margin-bottom: 12px;
+      border-bottom: 1px solid var(--border-line);
+      padding-bottom: 6px;
       display: flex;
       justify-content: space-between;
+      align-items: center;
+    }
+
+    .mission-box {
+      padding: 8px 10px;
+      background: #111111;
+      border: 1px solid #282828;
+      border-radius: 3px;
+      margin-bottom: 12px;
+      font-size: 9.5px;
+      line-height: 1.45;
+      color: #bbbbbb;
+    }
+
+    .mission-step {
+      margin-bottom: 3px;
     }
 
     .form-group {
@@ -158,110 +184,166 @@
 
     .form-group label {
       display: block;
-      font-size: 9px;
-      color: var(--text-muted);
+      font-size: 8.5px;
+      color: var(--text-dim);
       margin-bottom: 3px;
       text-transform: uppercase;
     }
 
-    .form-control {
+    .form-input {
       width: 100%;
-      padding: 6px 8px;
-      background: rgba(0, 0, 0, 0.6);
-      border: 1px solid var(--border-color);
-      border-radius: 4px;
-      color: #fff;
+      padding: 7px 9px;
+      background: #000000;
+      border: 1px solid var(--border-line);
+      border-radius: 3px;
+      color: #ffffff;
       font-size: 11px;
       outline: none;
     }
 
-    .form-control:focus {
-      border-color: var(--radar-green);
+    .form-input:focus {
+      border-color: #555555;
     }
 
-    .atc-btn {
+    .btn-action {
       width: 100%;
       padding: 8px;
       font-weight: 700;
       font-size: 10px;
       letter-spacing: 0.5px;
-      border-radius: 4px;
+      border-radius: 3px;
       cursor: pointer;
-      border: none;
-      transition: background 0.15s;
+      border: 1px solid #333333;
+      background: #161616;
+      color: #ffffff;
+      transition: background 0.15s, border-color 0.15s;
       text-transform: uppercase;
     }
 
-    .btn-green { background: var(--radar-green); color: #040608; }
-    .btn-green:hover { background: #00c853; }
-    .btn-amber { background: var(--radar-amber); color: #040608; }
-    .btn-amber:hover { background: #ffa000; }
-    .btn-cyan { background: var(--radar-cyan); color: #040608; }
-    .btn-cyan:hover { background: #0096c7; }
+    .btn-action:hover {
+      background: #252525;
+      border-color: #666666;
+    }
 
-    /* Selected Aircraft Flight Strip Box */
+    .btn-amber {
+      background: #1c1505;
+      border-color: var(--accent-amber);
+      color: var(--accent-amber);
+    }
+    .btn-amber:hover {
+      background: #2e2208;
+    }
+
+    .btn-green {
+      background: #051c0e;
+      border-color: var(--accent-green);
+      color: var(--accent-green);
+    }
+    .btn-green:hover {
+      background: #092e18;
+    }
+
+    /* Selected Flight Strip Box */
     #flight-strip-box {
       margin-top: 10px;
       padding: 10px;
-      background: rgba(255, 255, 255, 0.02);
-      border: 1px solid var(--border-color);
-      border-left: 3px solid var(--radar-cyan);
+      background: #0a0a0a;
+      border: 1px solid var(--border-line);
       border-radius: 3px;
     }
 
-    /* Right Telemetry & Handoff Deck */
+    /* Right Telemetry & 3D Deck */
     #telemetry-deck {
-      top: 60px;
-      right: 10px;
-      width: 340px;
-      max-height: calc(100vh - 72px);
+      top: 66px;
+      right: 12px;
+      width: 350px;
+      max-height: calc(100vh - 80px);
       display: flex;
       flex-direction: column;
       gap: 10px;
     }
 
-    #handoff-banner {
-      display: none;
-      background: rgba(255, 183, 3, 0.15);
-      border: 1px solid var(--radar-amber);
-      border-radius: 4px;
-      padding: 8px 10px;
-      animation: pulseAlert 1s infinite alternate;
+    /* 3D Flight Viewport */
+    #view-3d-box {
+      position: relative;
+      width: 100%;
+      height: 180px;
+      background: #000000;
+      border: 1px solid var(--border-line);
+      border-radius: 3px;
+      overflow: hidden;
     }
 
-    @keyframes pulseAlert {
-      0% { border-color: var(--radar-amber); }
-      100% { border-color: #fff; }
+    #view-3d-canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    #view-3d-overlay {
+      position: absolute;
+      top: 6px;
+      left: 8px;
+      right: 8px;
+      display: flex;
+      justify-content: space-between;
+      pointer-events: none;
+      font-size: 8.5px;
+      color: var(--text-dim);
+    }
+
+    #handoff-banner {
+      display: none;
+      background: #1c1505;
+      border: 1px solid var(--accent-amber);
+      border-radius: 3px;
+      padding: 8px 10px;
+    }
+
+    #controller-roster {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      font-size: 9.5px;
+    }
+
+    .roster-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 4px 6px;
+      background: #0d0d0d;
+      border: 1px solid #1a1a1a;
+      border-radius: 2px;
     }
 
     #radio-stream {
-      background: rgba(0, 0, 0, 0.7);
-      border: 1px solid var(--border-color);
-      border-radius: 4px;
+      background: #000000;
+      border: 1px solid var(--border-line);
+      border-radius: 3px;
       padding: 8px 10px;
-      height: 220px;
+      height: 140px;
       overflow-y: auto;
-      font-size: 10px;
+      font-size: 9px;
       line-height: 1.4;
     }
 
     .log-line { margin-bottom: 3px; word-break: break-all; }
-    .log-RADIO { color: var(--radar-green); }
-    .log-ALERT { color: var(--radar-red); font-weight: 700; }
-    .log-HANDOFF { color: var(--radar-amber); font-weight: 700; }
-    .log-SYS { color: var(--text-muted); }
+    .log-RADIO { color: #cccccc; }
+    .log-ALERT { color: var(--accent-red); font-weight: 700; }
+    .log-HANDOFF { color: var(--accent-amber); font-weight: 700; }
+    .log-SYS { color: #555555; }
 
     /* Mobile Responsive */
     @media (max-width: 900px) {
       #top-bar { padding: 6px 8px; }
       .brand-title { font-size: 10px; }
-      .metrics-bar { gap: 10px; font-size: 8px; }
+      .status-items { gap: 10px; font-size: 8px; }
       #sector-deck {
-        top: 50px;
+        top: 52px;
         left: 6px;
         right: 6px;
         width: auto;
-        max-height: 38vh;
+        max-height: 42vh;
       }
       #telemetry-deck {
         bottom: 6px;
@@ -269,7 +351,7 @@
         left: 6px;
         right: 6px;
         width: auto;
-        max-height: 32vh;
+        max-height: 38vh;
       }
     }
   </style>
@@ -281,41 +363,50 @@
 
   <!-- Top Bar -->
   <div id="top-bar">
-    <div class="brand-title">
-      <span class="radar-pulse"></span>
-      GLOBAL ATC RADAR // SECTOR HANDOFF OPS
+    <div class="brand-box">
+      <span class="brand-title">GLOBAL ATC RADAR</span>
+      <span class="brand-tag">ICAO REAL-TIME 60FPS</span>
     </div>
-    <div class="metrics-bar">
-      <div class="metric-badge">
-        <span class="metric-title">ASSIGNED SECTOR</span>
-        <span class="metric-val" id="my-sector-name" style="color: var(--radar-green);">WIII_FIR (Jakarta)</span>
+    <div class="status-items">
+      <div class="stat-badge">
+        <span class="stat-lbl">ASSIGNED FIR SECTOR</span>
+        <span class="stat-val" id="my-sector-name">WIII_FIR (Jakarta)</span>
       </div>
-      <div class="metric-badge">
-        <span class="metric-title">AIR TRAFFIC COUNT</span>
-        <span class="metric-val" id="flights-count" style="color: var(--radar-cyan);">0 ACTIVE</span>
+      <div class="stat-badge">
+        <span class="stat-lbl">ACTIVE FLIGHTS</span>
+        <span class="stat-val" id="flights-count">0</span>
       </div>
-      <div class="metric-badge">
-        <span class="metric-title">COLLISION ALERTS (STCA)</span>
-        <span class="metric-val" id="alerts-count" style="color: var(--radar-green);">0 CONFLICTS</span>
+      <div class="stat-badge">
+        <span class="stat-lbl">SEPARATION CONFLICTS</span>
+        <span class="stat-val" id="alerts-count">0</span>
       </div>
     </div>
   </div>
 
   <!-- Left Tactical Controller Deck -->
-  <div id="sector-deck" class="glass-panel">
-    <div class="panel-header">
+  <div id="sector-deck" class="glass-deck">
+    <div class="deck-title">
       <span>ATC CONTROLLER STATION</span>
-      <span id="controller-id-badge" style="color: var(--radar-cyan);">CTR-INIT</span>
+      <span id="controller-id-badge" style="color: var(--text-dim);">CTR-INIT</span>
+    </div>
+
+    <!-- Clear Mission Briefing Box -->
+    <div class="mission-box">
+      <div style="font-weight: 700; color: #ffffff; margin-bottom: 4px;">OPERATIONAL MISSION OBJECTIVE:</div>
+      <div class="mission-step">1. <b>Claim Airspace FIR</b> yang ingin kamu awasi.</div>
+      <div class="mission-step">2. <b>Klik Pesawat</b> di radar untuk membuka kemudi & kamera 3D.</div>
+      <div class="mission-step">3. <b>Atur Heading / FL Altitude</b> untuk hindari tabrakan STCA (< 5 NM & < 1000 ft).</div>
+      <div class="mission-step">4. <b>Handoff Pesawat</b> ke controller negara lain saat mendekati perbatasan.</div>
     </div>
 
     <div class="form-group">
       <label>CONTROLLER CALLSIGN</label>
-      <input type="text" id="controller-callsign" class="form-control" value="JAKARTA_CTR" onchange="claimSector()">
+      <input type="text" id="controller-callsign" class="form-input" value="JAKARTA_CTR" onchange="claimSector()">
     </div>
 
     <div class="form-group">
       <label>AIRSPACE SECTOR (FIR)</label>
-      <select id="sector-select" class="form-control" onchange="claimSector()">
+      <select id="sector-select" class="form-input" onchange="claimSector()">
         <option value="sec-wiii">WIII_FIR - Jakarta FIR (Indonesia)</option>
         <option value="sec-wsjc">WSJC_ACC - Singapore ACC (Southeast Asia)</option>
         <option value="sec-rjjj">RJJJ_ACC - Tokyo ACC (East Asia / Pacific)</option>
@@ -325,29 +416,29 @@
       </select>
     </div>
 
-    <div class="panel-header" style="margin-top: 10px;">
+    <div class="deck-title" style="margin-top: 14px;">
       <span>FLIGHT VECTOR CONTROLS</span>
-      <span id="selected-callsign-header" style="color: var(--radar-amber);">NO AIRCRAFT SELECTED</span>
+      <span id="selected-callsign-header" style="color: var(--accent-amber);">NO AIRCRAFT</span>
     </div>
 
-    <!-- Active Selected Aircraft Strip -->
+    <!-- Active Flight Control Strip -->
     <div id="flight-strip-box">
-      <div style="font-size: 10px; color: var(--text-muted); margin-bottom: 6px;">Click any aircraft on radar to issue vectors.</div>
+      <div id="no-flight-hint" style="font-size: 9.5px; color: var(--text-dim);">Click any aircraft on radar scope to command.</div>
       
       <div id="flight-controls" style="display: none;">
-        <div style="display: flex; justify-content: space-between; margin-bottom: 6px; font-weight: 700;">
-          <span id="strip-callsign" style="color: #fff;">GIA880</span>
-          <span id="strip-route" style="color: var(--radar-cyan);">WIII -> WSSS</span>
+        <div style="display: flex; justify-content: space-between; margin-bottom: 8px; font-weight: 700;">
+          <span id="strip-callsign" style="color: #ffffff;">GIA880</span>
+          <span id="strip-route" style="color: #aaaaaa;">WIII -> RJAA</span>
         </div>
 
         <div class="form-group">
-          <label>ASSIGN VECTOR HEADING: <span id="hdg-display" style="color: var(--radar-green);">090°</span></label>
-          <input type="range" id="input-heading" min="0" max="359" step="5" value="90" class="form-control" oninput="updateHeadingPreview(this.value)" onchange="sendVectorHeading(this.value)">
+          <label>ASSIGN VECTOR HEADING: <span id="hdg-display" style="color: #ffffff; font-weight: 700;">090°</span></label>
+          <input type="range" id="input-heading" min="0" max="359" step="5" value="90" class="form-input" oninput="updateHeadingPreview(this.value)" onchange="sendVectorHeading(this.value)">
         </div>
 
         <div class="form-group">
           <label>ASSIGN FLIGHT LEVEL (ALTITUDE)</label>
-          <select id="input-altitude" class="form-control" onchange="sendAltitude(this.value)">
+          <select id="input-altitude" class="form-input" onchange="sendAltitude(this.value)">
             <option value="10000">FL100 (10,000 ft - Approach)</option>
             <option value="18000">FL180 (18,000 ft - Transition)</option>
             <option value="24000">FL240 (24,000 ft)</option>
@@ -355,22 +446,23 @@
             <option value="32000">FL320 (32,000 ft - Cruise)</option>
             <option value="35000">FL350 (35,000 ft - Cruise)</option>
             <option value="38000">FL380 (38,000 ft - Cruise)</option>
+            <option value="41000">FL410 (41,000 ft - ULR Cruise)</option>
           </select>
         </div>
 
         <div class="form-group">
           <label>ASSIGN AIRSPEED</label>
-          <select id="input-speed" class="form-control" onchange="sendSpeed(this.value)">
+          <select id="input-speed" class="form-input" onchange="sendSpeed(this.value)">
             <option value="250">250 KTS (Approach Limit)</option>
             <option value="320">320 KTS (Medium Climb)</option>
             <option value="450">450 KTS (Normal Cruise)</option>
-            <option value="480">480 KTS (High Speed)</option>
+            <option value="480">480 KTS (High Speed Cruise)</option>
           </select>
         </div>
 
-        <div class="form-group" style="margin-top: 8px;">
-          <label>TRANSFER HANDOFF TO SECTOR</label>
-          <select id="handoff-target-select" class="form-control" style="margin-bottom: 4px;">
+        <div class="form-group" style="margin-top: 10px;">
+          <label>SECTOR HANDOFF</label>
+          <select id="handoff-target-select" class="form-input" style="margin-bottom: 5px;">
             <option value="sec-wsjc">WSJC_ACC (Singapore)</option>
             <option value="sec-wiii">WIII_FIR (Jakarta)</option>
             <option value="sec-rjjj">RJJJ_ACC (Tokyo)</option>
@@ -378,36 +470,45 @@
             <option value="sec-kzny">KZNY_ACC (New York)</option>
             <option value="sec-ybbb">YBBB_FIR (Sydney)</option>
           </select>
-          <button class="atc-btn btn-amber" onclick="initiateHandoff()">INITIATE SECTOR HANDOFF</button>
+          <button class="btn-action btn-amber" onclick="initiateHandoff()">INITIATE SECTOR HANDOFF</button>
         </div>
       </div>
     </div>
   </div>
 
   <!-- Right Telemetry Deck -->
-  <div id="telemetry-deck" class="glass-panel">
+  <div id="telemetry-deck" class="glass-deck">
+    <!-- 3D Chase Camera Viewport -->
+    <div id="view-3d-box">
+      <div id="view-3d-overlay">
+        <span id="cam-callsign">3D FLIGHT TRACKER // STANDBY</span>
+        <span id="cam-telemetry">HDG --- / FL---</span>
+      </div>
+      <div id="view-3d-canvas"></div>
+    </div>
+
     <!-- Inbound Handoff Alert Banner -->
     <div id="handoff-banner">
-      <div style="font-weight: 700; color: var(--radar-amber); font-size: 11px; margin-bottom: 4px;">INBOUND HANDOFF ALERT</div>
-      <div id="handoff-msg" style="font-size: 10px; color: #fff; margin-bottom: 6px;">GIA880 requesting entry from Jakarta FIR</div>
-      <button class="atc-btn btn-green" id="btn-accept-handoff" onclick="acceptInboundHandoff()">ACCEPT HANDOFF & SQUAWK IDENT</button>
+      <div style="font-weight: 700; color: var(--accent-amber); font-size: 10px; margin-bottom: 3px;">INBOUND HANDOFF ALERT</div>
+      <div id="handoff-msg" style="font-size: 9.5px; color: #ffffff; margin-bottom: 6px;">GIA880 requesting entry from Jakarta FIR</div>
+      <button class="btn-action btn-green" id="btn-accept-handoff" onclick="acceptInboundHandoff()">ACCEPT HANDOFF & SQUAWK IDENT</button>
     </div>
 
-    <div class="panel-header">
+    <div class="deck-title">
       <span>SECTOR CONTROLLER ROSTER</span>
-      <span style="color: var(--radar-cyan);">ACTIVE OPS</span>
+      <span style="color: var(--text-dim);">ACTIVE OPS</span>
     </div>
-    <div id="controller-roster" style="font-size: 10px; display: flex; flex-direction: column; gap: 4px;"></div>
+    <div id="controller-roster"></div>
 
-    <div class="panel-header" style="margin-top: 6px;">
+    <div class="deck-title" style="margin-top: 6px;">
       <span>ATC RADIO & LOG COMMUNICATIONS</span>
-      <span style="color: var(--radar-green);">LIVE 10HZ</span>
+      <span style="color: var(--text-dim);">LIVE</span>
     </div>
     <div id="radio-stream"></div>
   </div>
 
   <script>
-    // 1. MapLibre GL Dark Aviation Scope
+    // 1. MapLibre GL Dark Monochrome Scope
     const map = new maplibregl.Map({
       container: 'map-container',
       style: {
@@ -449,7 +550,89 @@
     window.addEventListener('resize', resizeCanvas);
     resizeCanvas();
 
-    // 2. WebSocket ATC Real-Time Connection
+    // 2. Three.js 3D Aircraft Chase Camera
+    let threeScene, threeCamera, threeRenderer, plane3DMesh, earthGrid;
+    function init3DView() {
+      const container = document.getElementById('view-3d-canvas');
+      const width = container.clientWidth || 320;
+      const height = container.clientHeight || 180;
+
+      threeScene = new THREE.Scene();
+      threeScene.background = new THREE.Color(0x050505);
+
+      threeCamera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
+      threeCamera.position.set(0, 8, 16);
+      threeCamera.lookAt(0, 0, 0);
+
+      threeRenderer = new THREE.WebGLRenderer({ antialias: true });
+      threeRenderer.setSize(width, height);
+      container.appendChild(threeRenderer.domElement);
+
+      // Wireframe Flight Horizon Ground Grid
+      const gridHelper = new THREE.GridHelper(60, 30, 0x333333, 0x181818);
+      gridHelper.position.y = -4;
+      threeScene.add(gridHelper);
+      earthGrid = gridHelper;
+
+      // Lights
+      const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
+      threeScene.add(ambientLight);
+      const dirLight = new THREE.DirectionalLight(0xffffff, 1.2);
+      dirLight.position.set(10, 20, 10);
+      threeScene.add(dirLight);
+
+      // Low-poly Jet Geometry
+      const planeGroup = new THREE.Group();
+      
+      // Fuselage
+      const bodyGeo = new THREE.ConeGeometry(0.8, 6, 16);
+      bodyGeo.rotateX(Math.PI / 2);
+      const bodyMat = new THREE.MeshStandardMaterial({ color: 0xeeeeee, metalness: 0.2, roughness: 0.5 });
+      const fuselage = new THREE.Mesh(bodyGeo, bodyMat);
+      planeGroup.add(fuselage);
+
+      // Wings
+      const wingGeo = new THREE.BoxGeometry(9, 0.12, 1.8);
+      const wingMat = new THREE.MeshStandardMaterial({ color: 0xcccccc });
+      const wings = new THREE.Mesh(wingGeo, wingMat);
+      wings.position.set(0, 0, 0.3);
+      planeGroup.add(wings);
+
+      // Tail Fin
+      const tailGeo = new THREE.BoxGeometry(0.12, 1.6, 1.2);
+      const tail = new THREE.Mesh(tailGeo, wingMat);
+      tail.position.set(0, 0.8, -2.2);
+      planeGroup.add(tail);
+
+      // Jet Engines
+      const engineGeo = new THREE.CylinderGeometry(0.3, 0.3, 1.4, 8);
+      engineGeo.rotateX(Math.PI / 2);
+      const engMat = new THREE.MeshStandardMaterial({ color: 0x444444 });
+      const engL = new THREE.Mesh(engineGeo, engMat);
+      engL.position.set(-1.6, -0.3, 0.3);
+      const engR = new THREE.Mesh(engineGeo, engMat);
+      engR.position.set(1.6, -0.3, 0.3);
+      planeGroup.add(engL);
+      planeGroup.add(engR);
+
+      threeScene.add(planeGroup);
+      plane3DMesh = planeGroup;
+
+      function render3D() {
+        requestAnimationFrame(render3D);
+        if (earthGrid) {
+          earthGrid.position.z = (earthGrid.position.z + 0.1) % 4;
+        }
+        if (plane3DMesh) {
+          plane3DMesh.rotation.z = Math.sin(Date.now() * 0.002) * 0.05;
+        }
+        threeRenderer.render(threeScene, threeCamera);
+      }
+      render3D();
+    }
+    window.addEventListener('load', init3DView);
+
+    // 3. WebSocket ATC Real-Time Connection
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     const wsUrl = `${protocol}//${window.location.host}/ws`;
     let ws = null;
@@ -542,8 +725,10 @@
       activeInboundHandoff = null;
     }
 
-    // 3. UI State Synchronization
+    // 4. Stable Deterministic Sector Roster Rendering
+    const SECTOR_SORT_ORDER = ["sec-wiii", "sec-wsjc", "sec-rjjj", "sec-egtt", "sec-kzny", "sec-ybbb"];
     let lastLogLength = 0;
+
     function onPayloadReceived(payload) {
       if (!payload) return;
 
@@ -552,16 +737,16 @@
         document.getElementById('controller-id-badge').innerText = `CTR-${selfControllerId}`;
       }
 
-      // Update counts without touching DOM tree unnecessarily
-      const totalStr = `${payload.totalFlights} ACTIVE`;
+      // Smooth metric updating
+      const totalStr = `${payload.totalFlights}`;
       const flightsEl = document.getElementById('flights-count');
       if (flightsEl.innerText !== totalStr) flightsEl.innerText = totalStr;
 
       const alertEl = document.getElementById('alerts-count');
-      const alertStr = `${payload.activeAlerts} CONFLICTS`;
+      const alertStr = `${payload.activeAlerts}`;
       if (alertEl.innerText !== alertStr) {
         alertEl.innerText = alertStr;
-        alertEl.style.color = payload.activeAlerts > 0 ? 'var(--radar-red)' : 'var(--radar-green)';
+        alertEl.style.color = payload.activeAlerts > 0 ? 'var(--accent-red)' : '#ffffff';
       }
 
       // Active Sector label
@@ -572,22 +757,32 @@
         if (mySecEl.innerText !== secLabel) mySecEl.innerText = secLabel;
       }
 
-      // Controller Roster (Only update on change)
-      const rosterContainer = document.getElementById('controller-roster');
-      const rosterHtml = payload.sectors.map(s => {
-        const isMe = s.controllerId === selfControllerId;
-        return `
-          <div style="display: flex; justify-content: space-between; padding: 3px 0; border-bottom: 1px dashed rgba(255,255,255,0.05); ${isMe ? 'color: var(--radar-green); font-weight: 700;' : ''}">
-            <span>${s.icao}</span>
-            <span style="color: ${s.controller === 'AUTO-TOWER' ? 'var(--text-muted)' : 'var(--radar-cyan)'};">${s.controller}</span>
-          </div>
-        `;
-      }).join('');
-      if (rosterContainer.innerHTML !== rosterHtml) {
-        rosterContainer.innerHTML = rosterHtml;
+      // Deterministic Sorted Sector Controller Roster
+      if (payload.sectors) {
+        const sortedSectors = [...payload.sectors].sort((a, b) => {
+          const idxA = SECTOR_SORT_ORDER.indexOf(a.id);
+          const idxB = SECTOR_SORT_ORDER.indexOf(b.id);
+          return (idxA === -1 ? 99 : idxA) - (idxB === -1 ? 99 : idxB);
+        });
+
+        const rosterContainer = document.getElementById('controller-roster');
+        const rosterHtml = sortedSectors.map(s => {
+          const isMe = s.controllerId === selfControllerId;
+          const isAuto = s.controller === 'AUTO-TOWER';
+          return `
+            <div class="roster-row" style="${isMe ? 'border-color: #555555; background: #1a1a1a;' : ''}">
+              <span style="${isMe ? 'font-weight: 700; color: #ffffff;' : 'color: #888888;'}">${s.icao}</span>
+              <span style="${isAuto ? 'color: #555555;' : (isMe ? 'color: var(--accent-green); font-weight: 700;' : 'color: #dddddd;')}">${s.controller}</span>
+            </div>
+          `;
+        }).join('');
+
+        if (rosterContainer.innerHTML !== rosterHtml) {
+          rosterContainer.innerHTML = rosterHtml;
+        }
       }
 
-      // Handoff Notification
+      // Inbound Handoff Alert Banner
       if (payload.handoffs && payload.handoffs.length > 0) {
         activeInboundHandoff = payload.handoffs[0];
         document.getElementById('handoff-msg').innerText = `${activeInboundHandoff.callsign} requesting entry from ${activeInboundHandoff.fromSector}`;
@@ -597,12 +792,15 @@
         activeInboundHandoff = null;
       }
 
-      // Update Selected Aircraft Strip
+      // Update Selected Aircraft Strip & 3D Camera Telemetry
       if (selectedCallsign) {
         const ac = payload.aircraft.find(a => a.callsign === selectedCallsign);
         if (ac) {
           document.getElementById('strip-callsign').innerText = `${ac.callsign} (${ac.aircraftType})`;
           document.getElementById('strip-route').innerText = `${ac.origin} -> ${ac.destination} | FL${Math.round(ac.altitude/100)} | ${Math.round(ac.speed)}KTS`;
+          
+          document.getElementById('cam-callsign').innerText = `3D TRACK: ${ac.callsign} [${ac.aircraftType}]`;
+          document.getElementById('cam-telemetry').innerText = `HDG ${String(Math.round(ac.heading)).padStart(3,'0')}° / FL${Math.round(ac.altitude/100)} / ${Math.round(ac.speed)}KT`;
         }
       }
 
@@ -617,7 +815,7 @@
       }
     }
 
-    // 4. Radar Scope Click Detection
+    // 5. Radar Scope Click Detection
     window.addEventListener('click', (e) => {
       if (!currentPayload || !currentPayload.aircraft) return;
       if (e.target.closest('#sector-deck') || e.target.closest('#telemetry-deck') || e.target.closest('#top-bar')) return;
@@ -626,7 +824,7 @@
       const clickY = e.clientY;
 
       let nearestAc = null;
-      let minDist = 30; // Pixel radius
+      let minDist = 32; // Pixel click threshold
 
       currentPayload.aircraft.forEach(ac => {
         const pt = map.project([ac.coord.lng, ac.coord.lat]);
@@ -645,11 +843,15 @@
     function selectAircraft(ac) {
       selectedCallsign = ac.callsign;
       document.getElementById('selected-callsign-header').innerText = ac.callsign;
+      document.getElementById('no-flight-hint').style.display = 'none';
       document.getElementById('flight-controls').style.display = 'block';
       document.getElementById('strip-callsign').innerText = `${ac.callsign} (${ac.aircraftType})`;
       document.getElementById('strip-route').innerText = `${ac.origin} -> ${ac.destination}`;
       document.getElementById('input-heading').value = Math.round(ac.targetHeading);
       document.getElementById('hdg-display').innerText = `${String(Math.round(ac.targetHeading)).padStart(3, '0')}°`;
+
+      document.getElementById('cam-callsign').innerText = `3D TRACK: ${ac.callsign} [${ac.aircraftType}]`;
+      document.getElementById('cam-telemetry').innerText = `HDG ${String(Math.round(ac.heading)).padStart(3,'0')}° / FL${Math.round(ac.altitude/100)}`;
     }
 
     // Function to draw an airplane icon rotated by heading
@@ -662,7 +864,7 @@
       ctx.strokeStyle = color;
       ctx.lineWidth = 1.5;
 
-      // Draw Jet Silhouette
+      // Clean Low-Poly Jet Silhouette
       ctx.beginPath();
       ctx.moveTo(0, -size);
       ctx.lineTo(size * 0.25, -size * 0.3);
@@ -685,8 +887,8 @@
 
       if (isSelected) {
         ctx.beginPath();
-        ctx.arc(0, 0, size * 1.6, 0, Math.PI * 2);
-        ctx.strokeStyle = '#ffb703';
+        ctx.arc(0, 0, size * 1.7, 0, Math.PI * 2);
+        ctx.strokeStyle = '#ffffff';
         ctx.lineWidth = 1.5;
         ctx.setLineDash([3, 3]);
         ctx.stroke();
@@ -696,7 +898,7 @@
       ctx.restore();
     }
 
-    // 5. Radar Canvas Drawing Loop (Sectors, Airway Routes, Airplane Icons, Transponder Tags)
+    // 6. Radar Canvas 60 FPS Drawing Loop (Black/White Professional Scope)
     function drawRadarScope() {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
@@ -705,6 +907,7 @@
         if (currentPayload.sectors) {
           currentPayload.sectors.forEach(sec => {
             if (!sec.bounds || sec.bounds.length === 0) return;
+            const isMySec = sec.id === currentPayload.sectorId;
             ctx.beginPath();
             sec.bounds.forEach((pt, idx) => {
               const p = map.project([pt.lng, pt.lat]);
@@ -712,16 +915,16 @@
               else ctx.lineTo(p.x, p.y);
             });
             ctx.closePath();
-            ctx.strokeStyle = sec.color + '55';
-            ctx.lineWidth = sec.id === currentPayload.sectorId ? 2 : 1;
+            ctx.strokeStyle = isMySec ? '#ffffff' : '#333333';
+            ctx.lineWidth = isMySec ? 1.5 : 1;
             ctx.setLineDash([4, 4]);
             ctx.stroke();
             ctx.setLineDash([]);
 
             // Sector Label
             const centerPt = map.project([sec.center.lng, sec.center.lat]);
-            ctx.fillStyle = sec.color + '88';
-            ctx.font = '11px JetBrains Mono';
+            ctx.fillStyle = isMySec ? '#ffffff' : '#666666';
+            ctx.font = '700 10px JetBrains Mono';
             ctx.fillText(sec.icao, centerPt.x - 20, centerPt.y);
           });
         }
@@ -732,18 +935,18 @@
             const pt = map.project([apt.coord.lng, apt.coord.lat]);
             if (pt.x >= 0 && pt.x <= canvas.width && pt.y >= 0 && pt.y <= canvas.height) {
               ctx.beginPath();
-              ctx.arc(pt.x, pt.y, 3, 0, Math.PI * 2);
-              ctx.fillStyle = '#64748b';
+              ctx.arc(pt.x, pt.y, 2.5, 0, Math.PI * 2);
+              ctx.fillStyle = '#444444';
               ctx.fill();
 
-              ctx.fillStyle = '#94a3b8';
-              ctx.font = '9px JetBrains Mono';
-              ctx.fillText(apt.iata, pt.x + 6, pt.y + 3);
+              ctx.fillStyle = '#777777';
+              ctx.font = '8.5px JetBrains Mono';
+              ctx.fillText(apt.iata, pt.x + 5, pt.y + 3);
             }
           });
         }
 
-        // 3. Draw Aircraft Route ONLY if Selected
+        // 3. Draw Aircraft Route ONLY when Selected
         if (currentPayload.aircraft && selectedCallsign) {
           const selectedAc = currentPayload.aircraft.find(a => a.callsign === selectedCallsign);
           if (selectedAc && currentPayload.airports) {
@@ -755,8 +958,8 @@
               ctx.beginPath();
               ctx.moveTo(acPt.x, acPt.y);
               ctx.lineTo(destPt.x, destPt.y);
-              ctx.strokeStyle = '#ffb703';
-              ctx.lineWidth = 1.5;
+              ctx.strokeStyle = '#ffffff';
+              ctx.lineWidth = 1.2;
               ctx.setLineDash([4, 4]);
               ctx.stroke();
               ctx.setLineDash([]);
@@ -764,7 +967,7 @@
           }
         }
 
-        // 4. Draw Aircraft Icons & Transponders (Clean Default View)
+        // 4. Draw Aircraft Icons & Mode S Transponders
         if (currentPayload.aircraft) {
           currentPayload.aircraft.forEach(ac => {
             const pt = map.project([ac.coord.lng, ac.coord.lat]);
@@ -772,39 +975,41 @@
 
             const isSelected = ac.callsign === selectedCallsign;
             const isConflict = ac.conflictAlert;
-            const isMySector = ac.sectorId === currentPayload.sectorId;
+            const isHandoff = ac.handoffState === 'PENDING';
 
-            let acColor = isMySector ? '#00e676' : '#00b4d8';
-            if (isConflict) acColor = '#ff2a5f';
-            if (ac.handoffState === 'PENDING') acColor = '#ffb703';
+            // Clean Black & White with Important Highlights
+            let acColor = '#ffffff';
+            if (isConflict) acColor = 'var(--accent-red)';
+            else if (isHandoff) acColor = 'var(--accent-amber)';
+            else if (isSelected) acColor = '#ffffff';
+            else acColor = '#cccccc';
 
-            // Draw Real Airplane Silhouette Icon (Clean, no attached leader line)
-            drawAirplaneIcon(pt.x, pt.y, ac.heading, acColor, isSelected ? 10 : 7.5, isSelected);
+            // Draw Clean Airplane Silhouette Icon
+            drawAirplaneIcon(pt.x, pt.y, ac.heading, acColor, isSelected ? 9.5 : 7, isSelected);
 
-            // Default Minimal Label: Only Callsign underneath (Clean View)
             // Detailed Box Tag ONLY shows when Selected OR when Conflict Alert
             if (isSelected || isConflict) {
               const tagX = pt.x + 14;
               const tagY = pt.y - 14;
 
-              ctx.fillStyle = isConflict ? 'rgba(255, 42, 95, 0.92)' : 'rgba(10, 15, 23, 0.94)';
+              ctx.fillStyle = isConflict ? 'rgba(255, 34, 68, 0.95)' : 'rgba(10, 10, 10, 0.95)';
               ctx.fillRect(tagX - 2, tagY - 9, 84, 28);
-              ctx.strokeStyle = isConflict ? '#fff' : (isSelected ? '#ffb703' : acColor);
+              ctx.strokeStyle = isConflict ? '#ffffff' : '#ffffff';
               ctx.strokeRect(tagX - 2, tagY - 9, 84, 28);
 
               ctx.fillStyle = '#ffffff';
               ctx.font = '700 9px JetBrains Mono';
               ctx.fillText(ac.callsign, tagX, tagY);
 
-              ctx.fillStyle = '#cbd5e1';
+              ctx.fillStyle = '#cccccc';
               ctx.font = '8px JetBrains Mono';
               ctx.fillText(`FL${Math.round(ac.altitude/100)} ${Math.round(ac.speed)}K`, tagX, tagY + 9);
               ctx.fillText(`${ac.origin}▶${ac.destination}`, tagX, tagY + 17);
             } else {
-              // Minimal Callout text underneath aircraft
-              ctx.fillStyle = acColor;
+              // Minimal Callsign underneath
+              ctx.fillStyle = '#888888';
               ctx.font = '500 8px JetBrains Mono';
-              ctx.fillText(ac.callsign, pt.x - 14, pt.y + 16);
+              ctx.fillText(ac.callsign, pt.x - 14, pt.y + 15);
             }
           });
         }
@@ -813,7 +1018,6 @@
       requestAnimationFrame(drawRadarScope);
     }
 
-    // Start drawing loop immediately
     requestAnimationFrame(drawRadarScope);
   </script>
 </body>
