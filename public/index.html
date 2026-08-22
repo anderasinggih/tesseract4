@@ -366,13 +366,13 @@
   <div id="top-bar">
     <div class="brand-box">
       <span class="brand-title">GLOBAL ATC RADAR</span>
-      <span class="brand-tag">ICAO REAL-TIME 60FPS</span>
+      <span class="brand-tag">ICAO LIVE 60FPS</span>
       
-      <!-- Map Style & View Mode Switcher -->
+      <!-- Map Style & View Mode Switcher (Clean, no emojis) -->
       <div style="display: flex; gap: 4px; margin-left: 10px;">
-        <button id="btn-style-dark" class="btn-action" style="padding: 3px 8px; font-size: 8.5px; background: #222; border-color: #555;" onclick="switchMapStyle('dark')">RADAR DARK</button>
-        <button id="btn-style-satellite" class="btn-action" style="padding: 3px 8px; font-size: 8.5px; background: #0a0a0a; border-color: #333;" onclick="switchMapStyle('satellite')">SATELLITE HD</button>
-        <button id="btn-map-pov" class="btn-action btn-amber" style="padding: 3px 8px; font-size: 8.5px;" onclick="toggleMapCockpitPOV()">✈️ 3D COCKPIT POV</button>
+        <button id="btn-style-satellite" class="btn-action" style="padding: 4px 9px; font-size: 8.5px; background: #222; border-color: #555;" onclick="switchMapStyle('satellite')">SATELLITE HD</button>
+        <button id="btn-style-dark" class="btn-action" style="padding: 4px 9px; font-size: 8.5px; background: #0a0a0a; border-color: #333;" onclick="switchMapStyle('dark')">RADAR DARK</button>
+        <button id="btn-map-pov" class="btn-action btn-amber" style="padding: 4px 9px; font-size: 8.5px;" onclick="toggleMapCockpitPOV()">3D COCKPIT POV</button>
       </div>
     </div>
     <div class="status-items">
@@ -398,13 +398,13 @@
       <span id="controller-id-badge" style="color: var(--text-dim);">CTR-INIT</span>
     </div>
 
-    <!-- Clear Mission Briefing Box -->
+    <!-- Clean Tactical Mission Briefing Box -->
     <div class="mission-box">
-      <div style="font-weight: 700; color: #ffffff; margin-bottom: 4px;">OPERATIONAL MISSION OBJECTIVE:</div>
-      <div class="mission-step">1. <b>Claim Airspace FIR</b> yang ingin kamu awasi.</div>
-      <div class="mission-step">2. <b>Klik Pesawat</b> di radar untuk membuka kemudi & kamera 3D.</div>
-      <div class="mission-step">3. <b>Atur Heading / FL Altitude</b> untuk hindari tabrakan STCA (< 5 NM & < 1000 ft).</div>
-      <div class="mission-step">4. <b>Handoff Pesawat</b> ke controller negara lain saat mendekati perbatasan.</div>
+      <div style="font-weight: 700; color: #ffffff; margin-bottom: 4px;">OPERATIONAL MISSION BRIEF:</div>
+      <div class="mission-step">[1] CLAIM AIRSPACE FIR TO MONITOR</div>
+      <div class="mission-step">[2] SELECT AIRCRAFT ON RADAR SCOPE</div>
+      <div class="mission-step">[3] VECTOR HEADING / FL TO PREVENT COLLISION</div>
+      <div class="mission-step">[4] TRANSFER HANDOFF AT SECTOR BOUNDARY</div>
     </div>
 
     <div class="form-group">
@@ -574,10 +574,10 @@
       }
     };
 
-    let currentMapStyle = 'dark';
+    let currentMapStyle = 'satellite';
     const map = new maplibregl.Map({
       container: 'map-container',
-      style: MAP_STYLES.dark,
+      style: MAP_STYLES.satellite,
       center: [108.0, -2.0],
       zoom: 4.8,
       attributionControl: false
@@ -610,7 +610,7 @@
       const btn = document.getElementById('btn-map-pov');
 
       if (mapCockpitPOVEnabled) {
-        btn.innerText = '🛰️ 2D ORTHO MAP';
+        btn.innerText = '2D ORTHO RADAR';
         btn.style.background = '#382200';
         btn.style.borderColor = 'var(--accent-amber)';
 
@@ -619,7 +619,7 @@
           selectAircraft(currentPayload.aircraft[0]);
         }
       } else {
-        btn.innerText = '✈️ 3D COCKPIT POV';
+        btn.innerText = '3D COCKPIT POV';
         btn.style.background = '#161616';
         btn.style.borderColor = '#333333';
 
