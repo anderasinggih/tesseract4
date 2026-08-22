@@ -760,15 +760,27 @@
       planeGroup.add(engL);
       planeGroup.add(engR);
 
-      // Try loading external high-poly GLTF online model if available
-      if (THREE.GLTFLoader) {
+      // Load User's Official 11803_Airplane_v1_l1.gltf 3D Model
+      if (window.THREE && THREE.GLTFLoader) {
         const loader = new THREE.GLTFLoader();
-        // Public CDN hosted commercial jet model
         loader.load(
-          'https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Models/master/2.0/CesiumMilkWagon/glTF-Binary/CesiumMilkWagon.glb',
-          function () {},
+          '/models/airplane/11803_Airplane_v1_l1.gltf',
+          function (gltf) {
+            const loadedModel = gltf.scene;
+            // Center & scale model to fit view
+            loadedModel.scale.set(0.015, 0.015, 0.015);
+            loadedModel.rotation.y = Math.PI; // Face forward
+            
+            // Clear default procedural geometry and add official 3D model
+            while(planeGroup.children.length > 0) { 
+              planeGroup.remove(planeGroup.children[0]); 
+            }
+            planeGroup.add(loadedModel);
+          },
           undefined,
-          function () {}
+          function (error) {
+            console.warn("Using procedural airliner mesh fallback:", error);
+          }
         );
       }
 
