@@ -89,8 +89,8 @@ func NewATCHub() *ATCHub {
 		h.sectors[sec.ID] = &secCopy
 	}
 
-	// Pre-spawn initial commercial flights
-	for i := 0; i < 18; i++ {
+	// Pre-spawn initial commercial flights across all sectors
+	for i := 0; i < 40; i++ {
 		h.spawnCommercialFlight()
 	}
 
