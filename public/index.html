@@ -15,8 +15,9 @@
   <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
 
   <!-- CesiumJS 3D Photorealistic Global Earth Engine -->
-  <script src="https://cesium.com/downloads/cesiumjs/releases/1.114/Build/Cesium/Cesium.js"></script>
-  <link href="https://cesium.com/downloads/cesiumjs/releases/1.114/Build/Cesium/Widgets/widgets.css" rel="stylesheet">
+  <script>window.CESIUM_BASE_URL = 'https://unpkg.com/cesium@1.114.0/Build/Cesium/';</script>
+  <script src="https://unpkg.com/cesium@1.114.0/Build/Cesium/Cesium.js"></script>
+  <link href="https://unpkg.com/cesium@1.114.0/Build/Cesium/Widgets/widgets.css" rel="stylesheet">
 
   <!-- Stable Three.js & GLTFLoader -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -949,41 +950,45 @@
     function initCesiumGlobe() {
       if (cesiumViewer || typeof Cesium === 'undefined') return;
 
-      // Initialize Cesium Viewer with ESRI World Imagery and realistic atmosphere
-      cesiumViewer = new Cesium.Viewer('cesium-container', {
-        imageryProvider: new Cesium.UrlTemplateImageryProvider({
-          url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-          credit: 'Esri World Imagery'
-        }),
-        terrainProvider: new Cesium.EllipsoidTerrainProvider(),
-        baseLayerPicker: false,
-        geocoder: false,
-        homeButton: false,
-        infoBox: false,
-        selectionIndicator: false,
-        timeline: false,
-        animation: false,
-        navigationHelpButton: false,
-        fullscreenButton: false,
-        sceneModePicker: false,
-        skyAtmosphere: new Cesium.SkyAtmosphere(),
-        globe: true
-      });
+      try {
+        // Disable Cesium Ion default token prompt
+        Cesium.Ion.defaultAccessToken = '';
 
-      // Photorealistic Space Atmosphere and Lighting
-      cesiumViewer.scene.globe.enableLighting = true;
-      cesiumViewer.scene.globe.depthTestAgainstTerrain = false;
-      cesiumViewer.scene.highDynamicRange = true;
+        // Initialize Cesium Viewer with ESRI Satellite imagery
+        cesiumViewer = new Cesium.Viewer('cesium-container', {
+          imageryProvider: new Cesium.UrlTemplateImageryProvider({
+            url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'
+          }),
+          baseLayerPicker: false,
+          geocoder: false,
+          homeButton: false,
+          infoBox: false,
+          selectionIndicator: false,
+          timeline: false,
+          animation: false,
+          navigationHelpButton: false,
+          fullscreenButton: false,
+          sceneModePicker: false
+        });
 
-      // Smooth initial camera view over Southeast Asia / Indonesia (WIII FIR)
-      cesiumViewer.camera.setView({
-        destination: Cesium.Cartesian3.fromDegrees(108.0, -2.0, 7500000.0), // Outer Space Orbit Alt
-        orientation: {
-          heading: Cesium.Math.toRadians(0),
-          pitch: Cesium.Math.toRadians(-90),
-          roll: 0.0
+        // Photorealistic lighting and atmosphere
+        if (cesiumViewer.scene && cesiumViewer.scene.globe) {
+          cesiumViewer.scene.globe.enableLighting = true;
+          cesiumViewer.scene.globe.depthTestAgainstTerrain = false;
         }
-      });
+
+        // Camera initial view high over Southeast Asia / Indonesia (WIII FIR)
+        cesiumViewer.camera.setView({
+          destination: Cesium.Cartesian3.fromDegrees(108.0, -2.0, 7500000.0),
+          orientation: {
+            heading: Cesium.Math.toRadians(0),
+            pitch: Cesium.Math.toRadians(-90),
+            roll: 0.0
+          }
+        });
+      } catch (err) {
+        console.error("Cesium initialization error:", err);
+      }
     }
 
     function toggleGlobeMode() {
@@ -995,15 +1000,28 @@
 
       if (globeModeEnabled) {
         if (!cesiumViewer) initCesiumGlobe();
-        if (cesiumEl) cesiumEl.style.display = 'block';
+        if (cesiumEl) {
+          cesiumEl.style.display = 'block';
+          cesiumEl.style.zIndex = '2';
+        }
+        if (canvasOverlay) canvasOverlay.style.display = 'none';
         if (mapEl) mapEl.style.display = 'none';
         if (btn) {
           btn.textContent = 'MAP 2D';
           btn.style.background = 'rgba(0, 221, 255, 0.4)';
           btn.style.borderColor = '#00ddff';
         }
+        if (cesiumViewer) {
+          setTimeout(() => {
+            cesiumViewer.resize();
+          }, 100);
+        }
       } else {
-        if (cesiumEl) cesiumEl.style.display = 'none';
+        if (cesiumEl) {
+          cesiumEl.style.display = 'none';
+          cesiumEl.style.zIndex = '1';
+        }
+        if (canvasOverlay) canvasOverlay.style.display = 'block';
         if (mapEl) mapEl.style.display = 'block';
         if (btn) {
           btn.textContent = 'GLOBE';
