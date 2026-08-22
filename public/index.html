@@ -664,6 +664,14 @@
           style="padding: 4px 8px; font-size: 8.5px;" onclick="toggleMapCockpitPOV()">POV</button>
         <!-- POV Interactive Zoom Level & Outline Toggle -->
         <div id="pov-zoom-controls" style="display: none; gap: 4px; align-items: center;">
+          <button class="btn-action btn-nav-compact"
+            style="padding: 4px 6px; font-size: 8.5px; background: rgba(30,30,30,0.8); border-color: #666;"
+            onclick="adjustPOVZoom(-0.5)" title="Zoom Out (Wider View)">-</button>
+          <span id="pov-zoom-display"
+            style="font-size: 8px; font-weight: 800; color: var(--accent-cyan); min-width: 28px; text-align: center;">10.5x</span>
+          <button class="btn-action btn-nav-compact"
+            style="padding: 4px 6px; font-size: 8.5px; background: rgba(30,30,30,0.8); border-color: #666;"
+            onclick="adjustPOVZoom(+0.5)" title="Zoom In (Closer View)">+</button>
           <button id="btn-traffic-outline" class="btn-action btn-nav-compact"
             style="padding: 4px 7px; font-size: 8.5px; background: rgba(30,30,30,0.8); border-color: #555; color: #888;"
             onclick="toggleTrafficOutline()" title="Toggle Traffic Aircraft High-Visibility Outline">OUTLINE</button>
@@ -1430,7 +1438,7 @@
       if (toastTimeout) clearTimeout(toastTimeout);
     }
 
-    let povZoomLevel = 8.5; // Default POV Map Zoom (zoomed out for realistic scale)
+    let povZoomLevel = 10.5; // Default POV Zoom (range: 6.0 to 11.0)
 
     function adjustPOVZoom(delta) {
       povZoomLevel = Math.max(6.0, Math.min(11.0, Math.round((povZoomLevel + delta) * 10) / 10));
@@ -1446,45 +1454,6 @@
         return;
       }
     }, { passive: false });
-
-    // ── WASD Flight Control in POV Mode (GTA-style takeover) ──────────────────
-    // W = Climb (+1000 ft)   S = Descend (-1000 ft)
-    // A = Turn Left (-5°)    D = Turn Right (+5°)
-    const wasdKeys = {};
-    const WASD_REPEAT_MS = 150; // fire every 150ms while held
-    let wasdInterval = null;
-
-    function processWASD() {
-      if (!mapCockpitPOVEnabled || !selectedCallsign) return;
-      if (wasdKeys['w'] || wasdKeys['W']) adjustAltitude(+1000);
-      if (wasdKeys['s'] || wasdKeys['S']) adjustAltitude(-1000);
-      if (wasdKeys['a'] || wasdKeys['A']) adjustHeading(-5);
-      if (wasdKeys['d'] || wasdKeys['D']) adjustHeading(+5);
-    }
-
-    document.addEventListener('keydown', (e) => {
-      // Only intercept WASD — never block other shortcuts
-      if (!['w','a','s','d','W','A','S','D'].includes(e.key)) return;
-      if (!mapCockpitPOVEnabled) return;
-      // Skip if user is typing in an input field
-      if (['INPUT','TEXTAREA','SELECT'].includes(document.activeElement?.tagName)) return;
-      e.preventDefault();
-      if (!wasdKeys[e.key]) {
-        wasdKeys[e.key] = true;
-        processWASD(); // immediate first fire
-        if (!wasdInterval) wasdInterval = setInterval(processWASD, WASD_REPEAT_MS);
-      }
-    });
-
-    document.addEventListener('keyup', (e) => {
-      delete wasdKeys[e.key];
-      // Stop repeat loop when no WASD key is held
-      if (!Object.keys(wasdKeys).some(k => ['w','a','s','d','W','A','S','D'].includes(k))) {
-        clearInterval(wasdInterval);
-        wasdInterval = null;
-      }
-    });
-    // ─────────────────────────────────────────────────────────────────────────
 
     let trafficAircraftOutlineEnabled = false;
 
@@ -1678,7 +1647,7 @@
       const fullOverlayContainer = document.getElementById('threejs-overlay');
       if (fullOverlayContainer) {
         fullThreeScene = new THREE.Scene();
-        fullThreeCamera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 5000);
+        fullThreeCamera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 5000);
         // MapLibre pitch is 85° (5° down from horizontal horizon).
         // Optical sync: Three.js camera placed behind fuselage looking forward at origin
         fullThreeCamera.position.set(0, 1.22, 13.95);
@@ -1739,11 +1708,28 @@
         window.trafficAircraftGroup = new THREE.Group();
         fullThreeScene.add(window.trafficAircraftGroup);
         window.trafficPlaneModelTemplate = fallbackPlaneGroup.clone();
-        window.trafficPlaneScaleFactor = 11.0;
+        window.trafficPlaneScaleFactor = 1.0;
 
+        // Tactical 3D HUD Flight Level Floor Grid (Visual Diagnostic Reference Plane)
+        // High-contrast bright green tactical floor grid
+        const flightFloorGrid = new THREE.GridHelper(500, 100, 0x00ff88, 0x006633);
+        flightFloorGrid.position.set(0, -1.8, -10);
+        window.fullFloorGroup.add(flightFloorGrid);
+        window.flightFloorGrid = flightFloorGrid;
 
-        // (Floor grid & polar rings removed — clean POV view)
-
+        // Add Polar Reference Rings (5 NM, 10 NM, 20 NM rings around player aircraft)
+        const ringMat = new THREE.LineBasicMaterial({ color: 0x00e5ff, transparent: true, opacity: 0.6 });
+        [15, 30, 60].forEach(radius => {
+          const ringGeo = new THREE.BufferGeometry();
+          const points = [];
+          for (let a = 0; a <= 64; a++) {
+            const theta = (a / 64) * Math.PI * 2;
+            points.push(new THREE.Vector3(Math.sin(theta) * radius, -1.8, Math.cos(theta) * radius - 10));
+          }
+          ringGeo.setFromPoints(points);
+          const ringLine = new THREE.Line(ringGeo, ringMat);
+          window.fullFloorGroup.add(ringLine);
+        });
 
         const update3DOverlaySize = () => {
           const w = window.innerWidth;
@@ -1969,7 +1955,7 @@
               const USER_CALIBRATION_PITCH_X = 19.3; // Rotasi X: Pitch (Dongak + / Nunduk -)
               const USER_CALIBRATION_YAW_Y = 0.0; // Rotasi Y: Yaw / Heading (Putar Kiri - / Kanan +)
               const USER_CALIBRATION_ROLL_Z = 0.0; // Rotasi Z: Roll / Miring Sayap
-              const USER_PLANE_SCALE_MULTIPLIER = 11.0; // Skala ukuran seimbang & proporsional
+              const USER_PLANE_SCALE_MULTIPLIER = 0.85; // Skala ukuran seimbang & proporsional
 
               fullPlaneGroup.rotation.x = pitchOffset + USER_CALIBRATION_PITCH_X;
               fullPlaneGroup.rotation.y = USER_CALIBRATION_YAW_Y;
