@@ -1827,42 +1827,23 @@
         }
       }
 
-      // Ultra-Smooth 60 FPS Dead-Reckoning Kinematics & Camera Follow in POV Mode
+      // Ultra-Smooth 60 FPS Camera Follow in POV Mode
       if (mapCockpitPOVEnabled && targetCamLng !== null && currentCamLng !== null) {
-        const now = performance.now();
-        if (!lastFrameTime) lastFrameTime = now;
-        const dtSec = Math.min((now - lastFrameTime) / 1000.0, 0.05); // Frame delta time (clamped)
-        lastFrameTime = now;
-
-        // Kinematics forward projection (Dead-Reckoning)
-        if (targetCamSpeed > 0) {
-          const hdgRad = (targetCamHeading || 0) * (Math.PI / 180.0);
-          const speedNMps = targetCamSpeed / 3600.0;
-          const distNM = speedNMps * dtSec;
-          const latDegPerNM = 1.0 / 60.0;
-          const lngDegPerNM = 1.0 / (60.0 * Math.max(0.1, Math.cos(currentCamLat * Math.PI / 180.0)));
-
-          currentCamLat += distNM * Math.cos(hdgRad) * latDegPerNM;
-          currentCamLng += distNM * Math.sin(hdgRad) * lngDegPerNM;
-        }
-
-        // Soft convergence towards authoritative server position
-        currentCamLng += (targetCamLng - currentCamLng) * 0.08;
-        currentCamLat += (targetCamLat - currentCamLat) * 0.08;
+        // High-precision smooth damping (smooth interpolation without sudden snap)
+        const lerpRate = 0.15;
+        currentCamLng += (targetCamLng - currentCamLng) * lerpRate;
+        currentCamLat += (targetCamLat - currentCamLat) * lerpRate;
 
         // Smooth shortest-path compass heading interpolation
         let diffHdg = (targetCamHeading - currentCamHeading + 180) % 360 - 180;
         if (diffHdg < -180) diffHdg += 360;
-        currentCamHeading += diffHdg * 0.1;
+        currentCamHeading += diffHdg * 0.15;
 
-        map.jumpTo({
-          center: [currentCamLng, currentCamLat],
-          pitch: 85,
-          bearing: currentCamHeading,
-          zoom: 11.0
-        });
-      } else {
-        lastFrameTime = performance.now();
+        // Direct low-level transform (bypasses heavy map transition pipeline for zero jitter)
+        map.setCenter([currentCamLng, currentCamLat]);
+        map.setBearing(currentCamHeading);
+        map.setPitch(75);
+        if (map.getZoom() !== 11.0) map.setZoom(11.0);
       }
 
       requestAnimationFrame(drawRadarScope);
