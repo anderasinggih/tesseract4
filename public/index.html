@@ -1643,6 +1643,27 @@
         window.trafficPlaneModelTemplate = fallbackPlaneGroup.clone();
         window.trafficPlaneScaleFactor = 1.0;
 
+        // Tactical 3D HUD Flight Level Floor Grid (Visual Diagnostic Reference Plane)
+        // Green tactical grid aligned with flight plane (Y = -2.5 units below fuselage)
+        const flightFloorGrid = new THREE.GridHelper(300, 60, 0x00ff88, 0x004422);
+        flightFloorGrid.position.set(0, -2.5, -20);
+        fullThreeScene.add(flightFloorGrid);
+        window.flightFloorGrid = flightFloorGrid;
+
+        // Add Polar Reference Rings (5 NM, 10 NM, 20 NM rings around player aircraft)
+        const ringMat = new THREE.LineBasicMaterial({ color: 0x00e5ff, transparent: true, opacity: 0.4 });
+        [15, 30, 60].forEach(radius => {
+          const ringGeo = new THREE.BufferGeometry();
+          const points = [];
+          for (let a = 0; a <= 64; a++) {
+            const theta = (a / 64) * Math.PI * 2;
+            points.push(new THREE.Vector3(Math.sin(theta) * radius, -2.5, Math.cos(theta) * radius - 20));
+          }
+          ringGeo.setFromPoints(points);
+          const ringLine = new THREE.Line(ringGeo, ringMat);
+          fullThreeScene.add(ringLine);
+        });
+
         const update3DOverlaySize = () => {
           const w = window.innerWidth;
           const h = window.innerHeight;
