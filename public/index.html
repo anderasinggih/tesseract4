@@ -10,9 +10,9 @@
   <meta name="theme-color" content="#000000">
   <title>GLOBAL ATC RADAR // TACTICAL AIRSPACE CONTROL</title>
 
-  <!-- CesiumJS Official Production Build -->
-  <link href="https://cesium.com/downloads/cesiumjs/releases/1.119/Build/Cesium/Widgets/widgets.css" rel="stylesheet">
-  <script src="https://cesium.com/downloads/cesiumjs/releases/1.119/Build/Cesium/Cesium.js"></script>
+  <!-- Babylon.js High-Performance 3D WebGL/WebGPU Engine -->
+  <script src="https://cdn.babylonjs.com/babylon.js"></script>
+  <script src="https://cdn.babylonjs.com/loaders/babylonjs.loaders.min.js"></script>
 
   <!-- MapLibre GL JS & CSS -->
   <link href="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css" rel="stylesheet" />
@@ -641,7 +641,7 @@
 <body>
 
   <div id="map-container"></div>
-  <div id="cesium-container" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; display: none;"></div>
+  <canvas id="babylon-canvas" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 2; display: none;"></canvas>
   <div id="threejs-overlay"></div>
   <canvas id="canvas-overlay"></canvas>
 
@@ -1418,53 +1418,66 @@
       playUiClickSound();
     }
 
-    // ─── CesiumJS True 3D Globe & Flight Simulator Engine ────────────────
-    let cesiumViewer = null;
-    let cesiumAircraftEntities = new Map();
-    let cesiumPlayerAircraftEntity = null;
+    // ─── Babylon.js High-Performance 3D Flight Simulator & Globe Engine ────
+    let babylonEngine = null;
+    let babylonScene = null;
+    let babylonCamera = null;
+    let babylonGlobeMesh = null;
+    let babylonPlayerPlane = null;
+    let babylonTrafficMeshes = new Map();
 
-    function initCesiumGlobe() {
-      if (cesiumViewer || typeof Cesium === 'undefined') return;
+    function initBabylonSimulator() {
+      const canvasEl = document.getElementById('babylon-canvas');
+      if (!canvasEl || typeof BABYLON === 'undefined' || babylonEngine) return;
 
-      try {
-        Cesium.Ion.defaultAccessToken = ''; // Offline / public raster mode
+      babylonEngine = new BABYLON.Engine(canvasEl, true, { preserveDrawingBuffer: true, stencil: true });
+      babylonScene = new BABYLON.Scene(babylonEngine);
+      babylonScene.clearColor = new BABYLON.Color4(0.01, 0.02, 0.04, 1.0);
 
-        cesiumViewer = new Cesium.Viewer('cesium-container', {
-          imageryProvider: new Cesium.ArcGisMapServerImageryProvider({
-            url: 'https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer',
-            enablePickFeatures: false
-          }),
-          animation: false,
-          timeline: false,
-          fullscreenButton: false,
-          homeButton: false,
-          sceneModePicker: false,
-          baseLayerPicker: false,
-          navigationHelpButton: false,
-          geocoder: false,
-          infoBox: false,
-          selectionIndicator: false,
-          shadows: false,
-          skyAtmosphere: new Cesium.SkyAtmosphere(),
-          globe: new Cesium.Globe(Cesium.Ellipsoid.WGS84)
-        });
+      // 1. Follow Chase Camera with 100% Horizontal Horizon View
+      babylonCamera = new BABYLON.FreeCamera('flightCam', new BABYLON.Vector3(0, 2.5, 14), babylonScene);
+      babylonCamera.setTarget(new BABYLON.Vector3(0, 0, -20)); // Looking straight ahead into the forward horizon
 
-        // Atmospheric & Globe visual fidelity
-        cesiumViewer.scene.globe.baseColor = Cesium.Color.fromCssColorString('#051520');
-        cesiumViewer.scene.globe.enableLighting = false; // Keep high-visibility satellite surface
-        cesiumViewer.scene.fog.enabled = true;
-        cesiumViewer.scene.fog.density = 0.00008;
-        cesiumViewer.scene.screenSpaceCameraController.enableTilt = true;
-        cesiumViewer.scene.screenSpaceCameraController.enableLook = true;
+      // 2. High-Tech Sunlight & Ambient Skylight
+      const hemiLight = new BABYLON.HemisphericLight('hemiLight', new BABYLON.Vector3(0, 1, 0), babylonScene);
+      hemiLight.intensity = 1.2;
+      hemiLight.diffuse = new BABYLON.Color3(0.9, 0.95, 1.0);
+      hemiLight.groundColor = new BABYLON.Color3(0.2, 0.3, 0.4);
 
-        // Hide Cesium credit container for clean native tactical radar look
-        const credit = cesiumViewer.bottomContainer;
-        if (credit) credit.style.display = 'none';
+      const dirLight = new BABYLON.DirectionalLight('sunLight', new BABYLON.Vector3(-1, -2, -1), babylonScene);
+      dirLight.intensity = 1.5;
+      dirLight.diffuse = new BABYLON.Color3(1.0, 0.98, 0.9);
 
-        console.log("[Cesium Engine] True 3D WGS84 Globe initialized successfully.");
-      } catch (err) {
-        console.warn("[Cesium Engine] WebGL/Cesium init note:", err);
-      }
+      // 3. True 3D Curved Earth Globe Sphere with High-Res Satellite Texture
+      babylonGlobeMesh = BABYLON.MeshBuilder.CreateSphere('earthGlobe', { diameter: 1200, segments: 64 }, babylonScene);
+      babylonGlobeMesh.position = new BABYLON.Vector3(0, -605, 0); // Curving earth surface below flight level
+
+      const earthMat = new BABYLON.StandardMaterial('earthMat', babylonScene);
+      earthMat.diffuseTexture = new BABYLON.Texture('https://unpkg.com/three-globe@2.31.1/example/img/earth-blue-marble.jpg', babylonScene);
+      earthMat.specularColor = new BABYLON.Color3(0.1, 0.15, 0.2);
+      earthMat.roughness = 0.6;
+      babylonGlobeMesh.material = earthMat;
+
+      // 4. Atmospheric Sky Dome
+      const skyDome = BABYLON.MeshBuilder.CreateSphere('skyDome', { diameter: 2000, segments: 32 }, babylonScene);
+      const skyMat = new BABYLON.StandardMaterial('skyMat', babylonScene);
+      skyMat.backFaceCulling = false;
+      skyMat.diffuseColor = new BABYLON.Color3(0.02, 0.05, 0.12);
+      skyMat.emissiveColor = new BABYLON.Color3(0.01, 0.03, 0.08);
+      skyDome.material = skyMat;
+
+      // Start render loop
+      babylonEngine.runRenderLoop(() => {
+        if (mapCockpitPOVEnabled && babylonScene) {
+          babylonScene.render();
+        }
+      });
+
+      window.addEventListener('resize', () => {
+        if (babylonEngine) babylonEngine.resize();
+      });
+
+      console.log("[Babylon.js] 3D Flight Simulator Engine initialized successfully.");
     }
 
     function toggleMapCockpitPOV() {
@@ -1473,7 +1486,7 @@
       const overlay3D = document.getElementById('threejs-overlay');
       const analogRadarBox = document.getElementById('view-3d-box');
       const zoomControls = document.getElementById('pov-zoom-controls');
-      const cesiumContainer = document.getElementById('cesium-container');
+      const babylonCanvas = document.getElementById('babylon-canvas');
       const mapContainer = document.getElementById('map-container');
 
       if (mapCockpitPOVEnabled) {
@@ -1484,9 +1497,9 @@
         if (analogRadarBox) analogRadarBox.style.display = 'block';
         if (zoomControls) zoomControls.style.display = 'flex';
 
-        // Initialize and reveal Cesium 3D Globe
-        if (!cesiumViewer) initCesiumGlobe();
-        if (cesiumContainer) cesiumContainer.style.display = 'block';
+        // Initialize and reveal Babylon.js 3D Canvas
+        if (!babylonEngine) initBabylonSimulator();
+        if (babylonCanvas) babylonCanvas.style.display = 'block';
         if (mapContainer) mapContainer.style.display = 'none';
 
         // Start Realistic Jet Turbofan Sound Engine
@@ -1507,20 +1520,6 @@
             targetCamLng = ac.coord.lng;
             targetCamLat = ac.coord.lat;
             targetCamHeading = ac.heading || 0;
-
-            if (cesiumViewer) {
-              const altMeters = Math.max(1000, (ac.altitude || 35000) * 0.3048);
-              const targetCartesian = Cesium.Cartesian3.fromDegrees(ac.coord.lng, ac.coord.lat, altMeters);
-              cesiumViewer.camera.flyTo({
-                destination: Cesium.Cartesian3.fromDegrees(ac.coord.lng, ac.coord.lat, altMeters + 250),
-                orientation: {
-                  heading: Cesium.Math.toRadians(ac.heading || 0),
-                  pitch: Cesium.Math.toRadians(-2.0), // 100% Horizontal looking straight forward into the horizon
-                  roll: 0.0
-                },
-                duration: 0.8
-              });
-            }
           }
         }
       } else {
@@ -1530,7 +1529,7 @@
         if (overlay3D) overlay3D.style.display = 'none';
         if (analogRadarBox) analogRadarBox.style.display = 'none';
         if (zoomControls) zoomControls.style.display = 'none';
-        if (cesiumContainer) cesiumContainer.style.display = 'none';
+        if (babylonCanvas) babylonCanvas.style.display = 'none';
         if (mapContainer) mapContainer.style.display = 'block';
 
         // Stop Jet Engine Sound Engine
@@ -2766,27 +2765,18 @@
           currentCamLng += (targetCamLng - currentCamLng) * posLerp;
           currentCamLat += (targetCamLat - currentCamLat) * posLerp;
 
-          // Real-Time Cesium 3D Globe Flight Perspective Follow (100% Horizontal Horizon View)
-          if (cesiumViewer && selectedCallsign && currentPayload && currentPayload.aircraft) {
+          // Real-Time Babylon.js 3D Flight Simulator Camera & Globe Follow (100% Horizontal View)
+          if (babylonCamera && babylonGlobeMesh && selectedCallsign && currentPayload && currentPayload.aircraft) {
             const ac = currentPayload.aircraft.find(a => a.callsign === selectedCallsign);
             if (ac) {
-              const altMeters = Math.max(1000, (ac.altitude || 35000) * 0.3048);
-              const camHeadingRad = Cesium.Math.toRadians(currentCamHeading);
+              // Rotate curved earth globe to simulate real ground speed & course
+              babylonGlobeMesh.rotation.x += 0.0003;
               
-              // Calculate camera eye position behind and above the aircraft
-              const followDistance = 450.0 * Math.pow(2, (10.5 - povZoomLevel) * 0.5);
-              const eyeElevation = 120.0 * Math.pow(2, (10.5 - povZoomLevel) * 0.4);
-              const eyeLat = currentCamLat - (Math.cos(camHeadingRad) * (followDistance / 111320.0));
-              const eyeLng = currentCamLng - (Math.sin(camHeadingRad) * (followDistance / (111320.0 * Math.cos(currentCamLat * Math.PI / 180.0))));
-
-              cesiumViewer.camera.setView({
-                destination: Cesium.Cartesian3.fromDegrees(eyeLng, eyeLat, altMeters + eyeElevation),
-                orientation: {
-                  heading: camHeadingRad,
-                  pitch: Cesium.Math.toRadians(-18.0), // Natural cockpit chase sightline overlooking horizon & terrain
-                  roll: 0.0
-                }
-              });
+              // Dynamic Camera follow distance
+              const followZ = 14.0 * Math.pow(2, (10.5 - povZoomLevel) * 0.4);
+              babylonCamera.position.z = followZ;
+              babylonCamera.position.y = 2.2;
+              babylonCamera.setTarget(new BABYLON.Vector3(0, 0, -25)); // 100% Horizontal forward horizon gaze
             }
           }
         }
