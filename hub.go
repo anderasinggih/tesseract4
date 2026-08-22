@@ -350,17 +350,17 @@ func (h *ATCHub) updateKinematics(dt float64) {
 			bankCmd = math.Max(-25.0, math.Min(25.0, 3.0*headingDiff(ac.TargetHeading, ac.Heading)))
 		}
 
-		// Airliner roll rate ~7 deg/s (typical transport category: 5-10 deg/s)
+		// Airliner roll rate (Fast arcade response: 60 deg/s so bank is instantaneous)
 		if ac.Roll < bankCmd {
-			ac.Roll = math.Min(ac.Roll+7.0*dt, bankCmd)
+			ac.Roll = math.Min(ac.Roll+60.0*dt, bankCmd)
 		} else if ac.Roll > bankCmd {
-			ac.Roll = math.Max(ac.Roll-7.0*dt, bankCmd)
+			ac.Roll = math.Max(ac.Roll-60.0*dt, bankCmd)
 		}
 
-		// Rate of turn: ROT = 1091 * tan(bank) / TAS(knots)  [deg/sec]
-		// At 450 kts & 25 deg bank -> ~1.13 deg/s with a ~6 NM radius. Heavy.
+		// Rate of turn: Responsive turn rate (~18 deg/s at 25 deg bank)
+		// Multiplied for responsive arcade-style control like GTA
 		tas := math.Max(ac.Speed, 120.0)
-		rot := 1091.0 * math.Tan(ac.Roll*math.Pi/180.0) / tas
+		rot := 1091.0 * math.Tan(ac.Roll*math.Pi/180.0) / tas * 15.0
 		ac.Heading += rot * dt
 		if ac.Heading < 0 {
 			ac.Heading += 360
