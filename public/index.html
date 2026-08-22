@@ -978,6 +978,12 @@
     let jetNoiseNode = null;
     let jetTurbineOsc = null;
 
+    // ─── Tactical Web Audio Aviation Sound Engine (Expanded SFX Suite) ────────
+    let audioCtx = null;
+    let jetEngineGain = null;
+    let jetNoiseNode = null;
+    let jetTurbineOsc = null;
+
     function initAudioEngine() {
       if (audioCtx) return;
       try {
@@ -988,7 +994,7 @@
       }
     }
 
-    // Realistic Jet Turbofan Engine Synthesizer (Filtered Noise + High-RPM Whine)
+    // 1. Realistic Jet Turbofan Engine Synthesizer (Filtered Noise + High-RPM Whine + Airflow)
     function startJetEngineSound() {
       initAudioEngine();
       if (!audioCtx) return;
@@ -999,10 +1005,10 @@
 
       jetEngineGain = audioCtx.createGain();
       jetEngineGain.gain.setValueAtTime(0.01, audioCtx.currentTime);
-      jetEngineGain.gain.exponentialRampToValueAtTime(0.18, audioCtx.currentTime + 1.2);
+      jetEngineGain.gain.exponentialRampToValueAtTime(0.24, audioCtx.currentTime + 1.2);
       jetEngineGain.connect(audioCtx.destination);
 
-      // 1. Aerodynamic Airflow & Jet Thrust (Pink Noise generator)
+      // Pink Noise for deep jet airflow
       const bufferSize = audioCtx.sampleRate * 2;
       const noiseBuffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
       const output = noiseBuffer.getChannelData(0);
@@ -1015,7 +1021,7 @@
         b3 = 0.86650 * b3 + white * 0.3104856;
         b4 = 0.55000 * b4 + white * 0.5329522;
         b5 = -0.7616 * b5 - white * 0.0168980;
-        output[i] = (b0 + b1 + b2 + b3 + b4 + b5 + b6 + white * 0.5362) * 0.08;
+        output[i] = (b0 + b1 + b2 + b3 + b4 + b5 + b6 + white * 0.5362) * 0.1;
         b6 = white * 0.115926;
       }
 
@@ -1023,24 +1029,30 @@
       jetNoiseNode.buffer = noiseBuffer;
       jetNoiseNode.loop = true;
 
-      // Low-pass Filter for heavy jet rumble
+      // Heavy rumble lowpass filter
       const lowpass = audioCtx.createBiquadFilter();
       lowpass.type = 'lowpass';
-      lowpass.frequency.setValueAtTime(420, audioCtx.currentTime);
+      lowpass.frequency.setValueAtTime(450, audioCtx.currentTime);
 
       jetNoiseNode.connect(lowpass);
       lowpass.connect(jetEngineGain);
       jetNoiseNode.start();
 
-      // 2. High-RPM Jet Turbine Blade Whine
+      // High-RPM Jet Turbine Blade Whine
       jetTurbineOsc = audioCtx.createOscillator();
-      jetTurbineOsc.type = 'sine';
-      jetTurbineOsc.frequency.setValueAtTime(140, audioCtx.currentTime); // Low spool harmonic
+      jetTurbineOsc.type = 'sawtooth';
+      jetTurbineOsc.frequency.setValueAtTime(160, audioCtx.currentTime);
+
+      const turbineFilter = audioCtx.createBiquadFilter();
+      turbineFilter.type = 'bandpass';
+      turbineFilter.frequency.setValueAtTime(1200, audioCtx.currentTime);
+      turbineFilter.Q.setValueAtTime(4.0, audioCtx.currentTime);
 
       const turbineGain = audioCtx.createGain();
-      turbineGain.gain.setValueAtTime(0.04, audioCtx.currentTime);
+      turbineGain.gain.setValueAtTime(0.06, audioCtx.currentTime);
 
-      jetTurbineOsc.connect(turbineGain);
+      jetTurbineOsc.connect(turbineFilter);
+      turbineFilter.connect(turbineGain);
       turbineGain.connect(jetEngineGain);
       jetTurbineOsc.start();
     }
@@ -1067,7 +1079,91 @@
       }
     }
 
-    // Play High-Priority ATC Emergency / Conflict Alarm (Two-Tone Warning Chime)
+    // 2. Tactical Button Click & Target Lock SFX
+    function playUiClickSound() {
+      initAudioEngine();
+      if (!audioCtx) return;
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+      const now = audioCtx.currentTime;
+
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(1800, now);
+      osc.frequency.exponentialRampToValueAtTime(800, now + 0.04);
+      gain.gain.setValueAtTime(0.08, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
+
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.start(now);
+      osc.stop(now + 0.06);
+    }
+
+    // 3. Radio Transmission Roger Beep (Quindar / Squelch Tone)
+    function playRadioRogerBeep() {
+      initAudioEngine();
+      if (!audioCtx) return;
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+      const now = audioCtx.currentTime;
+
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(2524, now); // Standard NASA/Aviation Quindar Tone frequency
+      gain.gain.setValueAtTime(0.08, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
+
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.start(now);
+      osc.stop(now + 0.09);
+    }
+
+    // 4. Command Acknowledged SFX (Double Upward Chirp)
+    function playCommandAckSound() {
+      initAudioEngine();
+      if (!audioCtx) return;
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+      const now = audioCtx.currentTime;
+
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(880, now);
+      osc.frequency.setValueAtTime(1320, now + 0.06);
+      gain.gain.setValueAtTime(0.12, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.16);
+
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.start(now);
+      osc.stop(now + 0.18);
+    }
+
+    // 5. Handoff Success Fanfare (Ascending Triad)
+    function playHandoffSuccessSound() {
+      initAudioEngine();
+      if (!audioCtx) return;
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+      const now = audioCtx.currentTime;
+
+      [523.25, 659.25, 783.99, 1046.50].forEach((freq, i) => {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(freq, now + i * 0.08);
+        gain.gain.setValueAtTime(0.12, now + i * 0.08);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + i * 0.08 + 0.25);
+
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start(now + i * 0.08);
+        osc.stop(now + i * 0.08 + 0.28);
+      });
+    }
+
+    // 6. High-Priority ATC Emergency / Conflict Alarm (Two-Tone Warning Chime)
     function playAlertChime() {
       initAudioEngine();
       if (!audioCtx) return;
@@ -1087,7 +1183,7 @@
       osc2.frequency.setValueAtTime(884, now);
       osc2.frequency.setValueAtTime(590, now + 0.15);
 
-      gain.gain.setValueAtTime(0.18, now);
+      gain.gain.setValueAtTime(0.22, now);
       gain.gain.exponentialRampToValueAtTime(0.001, now + 0.65);
 
       osc1.connect(gain);
@@ -1100,7 +1196,7 @@
       osc2.stop(now + 0.7);
     }
 
-    // Play Mission / Handoff / Sector Task Alert Tone (Crisp Radar Ping)
+    // 7. Mission Task Alert Tone (Crisp Radar Ping)
     function playTaskPing() {
       initAudioEngine();
       if (!audioCtx) return;
@@ -1114,7 +1210,7 @@
       osc.frequency.setValueAtTime(1050, now);
       osc.frequency.exponentialRampToValueAtTime(1400, now + 0.08);
 
-      gain.gain.setValueAtTime(0.12, now);
+      gain.gain.setValueAtTime(0.14, now);
       gain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
 
       osc.connect(gain);
@@ -1708,6 +1804,7 @@
 
     function sendVectorHeading(val) {
       if (!ws || ws.readyState !== WebSocket.OPEN || !selectedCallsign) return;
+      playCommandAckSound();
       ws.send(JSON.stringify({
         type: 'set_heading',
         callsign: selectedCallsign,
@@ -1717,6 +1814,7 @@
 
     function adjustHeading(delta) {
       if (!selectedCallsign) return;
+      playUiClickSound();
       const slider = document.getElementById('input-heading');
       let cur = parseInt(slider.value, 10) || 0;
       let nextHdg = (cur + delta + 360) % 360;
@@ -1727,6 +1825,7 @@
 
     function steerDirectToDestination() {
       if (!currentPayload || !selectedCallsign) return;
+      playRadioRogerBeep();
       const ac = currentPayload.aircraft.find(a => a.callsign === selectedCallsign);
       if (!ac || !currentPayload.airports) return;
       const destApt = currentPayload.airports.find(a => a.icao === ac.destination);
@@ -1755,6 +1854,7 @@
 
     function sendAltitude(val) {
       if (!ws || ws.readyState !== WebSocket.OPEN || !selectedCallsign) return;
+      playRadioRogerBeep();
       ws.send(JSON.stringify({
         type: 'set_altitude',
         callsign: selectedCallsign,
@@ -1764,6 +1864,7 @@
 
     function sendSpeed(val) {
       if (!ws || ws.readyState !== WebSocket.OPEN || !selectedCallsign) return;
+      playRadioRogerBeep();
       ws.send(JSON.stringify({
         type: 'set_speed',
         callsign: selectedCallsign,
@@ -1773,6 +1874,7 @@
 
     function initiateHandoff() {
       if (!ws || ws.readyState !== WebSocket.OPEN || !selectedCallsign) return;
+      playCommandAckSound();
       const targetSec = document.getElementById('handoff-target-select').value;
       ws.send(JSON.stringify({
         type: 'handoff_init',
@@ -1783,6 +1885,7 @@
 
     function acceptInboundHandoff() {
       if (!ws || ws.readyState !== WebSocket.OPEN || !activeInboundHandoff) return;
+      playHandoffSuccessSound(); // Play joyful mission success fanfare!
       ws.send(JSON.stringify({
         type: 'handoff_accept',
         callsign: activeInboundHandoff.callsign
@@ -1943,6 +2046,9 @@
     });
 
     function selectAircraft(ac) {
+      if (selectedCallsign !== ac.callsign) {
+        playUiClickSound(); // Tactical target lock click
+      }
       selectedCallsign = ac.callsign;
       document.getElementById('selected-callsign-header').innerText = ac.callsign;
       document.getElementById('no-flight-hint').style.display = 'none';
