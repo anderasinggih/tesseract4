@@ -378,12 +378,12 @@ func (h *ATCHub) updateKinematics(dt float64) {
 		}
 	}
 
-	// 2. Short-Term Conflict Alert (STCA) Loss of Separation calculation
-	// Lateral < 5 NM and Vertical < 1000 ft
+	// 2. Short-Term Conflict Alert (STCA) & Mid-Air Crash Detection
 	for _, ac1 := range h.aircraft {
 		ac1.ConflictAlert = false
 	}
 
+	var crashedFlights []string
 	for _, ac1 := range h.aircraft {
 		for _, ac2 := range h.aircraft {
 			if ac1.Callsign == ac2.Callsign {
@@ -393,6 +393,14 @@ func (h *ATCHub) updateKinematics(dt float64) {
 			latDist := DistanceInNauticalMiles(ac1.Coord, ac2.Coord)
 			altDiff := math.Abs(float64(ac1.Altitude - ac2.Altitude))
 
+			// CRITICAL MID-AIR COLLISION / CRASH (< 0.4 NM and < 200 ft)
+			if latDist < 0.4 && altDiff < 200.0 {
+				crashedFlights = append(crashedFlights, ac1.Callsign, ac2.Callsign)
+				h.addLog("CRASH", "EMERGENCY", fmt.Sprintf("⚠️ MID-AIR COLLISION! %s and %s collided at FL%d (%.2f NM).", ac1.Callsign, ac2.Callsign, ac1.Altitude/100, latDist))
+				break
+			}
+
+			// Loss of Separation Warning (< 5 NM and < 1000 ft)
 			if latDist < 5.0 && altDiff < 1000.0 {
 				ac1.ConflictAlert = true
 				ac2.ConflictAlert = true
@@ -400,6 +408,13 @@ func (h *ATCHub) updateKinematics(dt float64) {
 					h.addLog("ALERT", ac1.Callsign, fmt.Sprintf("TRAFFIC ALERT! %s & %s loss of separation (%.1f NM, %.0f ft diff)", ac1.Callsign, ac2.Callsign, latDist, altDiff))
 				}
 			}
+		}
+	}
+
+	// Remove destroyed aircraft from radar
+	if len(crashedFlights) > 0 {
+		for _, cs := range crashedFlights {
+			delete(h.aircraft, cs)
 		}
 	}
 }

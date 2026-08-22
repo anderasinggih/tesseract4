@@ -1295,6 +1295,31 @@
       });
     }
 
+    // 8b. Critical Mid-Air Crash / Collision Alarm (Distinct Heavy Dual-Wail Siren)
+    function playCrashAlarmSound() {
+      initAudioEngine();
+      if (!audioCtx) return;
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+      const now = audioCtx.currentTime;
+
+      // Two powerful heavy low-frequency collision sirens
+      [0, 0.35, 0.70].forEach((offset) => {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(440, now + offset);
+        osc.frequency.exponentialRampToValueAtTime(180, now + offset + 0.28); // Descending heavy impact wail
+
+        gain.gain.setValueAtTime(0.25, now + offset);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + offset + 0.30);
+
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start(now + offset);
+        osc.stop(now + offset + 0.32);
+      });
+    }
+
     // 9. Tactical Task Ping (Simple Soft 1-shot Chime)
     function playTaskPing() {
       initAudioEngine();
@@ -2388,9 +2413,12 @@
         const newLogs = payload.logs.slice(lastLogLength);
         lastLogLength = payload.logs.length;
 
-        // Check if new incoming logs contain emergency or handoff tasks
+        // Check if new incoming logs contain emergency, crash, or handoff tasks
         newLogs.forEach(l => {
-          if (l.type === 'ALERT' || l.type === 'EMERGENCY' || l.message.includes('MAYDAY')) {
+          if (l.type === 'CRASH' || l.message.includes('COLLISION') || l.message.includes('collided')) {
+            playCrashAlarmSound(); // Powerful Mid-Air Crash Alarm
+            showTacticalToast(`🚨 ${l.message}`, 'ALERT');
+          } else if (l.type === 'ALERT' || l.type === 'EMERGENCY' || l.message.includes('MAYDAY')) {
             if (mapCockpitPOVEnabled) {
               playEmergencyWarningBeeps(); // Urgent Master Warning BIP-BIP-BIP in POV Cockpit Mode
             } else {
