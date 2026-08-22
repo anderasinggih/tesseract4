@@ -331,9 +331,9 @@ func (h *ATCHub) updateKinematics(dt float64) {
 
 	// 1. Move and steer each aircraft
 	for callsign, ac := range h.aircraft {
-		// Flight Management System (FMS) Auto-Nav: when wings level and on assigned
-		// track, continuously re-track the destination airport
-		if math.Abs(headingDiff(ac.TargetHeading, ac.Heading)) < 0.05 && math.Abs(ac.Roll) < 0.5 {
+		// Flight Management System (FMS) Auto-Nav: only active when NOT under manual pilot steering
+		// and when wings are level on assigned track.
+		if ac.TargetRoll == 0 && math.Abs(headingDiff(ac.TargetHeading, ac.Heading)) < 0.05 && math.Abs(ac.Roll) < 0.5 {
 			for _, apt := range GlobalMajorAirports {
 				if apt.ICAO == ac.Destination {
 					ac.TargetHeading = CalculateTrueBearing(ac.Coord, apt.Coord)
@@ -342,23 +342,23 @@ func (h *ATCHub) updateKinematics(dt float64) {
 			}
 		}
 
-		// ── Coordinated turn dynamics (FAA Pilot's Handbook of Aeronautical Knowledge) ──
-		// Bank command: pilot stick overrides directly; otherwise bank-angle pursuit
-		// of the assigned heading (3x gain, saturated at airliner limit 25 deg).
+		// ── Coordinated turn dynamics ──
+		// When pilot is steering (TargetRoll != 0), TargetHeading continuously syncs with Heading
 		bankCmd := ac.TargetRoll
-		if ac.TargetRoll == 0 {
+		if ac.TargetRoll != 0 {
+			ac.TargetHeading = ac.Heading
+		} else {
 			bankCmd = math.Max(-25.0, math.Min(25.0, 3.0*headingDiff(ac.TargetHeading, ac.Heading)))
 		}
 
-		// Airliner roll rate (Fast arcade response: 60 deg/s so bank is instantaneous)
+		// Fast instant roll response: 60 deg/s
 		if ac.Roll < bankCmd {
 			ac.Roll = math.Min(ac.Roll+60.0*dt, bankCmd)
 		} else if ac.Roll > bankCmd {
 			ac.Roll = math.Max(ac.Roll-60.0*dt, bankCmd)
 		}
 
-		// Rate of turn: Responsive turn rate (~18 deg/s at 25 deg bank)
-		// Multiplied for responsive arcade-style control like GTA
+		// Rate of turn: responsive arcade turn (~18 deg/s at 25 deg bank)
 		tas := math.Max(ac.Speed, 120.0)
 		rot := 1091.0 * math.Tan(ac.Roll*math.Pi/180.0) / tas * 15.0
 		ac.Heading += rot * dt
@@ -366,6 +366,10 @@ func (h *ATCHub) updateKinematics(dt float64) {
 			ac.Heading += 360
 		} else if ac.Heading >= 360 {
 			ac.Heading -= 360
+		}
+
+		if ac.TargetRoll != 0 {
+			ac.TargetHeading = ac.Heading
 		}
 
 		// Altitude climb/descent rate (~1500 fpm = 25 fps)
