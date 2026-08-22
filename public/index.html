@@ -705,18 +705,23 @@
       if (fullOverlayContainer) {
         fullThreeScene = new THREE.Scene();
         fullThreeCamera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
-        fullThreeCamera.position.set(0, 4.5, 13.5); // Positioned behind and looking forward over plane
-        fullThreeCamera.lookAt(0, 0, -10);
+        fullThreeCamera.position.set(0, 3.2, 14.5); // Slightly lower and further back
+        fullThreeCamera.lookAt(0, 0.8, -12); // Look up toward horizon/sky (not diving into ground)
 
         fullThreeRenderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
         fullThreeRenderer.setSize(window.innerWidth, window.innerHeight);
         fullOverlayContainer.appendChild(fullThreeRenderer.domElement);
 
-        fullAmbient = new THREE.AmbientLight(0xffffff, 0.4); // Adaptive Day/Night Ambient Light
+        fullAmbient = new THREE.AmbientLight(0xffffff, 1.2); // Vibrant clear ambient light
         fullThreeScene.add(fullAmbient);
-        fullDir = new THREE.DirectionalLight(0xffeedd, 0.6); // Sunlight / Moonlight
-        fullDir.position.set(5, 15, 10);
+        fullDir = new THREE.DirectionalLight(0xffffff, 1.8); // Bright crisp keylight
+        fullDir.position.set(10, 20, 15);
         fullThreeScene.add(fullDir);
+        
+        // Add fill light from bottom-left for fuselage clarity
+        const fillLight = new THREE.DirectionalLight(0xaaccff, 0.8);
+        fillLight.position.set(-10, -5, 10);
+        fullThreeScene.add(fillLight);
 
         fullPlaneGroup = new THREE.Group();
         fullThreeScene.add(fullPlaneGroup);
@@ -1163,7 +1168,7 @@
           if (mapCockpitPOVEnabled) {
             map.easeTo({
               center: [ac.coord.lng, ac.coord.lat],
-              pitch: 74, // Ultra-low cockpit forward nose view
+              pitch: 58, // Elevated forward view looking up toward the horizon
               bearing: ac.heading, // Point directly forward along the flight path
               zoom: 10.5, // Optimal crisp pilot zoom where tiles are 100% available everywhere
               duration: 200, // Smooth interpolation (zero jitter)
