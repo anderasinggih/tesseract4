@@ -2781,17 +2781,12 @@
           if (spdEl) spdEl.innerText = `${Math.round(ac.speed)}KT`;
           if (hdgEl) hdgEl.innerText = `${String(Math.round(ac.heading)).padStart(3, '0')}°`;
 
-          // Target coordinates for smooth 60fps lerp interpolation.
+          // Target coordinates for smooth 60fps real-time multiplayer sync
           targetCamLng = ac.coord.lng;
           targetCamLat = ac.coord.lat;
           lastKnownRoll = ac.roll || 0;
-          if (currentCamLng === null || targetCamHeading === null) {
-            targetCamHeading = ac.heading;
-            predRoll = lastKnownRoll;
-          } else {
-            const hdgErr = ((ac.heading - targetCamHeading + 540) % 360) - 180;
-            targetCamHeading += hdgErr * 0.8;
-          }
+          targetCamHeading = ac.heading;
+          predRoll = lastKnownRoll;
           targetCamSpeed = ac.speed || 450;
           lastTargetTime = performance.now();
           if (currentCamLng === null) {
