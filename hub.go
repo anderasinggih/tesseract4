@@ -185,14 +185,16 @@ func (h *ATCHub) spawnCommercialFlight() {
 	}
 }
 
-// Run executes the continuous aircraft kinematics loop and collision checks at 10Hz
+// Run executes the continuous aircraft kinematics loop and collision checks at 60Hz
 func (h *ATCHub) Run() {
-	log.Println("✈️ [ATC Hub] Air traffic kinematics & collision alert engine started.")
-	ticker := time.NewTicker(100 * time.Millisecond) // 10Hz physics tick
+	log.Println("✈️ [ATC Hub] Air traffic kinematics & collision alert engine started at 60 FPS.")
+	ticker := time.NewTicker(16 * time.Millisecond) // 60Hz (16.6ms) physics tick
 	defer ticker.Stop()
 
 	respawnTicker := time.NewTicker(8 * time.Second)
 	defer respawnTicker.Stop()
+
+	lastTick := time.Now()
 
 	for {
 		select {
@@ -240,8 +242,13 @@ func (h *ATCHub) Run() {
 			}
 			h.mu.Unlock()
 
-		case <-ticker.C:
-			h.updateKinematics(0.1) // dt = 0.1s
+		case now := <-ticker.C:
+			dt := now.Sub(lastTick).Seconds()
+			lastTick = now
+			if dt > 0.1 {
+				dt = 0.1
+			}
+			h.updateKinematics(dt)
 		}
 	}
 }

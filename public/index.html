@@ -1928,41 +1928,22 @@
 
       // Ultra-Smooth 60 FPS Camera Follow in POV Mode
       if (mapCockpitPOVEnabled && targetCamLng !== null && currentCamLng !== null) {
-        const now = performance.now();
-        if (lastFrameTime === null || lastTargetTime === null) {
-          lastFrameTime = now;
-          lastTargetTime = now;
-        }
-        const dt = Math.min((now - lastFrameTime) / 1000, 0.1);
-        lastFrameTime = now;
-
-        // Dead reckoning: extrapolate aircraft motion from heading & groundspeed so the
-        // target glides continuously between 10Hz physics packets instead of stepping.
-        const ageS = Math.min((now - lastTargetTime) / 1000, 5);
-        const hdgRad = targetCamHeading * Math.PI / 180;
-        const latRad = targetCamLat * Math.PI / 180;
-        const distDeg = (targetCamSpeed * ageS / 3600) / 60; // knots -> deg of latitude
-        const predLng = targetCamLng + Math.sin(hdgRad) * distDeg / Math.max(Math.cos(latRad), 0.1);
-        const predLat = targetCamLat + Math.cos(hdgRad) * distDeg;
-
-        // Frame-rate independent smoothing (equivalent to ~0.09 lerp at 60fps)
-        const alpha = 1 - Math.exp(-6 * dt);
-        currentCamLng += (predLng - currentCamLng) * alpha;
-        currentCamLat += (predLat - currentCamLat) * alpha;
+        // High-precision lerp directly tracking 60fps server stream
+        const lerpFactor = 0.25;
+        currentCamLng += (targetCamLng - currentCamLng) * lerpFactor;
+        currentCamLat += (targetCamLat - currentCamLat) * lerpFactor;
 
         // Smooth shortest-path compass heading interpolation
         let diffHdg = (targetCamHeading - currentCamHeading + 540) % 360 - 180;
-        currentCamHeading += diffHdg * alpha;
+        currentCamHeading += diffHdg * lerpFactor;
 
-        // Single low-level transform (bypasses heavy map transition pipeline for zero jitter)
+        // Instant low-level camera update
         map.jumpTo({
           center: [currentCamLng, currentCamLat],
           zoom: 11.0,
           bearing: currentCamHeading,
           pitch: 75
         });
-      } else {
-        lastFrameTime = null;
       }
 
       requestAnimationFrame(drawRadarScope);
