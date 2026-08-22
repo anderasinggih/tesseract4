@@ -42,7 +42,7 @@ func (p *Player) WritePump() {
 	}
 }
 
-// ReadPump listens for FPS WASD movements and Mouse Look angles
+// ReadPump listens for true FPS WASD movements and Mouse Look
 func (p *Player) ReadPump(c *websocket.Conn) {
 	for {
 		var cmd InputCommand
@@ -57,16 +57,18 @@ func (p *Player) ReadPump(c *websocket.Conn) {
 		p.Mutex.Lock()
 		switch cmd.Type {
 		case "look":
-			// FPS Mouse Look: DX -> Yaw, DY -> Pitch
+			// FPS Mouse/Swipe Look (Standar PUBG):
+			// Gerak mouse ke kanan (+DX) -> Kamera menoleh ke kanan (+Yaw)
+			// Gerak mouse ke atas (-DY) -> Kamera mendongak ke atas (+Pitch)
 			sensitivity := 0.003
 			p.Yaw += cmd.DX * sensitivity
-			p.Pitch += cmd.DY * sensitivity
+			p.Pitch -= cmd.DY * sensitivity
 
-			// Clamp pitch so camera doesn't flip upside down
-			if p.Pitch > 1.5 {
-				p.Pitch = 1.5
-			} else if p.Pitch < -1.5 {
-				p.Pitch = -1.5
+			// Clamp pitch sudut pandang atas/bawah
+			if p.Pitch > 1.45 {
+				p.Pitch = 1.45
+			} else if p.Pitch < -1.45 {
+				p.Pitch = -1.45
 			}
 
 		case "move":
@@ -75,48 +77,50 @@ func (p *Player) ReadPump(c *websocket.Conn) {
 				speed = cmd.Delta
 			}
 
-			// FPS Direction Vectors based on camera Yaw
-			cosY := math.Cos(p.Yaw)
+			// Vektor Arah Hadap FPS berdasarkan sudut Yaw kamera
+			// Forward Vector (Arah Maju): (sin(yaw), 0, cos(yaw))
+			// Right Vector (Arah Strafe Kanan): (cos(yaw), 0, -sin(yaw))
 			sinY := math.Sin(p.Yaw)
+			cosY := math.Cos(p.Yaw)
 
 			switch strings.ToLower(cmd.Key) {
-			// W: Maju ke Depan (arah hadap kamera di sumbu Z/X)
+			// W: MAJU KE DEPAN (Lurus ke arah pandangan kamera)
 			case "w":
-				p.Position.Z += speed * cosY
 				p.Position.X += speed * sinY
+				p.Position.Z += speed * cosY
 
-			// S: Mundur ke Belakang
+			// S: MUNDUR KE BELAKANG
 			case "s":
-				p.Position.Z -= speed * cosY
 				p.Position.X -= speed * sinY
+				p.Position.Z -= speed * cosY
 
-			// A: Strafe ke Kiri
+			// A: STRAFE KIRI
 			case "a":
 				p.Position.X -= speed * cosY
 				p.Position.Z += speed * sinY
 
-			// D: Strafe ke Kanan
+			// D: STRAFE KANAN
 			case "d":
 				p.Position.X += speed * cosY
 				p.Position.Z -= speed * sinY
 
-			// Panah Atas / Space: Terbang Naik (Sumbu Y)
+			// SPACE / PANAH ATAS: NAIK (Sumbu Y)
 			case "arrowup", " ":
 				p.Position.Y += speed
 
-			// Panah Bawah / C: Turun ke Bawah (Sumbu Y)
+			// C / PANAH BAWAH: TURUN (Sumbu Y)
 			case "arrowdown", "c":
 				p.Position.Y -= speed
 
-			// Shift: Mendekati Singularity Black Hole (Sumbu W)
+			// SHIFT: Masuk ke dalam Dimensi W (Mendekati Black Hole Singularity)
 			case "shift":
 				p.Position.W -= speed
 
-			// E: Menjauhi Singularity Black Hole (Sumbu W)
+			// E: Menjauh dari Dimensi W (Menjauhi Singularity)
 			case "e":
 				p.Position.W += speed
 
-			// Q / R: Manual 4D Hypercube Spin
+			// Q / R: Spin hiperkubus 4D
 			case "q":
 				p.HyperRot -= 0.05
 			case "r":
@@ -129,7 +133,6 @@ func (p *Player) ReadPump(c *websocket.Conn) {
 
 // PhysicsLoop computes 4D projection with full FPS camera, streaming smoothly at 60 FPS
 func (p *Player) PhysicsLoop(ctx context.Context) {
-	// 60 FPS ticker (16ms)
 	ticker := time.NewTicker(16 * time.Millisecond)
 	defer ticker.Stop()
 
@@ -148,14 +151,12 @@ func (p *Player) PhysicsLoop(ctx context.Context) {
 
 			// 1. Calculate Schwarzschild Time Dilation Multiplier
 			timeMultiplier := CalculateTimeMultiplier(currentPos.W)
-
-			// 2. Compute dynamic tick latency display
 			effectiveTickMs := float64(BaseTick) / timeMultiplier
 
-			// 3. Generate 2D projected lines with FPS camera transform
+			// 2. Generate 2D projected lines with true FPS view matrix
 			lines := GenerateProjectedLines(currentPos, yaw, pitch, hyperRot)
 
-			// 4. Construct payload
+			// 3. Construct payload
 			payload := FramePayload{
 				Lines:          lines,
 				PlayerPos:      currentPos,
@@ -164,7 +165,7 @@ func (p *Player) PhysicsLoop(ctx context.Context) {
 				PlayerID:       p.ID,
 			}
 
-			// 5. Deliver to send queue
+			// 4. Deliver to send queue
 			data, err := json.Marshal(payload)
 			if err == nil {
 				select {
@@ -175,7 +176,7 @@ func (p *Player) PhysicsLoop(ctx context.Context) {
 
 			// Ambient 4D dimensional rotation
 			p.Mutex.Lock()
-			p.HyperRot += 0.008 * timeMultiplier
+			p.HyperRot += 0.006 * timeMultiplier
 			p.Mutex.Unlock()
 		}
 	}

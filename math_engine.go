@@ -49,10 +49,10 @@ var TesseractEdges = [32][2]int{
 	{4, 12}, {5, 13}, {6, 14}, {7, 15},
 }
 
-// RotateXZ applies 3D Yaw rotation (Mouse horizontal look)
-func RotateXZ(v Vector4, theta float64) Vector4 {
-	cosT := math.Cos(theta)
-	sinT := math.Sin(theta)
+// RotateXZ applies standard Camera Yaw (Kiri/Kanan)
+func RotateXZ(v Vector4, yaw float64) Vector4 {
+	cosT := math.Cos(yaw)
+	sinT := math.Sin(yaw)
 	return Vector4{
 		X: v.X*cosT - v.Z*sinT,
 		Y: v.Y,
@@ -61,10 +61,10 @@ func RotateXZ(v Vector4, theta float64) Vector4 {
 	}
 }
 
-// RotateYZ applies 3D Pitch rotation (Mouse vertical look)
-func RotateYZ(v Vector4, theta float64) Vector4 {
-	cosT := math.Cos(theta)
-	sinT := math.Sin(theta)
+// RotateYZ applies standard Camera Pitch (Atas/Bawah)
+func RotateYZ(v Vector4, pitch float64) Vector4 {
+	cosT := math.Cos(pitch)
+	sinT := math.Sin(pitch)
 	return Vector4{
 		X: v.X,
 		Y: v.Y*cosT - v.Z*sinT,
@@ -85,7 +85,8 @@ func RotateXW(v Vector4, theta float64) Vector4 {
 	}
 }
 
-// Project4Dto2D projects a 4D coordinate down to 3D and then to 2D
+// Project4Dto2D projects relative 4D camera coordinate to 2D screen
+// World Point -> Camera Space (Offset Pos) -> Camera Rotation -> Perspective Projection
 func Project4Dto2D(v Vector4, d float64) (float64, float64, bool) {
 	denomW := d - v.W
 	if math.Abs(denomW) < 0.0001 {
@@ -100,7 +101,8 @@ func Project4Dto2D(v Vector4, d float64) (float64, float64, bool) {
 	y3d := v.Y / denomW
 	z3d := v.Z / denomW
 
-	denomZ := d - z3d
+	// Standard perspective division with camera forward distance
+	denomZ := d + z3d
 	if math.Abs(denomZ) < 0.0001 {
 		if denomZ < 0 {
 			denomZ = -0.0001
@@ -115,27 +117,27 @@ func Project4Dto2D(v Vector4, d float64) (float64, float64, bool) {
 	return x2d, y2d, true
 }
 
-// GenerateProjectedLines computes the transformed and projected 2D wireframe edges
+// GenerateProjectedLines transforms vertices relative to player (FPS Camera View Matrix)
 func GenerateProjectedLines(pos Vector4, yaw, pitch, hyperRot float64) []Line2D {
 	var projectedPoints [16][2]float64
 
 	for i, v := range BaseTesseractVertices {
-		translated := Vector4{
-			X: v.X + pos.X,
-			Y: v.Y + pos.Y,
-			Z: v.Z + pos.Z,
-			W: v.W + pos.W,
+		// 1. 4D Hyper-dimension rotation on base shape
+		r4d := RotateXW(v, hyperRot)
+
+		// 2. Translate world relative to camera position (Camera Eye: pos)
+		rel := Vector4{
+			X: r4d.X - pos.X,
+			Y: r4d.Y - pos.Y,
+			Z: r4d.Z - pos.Z,
+			W: r4d.W - pos.W,
 		}
 
-		// 1. 4D XW Hyper-rotation
-		r4d := RotateXW(translated, hyperRot)
+		// 3. View Matrix: Camera Rotation (Yaw & Pitch)
+		rYaw := RotateXZ(rel, -yaw)
+		rPitch := RotateYZ(rYaw, -pitch)
 
-		// 2. Camera FPS Yaw (XZ)
-		rYaw := RotateXZ(r4d, yaw)
-
-		// 3. Camera FPS Pitch (YZ)
-		rPitch := RotateYZ(rYaw, pitch)
-
+		// 4. Projection to 2D Screen
 		x2d, y2d, _ := Project4Dto2D(rPitch, DistanceD)
 		projectedPoints[i] = [2]float64{x2d, y2d}
 	}
